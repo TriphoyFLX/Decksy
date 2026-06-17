@@ -1,0 +1,8 @@
+{
+  "name": "Decksy AI",
+  "description": "ИИ проводит жесткое интервью как инвестор, вытягивает из тебя ключевые смыслы бизнеса и автоматически собирает презентацию на 10 слайдов в PPTX.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

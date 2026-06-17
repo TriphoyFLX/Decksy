@@ -1,0 +1,65 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  Int         @id @default(autoincrement())
+  email               String      @unique
+  password            String
+  name                String?
+  role                String      @default("user")
+  isPro               Boolean     @default(false)
+  plan                String      @default("Free")
+  createdAt           DateTime    @default(now())
+  decks               PitchDeck[]
+  yoomoneyAccessToken String?
+  payments            Payment[]
+}
+
+model Payment {
+  id        String   @id // YooKassa payment ID
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float
+  tariffId  String
+  status    String   // "pending", "succeeded", "canceled"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RequestLog {
+  id        Int      @id @default(autoincrement())
+  path      String
+  method    String
+  createdAt DateTime @default(now())
+}
+
+model Ad {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  link      String?
+  imageUrl  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model PitchDeck {
+  id         String   @id
+  title      String
+  subtitle   String?
+  idea       String
+  mode       String
+  slidesJson String
+  roastJson  String?
+  canvasJson String?
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
