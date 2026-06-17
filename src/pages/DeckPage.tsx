@@ -285,7 +285,7 @@ export const DeckPage: React.FC<DeckPageProps> = ({
 
             {/* Footer bar */}
             <div className={footerClass}>
-              <span>© {deck.title} • Seed Round</span>
+              <span>© {deck.title} • Seedsdfsdf Round</span>
               <span className="flex items-center gap-1">
                 <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
                 {isWatermarkRemoved ? `Проект: ${deck.title}` : "Сгенерировано Decksy.ai"}
