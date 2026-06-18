@@ -2,7 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import dotenv from "dotenv";
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "./src/lib/prisma";
@@ -14,7 +14,38 @@ import {
 } from "./src/lib/deckBuilder";
 import { GoogleGenAI, Type } from "@google/genai";
 
-dotenv.config();
+const isProduction = process.env.NODE_ENV === "production";
+
+function getConfiguredEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  if (!value || value === "MY_GEMINI_API_KEY" || value.startsWith("CHANGE_ME")) {
+    return undefined;
+  }
+  return value;
+}
+
+function validateProductionEnv() {
+  if (!isProduction) return;
+
+  const required = [
+    "APP_URL",
+    "DATABASE_URL",
+    "JWT_SECRET",
+    "YOOKASSA_SHOP_ID",
+    "YOOKASSA_SECRET_KEY",
+  ];
+  const missing = required.filter((name) => !getConfiguredEnv(name));
+
+  if (!getConfiguredEnv("GEMINI_API_KEY") && !getConfiguredEnv("GEN_API_KEY")) {
+    missing.push("GEMINI_API_KEY or GEN_API_KEY");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+  }
+}
+
+validateProductionEnv();
 
 const app = express();
 const PORT = 3000;
@@ -23,8 +54,8 @@ const PORT = 3000;
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
   if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
-    if (key && key !== "MY_GEMINI_API_KEY") {
+    const key = getConfiguredEnv("GEMINI_API_KEY");
+    if (key) {
       aiClient = new GoogleGenAI({
         apiKey: key,
         httpOptions: {
@@ -59,7 +90,7 @@ app.use(async (req, res, next) => {
 });
 
 // GenAPI — DeepSeek V4 (https://gen-api.ru)
-const GEN_API_KEY = process.env.GEN_API_KEY;
+const GEN_API_KEY = getConfiguredEnv("GEN_API_KEY");
 const GEN_API_URL = "https://api.gen-api.ru/api/v1/networks/deepseek-v4";
 const GEN_API_MODEL = process.env.GEN_API_MODEL || "deepseek-v4-flash";
 
@@ -297,7 +328,7 @@ One slide only. type="${SLIDE_TYPES[i]}". Russian. 4 bullets with numbers/metric
 
 // --- Native Auth & Prisma DB Persistence API ---
 
-const JWT_SECRET = process.env.JWT_SECRET || "decksy-super-secret-default-key-2026";
+const JWT_SECRET = getConfiguredEnv("JWT_SECRET") || "decksy-dev-secret-default-key";
 
 // JWT Authentication Middleware
 function authenticateToken(req: any, res: any, next: any) {
@@ -516,8 +547,9 @@ app.post("/api/auth/subscribe", authenticateToken, async (req: any, res) => {
 
 // --- YOOKASSA INTEGRATION CONTROLLERS ---
 
-const YOOKASSA_SHOP_ID = process.env.YOOKASSA_SHOP_ID || "1386669";
-const YOOKASSA_SECRET_KEY = process.env.YOOKASSA_SECRET_KEY || "test__t_kaIemOSA5qOw13N6n9UCJHyHhZFLRJD_KxYrhmBA";
+const APP_URL = getConfiguredEnv("APP_URL");
+const YOOKASSA_SHOP_ID = getConfiguredEnv("YOOKASSA_SHOP_ID") || "1386669";
+const YOOKASSA_SECRET_KEY = getConfiguredEnv("YOOKASSA_SECRET_KEY") || "";
 
 // Helper to construct YooKassa Basic Auth headers
 const getYooKassaHeaders = () => {
@@ -559,7 +591,7 @@ app.post("/api/yookassa/create-payment", authenticateToken, async (req: any, res
     };
     const amount = tariffPrices[tariffId];
 
-    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+    const appUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
     const returnUrl = `${appUrl}/?tab=tariffs&payment_check=1`;
 
     console.log(`Initiating YooKassa payment for user ${req.user.userId}, tariff: ${tariffId}, price: ${amount} RUB`);

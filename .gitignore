@@ -4,6 +4,8 @@ dist/
 coverage/
 .DS_Store
 *.log
+prisma/*.db
+prisma/*.db-journal
 .env*
 !.env.example
 
