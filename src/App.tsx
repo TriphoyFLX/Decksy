@@ -2278,8 +2278,8 @@ export default function App() {
       <div id="mobile-top-bar" className="lg:hidden h-16 border-b border-white/5 flex items-center justify-between px-5 bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-40 w-full shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 cursor-pointer" onClick={handleReset}>
-            <div className="w-7 h-7 bg-[#FF5D44] flex items-center justify-center rounded-sm">
-              <div className="w-3.5 h-3.5 bg-black rotate-45"></div>
+            <div className="w-7 h-7 bg-white flex items-center justify-center rounded-full border border-white/20 shadow-[0_0_28px_rgba(255,255,255,0.12)]">
+              <div className="w-2.5 h-2.5 bg-[#0A0A0B] rounded-full"></div>
             </div>
             <img 
               src="/src/images/logo.png" 
@@ -2287,8 +2287,8 @@ export default function App() {
               className="h-5 object-contain" 
               onError={(e) => { e.currentTarget.style.display = 'none'; }} 
             />
-            <span className="text-sm font-black tracking-wider text-white uppercase font-sans select-none">
-              DECKSY<span className="text-[#FF5D44] font-light lowercase">.ai</span>
+            <span className="text-sm font-black tracking-tight text-white font-sans select-none">
+              Decksy<span className="text-slate-400 font-medium"> Agent</span>
             </span>
           </div>
         </div>
@@ -2297,9 +2297,9 @@ export default function App() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setScreen('about')}
-            className={`px-2 py-1 rounded-sm text-[10px] font-bold uppercase transition-all flex items-center space-x-1 border cursor-pointer ${
+            className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all flex items-center space-x-1 border cursor-pointer ${
               screen === 'about'
-                ? "bg-purple-600 border-purple-600 text-white"
+                ? "bg-white text-black border-white"
                 : "bg-white/5 border-white/10 hover:bg-white/10 text-slate-300"
             }`}
             title="О проекте"
@@ -2310,9 +2310,9 @@ export default function App() {
 
           <button
             onClick={() => setScreen('plans')}
-            className={`px-2 py-1 rounded-sm text-[10px] font-bold uppercase transition-all flex items-center space-x-1 border cursor-pointer ${
+            className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all flex items-center space-x-1 border cursor-pointer ${
               screen === 'plans'
-                ? "bg-[#10b981] border-[#10b981] text-white"
+                ? "bg-white text-black border-white"
                 : "bg-white/5 border-white/10 hover:bg-white/10 text-slate-300"
             }`}
             title="Тарифы и Экономика"
@@ -2350,9 +2350,9 @@ export default function App() {
           {!isWatermarkRemoved ? (
             <button 
               onClick={() => setScreen('plans')}
-              className="px-2.5 py-1 bg-gradient-to-r from-purple-500 to-[#FF5D44] text-white text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer hover:opacity-90"
+              className="px-3 py-1.5 bg-white text-black text-[10px] font-bold uppercase tracking-wider rounded-full transition-all cursor-pointer hover:bg-slate-200"
             >
-              PRO
+              Upgrade
             </button>
           ) : (
             <span className="px-2 py-0.5 bg-emerald-950/45 border border-emerald-500/30 text-emerald-400 text-[8px] font-bold rounded-sm uppercase tracking-wider font-mono">
@@ -2363,7 +2363,7 @@ export default function App() {
       </div>
 
       {/* iOS GLASSMORPHIC BOTTOM DOCK FOR MOBILE */}
-      <div id="mobile-bottom-dock" className="lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-[#0E0E12]/80 backdrop-blur-xl border border-white/10 rounded-2xl z-45 px-3 py-1.5 flex items-center justify-around shadow-[0_12px_40px_-10px_rgba(0,0,0,0.9)]">
+      <div id="mobile-bottom-dock" className="lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-[#0E0E12]/90 backdrop-blur-xl border border-white/10 rounded-[28px] z-45 px-3 py-1.5 flex items-center justify-around shadow-[0_12px_40px_-10px_rgba(0,0,0,0.9)]">
         {/* Tab 1: Ввод идеи */}
         <button
           onClick={() => setScreen('intro')}
@@ -2372,7 +2372,7 @@ export default function App() {
           }`}
         >
           <Compass className="h-5 w-5 shrink-0" />
-          <span className="text-[9px] font-semibold mt-1 tracking-tight">Идея</span>
+          <span className="text-[9px] font-semibold mt-1 tracking-tight">Prompt</span>
           {screen === 'intro' && (
             <motion.div layoutId="activeMobileIndicator" className="absolute bottom-0 w-1 h-1 rounded-full bg-[#FF5D44]" />
           )}
@@ -2391,7 +2391,7 @@ export default function App() {
           }`}
         >
           <Users className="h-5 w-5 shrink-0" />
-          <span className="text-[9px] font-semibold mt-1 tracking-tight font-sans">Чат ИИ</span>
+          <span className="text-[9px] font-semibold mt-1 tracking-tight font-sans">Agent</span>
           {(screen === 'interview' || screen === 'generating') && (
             <motion.div layoutId="activeMobileIndicator" className="absolute bottom-0 w-1 h-1 rounded-full bg-blue-400" />
           )}
@@ -2410,7 +2410,7 @@ export default function App() {
           }`}
         >
           <Sparkles className="h-5 w-5 shrink-0" />
-          <span className="text-[9px] font-semibold mt-1 tracking-tight">Слайды</span>
+          <span className="text-[9px] font-semibold mt-1 tracking-tight">Output</span>
           {screen === 'deck' && (
             <motion.div layoutId="activeMobileIndicator" className="absolute bottom-0 w-1 h-1 rounded-full bg-emerald-400" />
           )}
@@ -2432,17 +2432,17 @@ export default function App() {
               </span>
             )}
           </div>
-          <span className="text-[9px] font-semibold mt-1 tracking-tight font-sans">Проекты</span>
+          <span className="text-[9px] font-semibold mt-1 tracking-tight font-sans">Files</span>
         </button>
       </div>
 
       {/* DESKTOP PERMANENT SIDEBAR PANEL */}
-      <aside id="desktop-sidebar" className="hidden lg:flex w-64 bg-[#0D0D10] border-r border-white/10 flex-col justify-between h-screen sticky top-0 p-6 shrink-0 z-40 select-none">
+      <aside id="desktop-sidebar" className="hidden lg:flex w-72 bg-[#0B0B0D] border-r border-white/10 flex-col justify-between h-screen sticky top-0 p-6 shrink-0 z-40 select-none">
         <div className="space-y-8">
           {/* Brand header */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={handleReset}>
-            <div className="w-8.5 h-8.5 bg-[#FF5D44] flex items-center justify-center rounded-sm transition-transform hover:scale-105">
-              <div className="w-4.5 h-4.5 bg-black rotate-45"></div>
+            <div className="w-9 h-9 bg-white flex items-center justify-center rounded-full border border-white/20 transition-transform hover:scale-105 shadow-[0_0_34px_rgba(255,255,255,0.12)]">
+              <div className="w-3 h-3 bg-[#0A0A0B] rounded-full"></div>
             </div>
             <div className="flex items-center gap-2">
               <img 
@@ -2451,33 +2451,33 @@ export default function App() {
                 className="h-6 object-contain" 
                 onError={(e) => { e.currentTarget.style.display = 'none'; }} 
               />
-              <span className="text-lg font-black tracking-tight text-white uppercase font-sans">
-                DECKSY<span className="text-[#FF5D44] font-light lowercase">.ai</span>
+              <span className="text-lg font-black tracking-tight text-white font-sans">
+                Decksy<span className="text-slate-400 font-medium"> Agent</span>
               </span>
             </div>
           </div>
 
           {/* Navigation Section */}
           <nav className="space-y-2 pt-2">
-            <div className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3 pl-2">ВЕНЧУРНЫЙ КРАФТЕР</div>
+            <div className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3 pl-2">AI Workspace</div>
             
             {/* Nav Option 1: Ввод идеи / Главная */}
             <button
               onClick={() => setScreen('intro')}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'intro'
                   ? 'bg-[#FF5D44]/10 border-[#FF5D44]/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
               }`}
             >
               <Compass className="h-4 w-4 text-[#FF5D44] shrink-0" />
-              <span>Ввод стартапа</span>
+              <span>Prompt</span>
             </button>
 
             {/* Nav Option 1.5: О проекте */}
             <button
               onClick={() => setScreen('about')}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'about'
                   ? 'bg-purple-500/10 border-purple-500/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
@@ -2490,7 +2490,7 @@ export default function App() {
             {/* Nav Option 1.6: Тарифы & Экономика */}
             <button
               onClick={() => setScreen('plans')}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'plans'
                   ? 'bg-emerald-500/10 border-emerald-500/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
@@ -2508,7 +2508,7 @@ export default function App() {
                   setScreen('interview');
                 }
               }}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded text-xs font-semibold uppercase tracking-wider transition-all text-left border disabled:opacity-25 disabled:cursor-not-allowed ${
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border disabled:opacity-25 disabled:cursor-not-allowed ${
                 screen === 'interview' || screen === 'generating'
                   ? 'bg-amber-500/10 border-amber-500/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
@@ -2516,7 +2516,7 @@ export default function App() {
               title={messages.length === 0 && screen === 'intro' ? "Опишите вашу стартап идею, чтобы начать интервью" : "Посмотреть чат-интервью"}
             >
               <Users className="h-4 w-4 text-blue-400 shrink-0" />
-              <span>Чат-Интервью</span>
+              <span>Agent Chat</span>
             </button>
 
             {/* Nav Option 3: Конструктор слайдов */}
@@ -2527,7 +2527,7 @@ export default function App() {
                   setScreen('deck');
                 }
               }}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded text-xs font-semibold uppercase tracking-wider transition-all text-left border disabled:opacity-25 disabled:cursor-not-allowed ${
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border disabled:opacity-25 disabled:cursor-not-allowed ${
                 screen === 'deck'
                   ? 'bg-amber-500/10 border-amber-500/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
@@ -2535,7 +2535,7 @@ export default function App() {
               title={!deck ? "Презентация ещё не сгенерирована инвестором" : "Перейти к слайдам"}
             >
               <Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
-              <span>Редактор слайдов</span>
+              <span>Output Deck</span>
             </button>
 
             {/* Nav Option 4: Моя библиотека */}
@@ -2544,11 +2544,11 @@ export default function App() {
                 fetchLibraryDecks();
                 setShowLibraryDrawer(true);
               }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded text-slate-400 hover:text-white hover:bg-white/5 text-xs font-semibold uppercase tracking-wider transition-all text-left border border-transparent bg-transparent cursor-pointer"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-semibold uppercase tracking-wider transition-all text-left border border-transparent bg-transparent cursor-pointer"
             >
               <div className="flex items-center space-x-3">
                 <FolderHeart className="h-4 w-4 text-rose-400 shrink-0" />
-                <span>Мои проекты</span>
+                <span>Project Files</span>
               </div>
               {savedDecks.length > 0 && (
                 <span className="bg-[#FF5D44] text-black text-[9px] font-extrabold h-4.5 px-1.5 rounded-full flex items-center justify-center min-w-4.5">
@@ -2560,10 +2560,10 @@ export default function App() {
             {/* Reset option */}
             <button
               onClick={handleReset}
-              className="w-full flex items-center space-x-3 px-3 py-2.5 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 text-xs font-semibold uppercase tracking-wider transition-all text-left border border-transparent bg-transparent mt-8 cursor-pointer"
+              className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-500 hover:text-white hover:bg-white/5 text-xs font-semibold uppercase tracking-wider transition-all text-left border border-transparent bg-transparent mt-8 cursor-pointer"
             >
               <RefreshCw className="h-4 w-4 shrink-0" />
-              <span>Новый стартап</span>
+              <span>New Session</span>
             </button>
           </nav>
         </div>
@@ -2574,44 +2574,44 @@ export default function App() {
             <div className="p-3 bg-emerald-950/20 border border-emerald-500/25 rounded-md flex items-center space-x-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
               <div className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
-                PRO ACTIVE
+                Agent Pro Active
               </div>
             </div>
           ) : (
             <div className="p-3 bg-white/[0.02] border border-white/5 rounded-md space-y-2">
               <div className="text-[9px] font-mono uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
                 <LockKeyhole className="h-3 w-3 text-amber-500" />
-                <span>Базовый аккаунт</span>
+                <span>Free Agent</span>
               </div>
               <button
                 onClick={() => setScreen('plans')}
                 className="w-full py-2 bg-gradient-to-r from-red-500 to-[#FF5D44] text-white hover:opacity-95 text-[10px] font-extrabold uppercase tracking-widest rounded-sm transition-all text-center flex items-center justify-center space-x-1 shrink-0 cursor-pointer"
               >
                 <Sparkles className="h-3 w-3 animate-pulse" />
-                <span>Выбрать тариф Decksy</span>
+                <span>Upgrade Agent</span>
               </button>
             </div>
           )}
 
           <div className="text-center">
             <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest block">
-              DECKSY WORKSPACE SECURE
+              DECKSY AGENT ONLINE
             </span>
           </div>
         </div>
       </aside>
 
       {/* RIGHT COLUMN WORKSPACE WRAPPER */}
-      <div className="flex-grow flex flex-col min-w-0 lg:h-screen lg:overflow-y-auto bg-[#0A0A0B] relative">
+      <div className="flex-grow flex flex-col min-w-0 lg:h-screen lg:overflow-y-auto bg-[#09090B] relative">
 
         {/* TOP PROFILE HEADER & PREMIUM SUB BUTTON */}
-        <header id="top-profile-bar" className="h-16 border-b border-white/10 flex items-center justify-between px-6 sm:px-8 bg-[#0D0D0F] sticky top-0 z-35 shrink-0">
+        <header id="top-profile-bar" className="h-16 border-b border-white/10 flex items-center justify-between px-6 sm:px-8 bg-[#0D0D0F]/95 backdrop-blur-xl sticky top-0 z-35 shrink-0">
           
           {/* Active step indicator */}
           <div className="flex items-center space-x-2.5">
-            <div className="h-2 w-2 rounded-full bg-[#FF5D44] animate-pulse"></div>
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
             <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
-              {screen === 'intro' ? "Ввод идеи стартапа" : screen === 'interview' ? "Интервью с ИИ-инвестором" : screen === 'generating' ? "Генерация слайдов..." : "Редактор и Экспорт слайдов"}
+              {screen === 'intro' ? "Decksy Agent ждёт задачу" : screen === 'interview' ? "Agent уточняет контекст" : screen === 'generating' ? "Agent собирает pitch deck..." : "Agent output workspace"}
             </span>
           </div>
 
@@ -2622,9 +2622,9 @@ export default function App() {
               <button 
                 id="unlock-premium-header-btn"
                 onClick={() => setScreen('plans')}
-                className="px-3.5 py-1.5 bg-gradient-to-r from-purple-500 to-[#FF5D44] text-white text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer rounded-sm"
+                className="px-3.5 py-1.5 bg-white text-black hover:bg-slate-200 text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer rounded-full"
               >
-                Выбрать тариф
+                Upgrade
               </button>
             ) : (
               <span className="px-2.5 py-1.5 bg-emerald-950/45 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold rounded-sm uppercase tracking-wider font-mono">

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Loader2, Megaphone, ArrowRight } from "lucide-react";
+import { Bot, Brain, CheckCircle2, Loader2, Send } from "lucide-react";
 import { motion } from "motion/react";
 import { Message, PitchCanvas, Mode } from "../types";
 
@@ -49,64 +49,62 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
       exit={{ opacity: 0 }}
       className="grid lg:grid-cols-12 gap-6 py-2 overflow-hidden h-full max-h-[85vh]"
     >
-      {/* LEFT COLUMN: INTERACTIVE CHAT WITH SENSORS (7 COLS) */}
-      <div className="lg:col-span-7 flex flex-col justify-between bg-[#0D0D0F] border border-white/10 rounded-lg p-5 shadow-2xl relative overflow-hidden h-[75vh]">
+      {/* LEFT COLUMN: AGENT CHAT */}
+      <div className="lg:col-span-7 flex flex-col justify-between bg-[#101012]/95 border border-white/10 rounded-[28px] p-5 shadow-2xl relative overflow-hidden h-[75vh]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.05),transparent_34%)] pointer-events-none" />
         
-        {/* Meeting Header with investor status */}
-        <div className="border-b border-white/10 pb-3.5 flex items-center justify-between">
+        {/* Agent header */}
+        <div className="relative z-10 border-b border-white/10 pb-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center font-bold text-lg text-slate-200 relative border border-white/10 flex-shrink-0">
-              {mode === 'shark' ? '🦈' : '👔'}
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-green-500 rounded-full border border-[#0D0D0F]"></span>
+            <div className="h-11 w-11 rounded-2xl bg-white text-black flex items-center justify-center relative border border-white/10 flex-shrink-0 shadow-[0_16px_40px_rgba(255,255,255,0.08)]">
+              <Bot className="h-5 w-5" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-400 rounded-full border-2 border-[#101012]"></span>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center space-x-1.55">
-                <span>ИИ-Инвестор</span>
-                <span className="font-mono text-[9px] text-white bg-white/10 border border-white/20 px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">{mode} Mode</span>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Decksy Agent</span>
+                <span className="font-mono text-[9px] text-slate-300 bg-white/8 border border-white/10 px-2 py-0.5 rounded-full uppercase font-bold tracking-tight">{mode} mode</span>
               </h3>
               <p className="text-[11px] text-slate-500 truncate max-w-[200px] sm:max-w-xs font-mono">{underlyingThoughts}</p>
             </div>
           </div>
 
-          {/* Sentiment Gauge Pill */}
-          <div className={`text-xs border px-3 py-1.5 rounded-lg font-mono flex items-center space-x-1.5 ${currentSentiment.bg}`}>
+          <div className={`text-xs border px-3 py-1.5 rounded-full font-mono flex items-center space-x-1.5 ${currentSentiment.bg}`}>
             <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse"></span>
             <span>{currentSentiment.label}</span>
           </div>
         </div>
 
         {/* Chat bubbles area */}
-        <div className="flex-grow overflow-y-auto py-4 space-y-6 px-2 my-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div className="relative z-10 flex-grow overflow-y-auto py-4 space-y-5 px-1 my-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {messages.map((m) => (
             <div
               key={m.id}
               className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {m.sender === 'user' ? (
-                /* User Message Card style from Sophisticated Dark design */
-                <div className="flex gap-4 max-w-[85%] ml-auto flex-row-reverse">
-                  <div className="w-10 h-10 rounded-full bg-amber-500 flex-shrink-0 flex items-center justify-center border border-amber-400/30">
-                    <span className="text-xs font-bold text-black font-mono uppercase">Me</span>
+                <div className="flex gap-3 max-w-[86%] ml-auto flex-row-reverse">
+                  <div className="w-9 h-9 rounded-2xl bg-white flex-shrink-0 flex items-center justify-center border border-white/20">
+                    <span className="text-[10px] font-bold text-black font-mono uppercase">You</span>
                   </div>
-                  <div className="bg-white/5 p-4 rounded-xl rounded-tr-none border border-white/10">
-                    <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{m.text}</div>
+                  <div className="bg-white text-black p-4 rounded-2xl rounded-tr-md border border-white/10 shadow-lg">
+                    <div className="text-sm text-black leading-relaxed whitespace-pre-line">{m.text}</div>
                     <span className="block text-[9px] text-slate-500 mt-1.5 text-right font-mono uppercase tracking-widest">
                       {m.timestamp}
                     </span>
                   </div>
                 </div>
               ) : (
-                /* Investor Message Card style from Sophisticated Dark design */
-                <div className="flex gap-4 max-w-[85%]">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center border border-white/20">
-                    <span className="text-xs font-mono font-bold text-white">AI</span>
+                <div className="flex gap-3 max-w-[88%]">
+                  <div className="w-9 h-9 rounded-2xl bg-white/8 flex-shrink-0 flex items-center justify-center border border-white/12">
+                    <Bot className="h-4 w-4 text-white" />
                   </div>
                   <div className="space-y-2 flex-grow">
-                    <div className="bg-[#161618] p-4 rounded-xl rounded-tl-none border border-white/5">
+                    <div className="bg-white/[0.055] p-4 rounded-2xl rounded-tl-md border border-white/8">
                       <div className="text-sm leading-relaxed text-slate-100 whitespace-pre-line">{m.text}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-slate-500 font-mono">Critique Active</span>
+                      <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] text-slate-500 font-mono">context updated</span>
                       <span className="text-[9px] text-slate-600 font-mono">{m.timestamp}</span>
                     </div>
                   </div>
@@ -115,13 +113,13 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
             </div>
           ))}
           {isLoading && (
-            <div className="flex gap-4 max-w-[85%]">
-              <div className="w-10 h-10 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center border border-white/20 animate-pulse">
-                <span className="text-xs font-mono font-bold text-white">AI</span>
+            <div className="flex gap-3 max-w-[85%]">
+              <div className="w-9 h-9 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center border border-white/20 animate-pulse">
+                <Bot className="h-4 w-4 text-white" />
               </div>
-              <div className="bg-[#161618] p-4 rounded-xl rounded-tl-none border border-white/5 flex items-center space-x-2 text-slate-400 text-xs font-mono">
+              <div className="bg-white/[0.055] p-4 rounded-2xl rounded-tl-md border border-white/8 flex items-center space-x-2 text-slate-400 text-xs font-mono">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-                <span>Инвестор анализирует ваш ответ...</span>
+                <span>Agent анализирует контекст...</span>
               </div>
             </div>
           )}
@@ -129,7 +127,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
         </div>
 
         {/* Chat Reply Area */}
-        <div className="border-t border-white/10 pt-4 space-y-3">
+        <div className="relative z-10 border-t border-white/10 pt-4 space-y-3">
           <div className="relative">
             <textarea
               id="interview-answer-input"
@@ -142,24 +140,25 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
                   handleSendMessage();
                 }
               }}
-              placeholder="Ответьте по пунктам: • клиент • боль • цифры... (Enter — отправить)"
-              className="w-full bg-[#161618] border border-white/10 rounded-lg p-4 pr-32 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-white/30 resize-none text-xs leading-relaxed font-sans"
+              placeholder="Дайте агенту больше контекста: клиент, боль, продукт, рынок, цифры... (Enter — отправить)"
+              className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl p-4 pr-36 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-white/30 resize-none text-xs leading-relaxed font-sans"
             />
             <button
               id="send-answer-btn"
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading}
-              className="absolute right-3 bottom-3.5 px-5 py-1.5 bg-white text-black font-bold uppercase text-[10px] rounded hover:bg-slate-200 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="absolute right-3 bottom-3.5 px-4 py-2 bg-white text-black font-bold uppercase text-[10px] rounded-xl hover:bg-slate-200 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
             >
-              Send Answer
+              <Send className="h-3 w-3" />
+              Send
             </button>
           </div>
           
           {/* Image uploader region before presentation generation */}
-          <div className="bg-[#121214] p-3 rounded-lg border border-white/5 space-y-2">
+          <div className="bg-white/[0.035] p-3 rounded-2xl border border-white/8 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                🖼️ Изображения, Графики, QR к проекту
+                Project visuals для агента
               </span>
               <label className="text-[9.5px] text-sky-400 hover:text-sky-300 font-mono font-semibold uppercase tracking-wider cursor-pointer flex items-center gap-1">
                 <span>➕ Добавить изображение</span>
@@ -233,9 +232,9 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
               id="fast-generate-btn"
               onClick={handleGenerateDeck}
               disabled={isLoading}
-              className="flex-1 bg-[#F59E0B] hover:bg-amber-400 text-black font-extrabold uppercase text-[10px] py-3.5 px-4 rounded-sm cursor-pointer disabled:opacity-50 transition-colors tracking-widest"
+              className="flex-1 bg-white hover:bg-slate-200 text-black font-extrabold uppercase text-[10px] py-3.5 px-4 rounded-2xl cursor-pointer disabled:opacity-50 transition-colors tracking-widest"
             >
-              Сгенерировать Pitch Deck →
+              Compile pitch deck
             </button>
             <div className="flex items-center justify-center gap-2 opacity-40 px-2">
               <div className="w-2 h-2 rounded-full bg-white"></div>
@@ -246,12 +245,15 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
 
       </div>
 
-      {/* RIGHT COLUMN: THE PITCH CANVAS - LIVE BRAIN (5 COLS) */}
-      <div className="lg:col-span-5 flex flex-col justify-between bg-[#0D0D0F] border border-white/10 rounded-lg p-5 shadow-xl h-[75vh]">
+      {/* RIGHT COLUMN: AGENT MEMORY */}
+      <div className="lg:col-span-5 flex flex-col justify-between bg-[#101012]/95 border border-white/10 rounded-[28px] p-5 shadow-xl h-[75vh]">
         <div>
-          <h3 className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mb-3 block">Pitch Deck Structure</h3>
+          <div className="flex items-center gap-2 mb-3">
+            <Brain className="h-4 w-4 text-slate-400" />
+            <h3 className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold block">Agent Memory</h3>
+          </div>
           <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-            По мере вашего диалога ИИ анализирует смыслы стартапа и формирует готовые холсты секций.
+            Decksy Agent собирает контекст стартапа в память и постепенно компилирует секции будущего pitch deck.
           </p>
         </div>
 
@@ -265,12 +267,12 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
             return (
               <div
                 key={key}
-                className={`relative group rounded-md border p-4 overflow-hidden transition-all duration-155 ${
+                className={`relative group rounded-2xl border p-4 overflow-hidden transition-all duration-155 ${
                   isCompiled 
-                    ? "bg-white/5 border-white/15 text-slate-100" 
+                    ? "bg-white/[0.06] border-white/15 text-slate-100" 
                     : isThinking 
-                    ? "bg-white/5 border-white/20 text-slate-400 animate-pulse" 
-                    : "bg-white/5 border-white/5 text-slate-600 opacity-40 grayscale"
+                    ? "bg-white/[0.045] border-white/20 text-slate-400 animate-pulse" 
+                    : "bg-white/[0.025] border-white/5 text-slate-600 opacity-45 grayscale"
                 }`}
               >
                 {/* Left background indicator bar */}
@@ -287,16 +289,17 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
                   </span>
 
                   {isCompiled ? (
-                    <span className="text-[9px] text-green-500 font-mono font-bold tracking-widest">
-                      FIXED
+                    <span className="text-[9px] text-emerald-400 font-mono font-bold tracking-widest inline-flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      SAVED
                     </span>
                   ) : isThinking ? (
                     <span className="text-[9px] text-amber-500 font-mono font-bold tracking-widest animate-pulse">
-                      DRAFT
+                      THINKING
                     </span>
                   ) : (
                     <span className="text-[9px] text-slate-600 font-mono">
-                      LOCKED
+                      WAITING
                     </span>
                   )}
                 </div>
@@ -304,8 +307,8 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
                 <div className="relative z-10">
                   {isCompiled ? (
                     <div className="space-y-1.5">
-                      <p className="text-xs text-slate-300 leading-relaxed font-semibold italic">{item.summary}</p>
-                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc list-inside bg-black/40 p-2 rounded border border-white/5">
+                      <p className="text-xs text-slate-300 leading-relaxed font-semibold">{item.summary}</p>
+                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc list-inside bg-black/30 p-2 rounded-xl border border-white/5">
                         {item.bullets.map((bullet: string, bIdx: number) => (
                           <li key={bIdx} className="leading-relaxed">{bullet}</li>
                         ))}
@@ -314,8 +317,8 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
                   ) : (
                     <p className="text-[11px] font-mono text-slate-655">
                       {isThinking 
-                        ? "Сопоставление ваших ответов с методологией..." 
-                        : "Ожидайте разбор этой темы в диалоге."}
+                        ? "Agent сопоставляет ответы с pitch deck методологией..." 
+                        : "Появится после уточнения контекста в диалоге."}
                     </p>
                   )}
                 </div>

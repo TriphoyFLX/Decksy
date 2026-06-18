@@ -382,58 +382,62 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="w-full max-w-5xl mx-auto space-y-6 pb-20 pt-4"
+      className="w-full max-w-6xl mx-auto space-y-6 pb-20 pt-4"
     >
       {/* Upper Action Panel */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-1">
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500/20 to-sky-500/20 border border-purple-500/30 px-3 py-1 rounded-full text-purple-300 text-[9.5px] font-mono uppercase font-bold tracking-widest">
-            ✦ ТАРИФЫ & ЮНИТ-ЭКОНОМИКА DECKSY
+          <div className="inline-flex items-center space-x-2 bg-white/[0.04] border border-white/10 px-3 py-1 rounded-full text-slate-300 text-[9.5px] font-mono uppercase font-bold tracking-widest">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Decksy Agent Pricing</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-sans font-black tracking-tight text-white uppercase">
-            Монетизация и Экономика Сервиса
+          <h2 className="text-3xl sm:text-5xl font-sans font-black tracking-tight text-white leading-tight">
+            Выберите мощность агента
           </h2>
+          <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
+            Платные тарифы открывают больше генераций, редактор, экспорт без водяного знака и расширенные возможности Decksy Agent.
+          </p>
         </div>
 
         <button 
           onClick={onBackToGenerator}
-          className="inline-flex items-center space-x-1.5 text-xs font-mono uppercase text-sky-400 hover:text-sky-300 transition-colors bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2 rounded-lg cursor-pointer"
+          className="inline-flex items-center space-x-1.5 text-xs font-mono uppercase text-slate-300 hover:text-white transition-colors bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2 rounded-full cursor-pointer"
         >
-          <span>← Вернуться к генерации</span>
+          <span>Вернуться к агенту</span>
         </button>
       </div>
 
       {/* Screen Sub Tabs */}
-      <div className="flex border-b border-white/5 gap-1.5">
+      <div className="flex flex-wrap border-b border-white/5 gap-1.5">
         <button
           onClick={() => setActiveSubTab('tariffs')}
           className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono transition-all cursor-pointer ${
             activeSubTab === 'tariffs' 
-              ? 'border-purple-500 text-purple-400' 
+              ? 'border-white text-white' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          📦 ТАРИФНЫЕ ПЛАНЫ
+          Тарифы
         </button>
         <button
           onClick={() => setActiveSubTab('economics')}
           className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono transition-all cursor-pointer ${
             activeSubTab === 'economics' 
-              ? 'border-purple-500 text-purple-400' 
+              ? 'border-white text-white' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          📈 РАСХОДЫ И ЮНИТ-АНАЛИЗ
+          Инфраструктура
         </button>
         <button
           onClick={() => setActiveSubTab('calculator')}
           className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono transition-all cursor-pointer ${
             activeSubTab === 'calculator' 
-              ? 'border-purple-500 text-purple-400' 
+              ? 'border-white text-white' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          🧮 ИНТЕРАКТИВНЫЙ СИМУЛЯТОР БЕЗУБЫТОЧНОСТИ
+          Модель сервиса
         </button>
       </div>
 
@@ -448,16 +452,16 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             className="space-y-6"
           >
             {/* Header / Sub-notice */}
-            <div className="bg-[#121214] p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="bg-[#111113] p-5 rounded-[28px] border border-white/10 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
               <div className="space-y-1 max-w-2xl">
                 <p className="text-xs text-slate-350 leading-relaxed">
-                  Купив платный тариф Decksy, вы не только снимаете ограничения, разблокируете редактор и водяные знаки, но и вносите вклад в масштабирование ИИ-инфраструктуры приложения.
+                  Decksy Agent активирует тариф сразу после подтверждения оплаты: лимиты генераций обновляются в аккаунте, а доступ к функциям сохраняется на оплаченный период.
                 </p>
                 {user ? (
                   <div className="space-y-1 text-xs text-sky-400 font-mono mt-1 pt-1">
                     <div className="inline-flex items-center space-x-2">
                       <ShieldCheck className="h-4 w-4" />
-                      <span>Ваш статус: <strong className="text-white bg-sky-950 border border-sky-800/40 px-2 py-0.5 rounded uppercase text-[10px]">{user.plan || "Free"}</strong></span>
+                      <span>Agent status: <strong className="text-white bg-white/8 border border-white/10 px-2 py-0.5 rounded-full uppercase text-[10px]">{user.plan || "Free"}</strong></span>
                     </div>
                     <div className="text-[10px] text-slate-400">
                       Генерации: <strong className="text-slate-200">{user.monthlyDeckCount ?? 0}</strong>
@@ -473,7 +477,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                   </div>
                 ) : (
                   <p className="text-xs text-emerald-400 font-mono">
-                    💡 Войдите в систему, чтобы привязать подписку к аккаунту и убрать водяные знаки.
+                    Войдите, чтобы привязать тариф к аккаунту и сохранять проекты в облаке.
                   </p>
                 )}
               </div>
@@ -481,7 +485,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
               {!user && (
                 <button
                   onClick={onOpenAuth}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold uppercase text-[10.5px] tracking-widest px-4.5 py-2.5 rounded-lg cursor-pointer transition-colors shrink-0"
+                  className="bg-white hover:bg-slate-200 text-black font-extrabold uppercase text-[10.5px] tracking-widest px-5 py-3 rounded-full cursor-pointer transition-colors shrink-0"
                 >
                   Войти / Регистрация
                 </button>
@@ -497,21 +501,21 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                 return (
                   <div 
                     key={p.id} 
-                    className={`relative rounded-2xl border p-5 flex flex-col justify-between transition-all duration-300 hover:translate-y-[-2px] ${p.color} ${
-                      isActive ? "ring-2 ring-purple-500 bg-purple-950/10 border-purple-500/40" : ""
+                    className={`relative rounded-[28px] border p-5 flex flex-col justify-between transition-all duration-300 hover:translate-y-[-2px] bg-[#111113] border-white/10 text-slate-300 ${
+                      isActive ? "ring-2 ring-white/70 bg-white/[0.06] border-white/30" : ""
                     }`}
                   >
                     {/* Popular Badge */}
                     {p.popular && (
-                      <span className="absolute -top-2.5 right-6 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-[9px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full font-bold">
-                        ✦ POPULAR
+                      <span className="absolute -top-2.5 right-6 bg-white text-black text-[9px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full font-bold">
+                        Popular
                       </span>
                     )}
 
                     {/* Active Badge */}
                     {isActive && (
-                      <span className="absolute -top-2.5 left-6 bg-purple-600 text-white text-[9px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full font-bold">
-                        АКТИВЕН
+                      <span className="absolute -top-2.5 left-6 bg-emerald-500 text-black text-[9px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full font-bold">
+                        Active
                       </span>
                     )}
 
@@ -526,7 +530,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                         <span className="text-[10px] text-slate-400 font-mono uppercase">{p.perMonth}</span>
                       </div>
 
-                      <span className="block border-t border-white/5 py-1" />
+                      <span className="block border-t border-white/8 py-1" />
 
                       <ul className="space-y-2 text-left">
                         {p.features.map((f, idx) => (
@@ -565,8 +569,8 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             </div>
 
             {/* Quick Pricing note */}
-            <div className="p-3.5 bg-yellow-950/10 border border-yellow-500/10 rounded-xl flex items-start space-x-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+            <div className="p-3.5 bg-white/[0.03] border border-white/8 rounded-2xl flex items-start space-x-2">
+              <AlertTriangle className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
               <p className="text-[11px] text-slate-400 leading-normal">
                 При повышении тарифа новый месячный лимит презентаций зачисляется после подтверждения оплаты. Понижение тарифа недоступно из интерфейса и API; для изменения подписки обратитесь в поддержку.
               </p>
