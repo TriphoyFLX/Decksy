@@ -15,7 +15,6 @@ import {
   Check, 
   ArrowRight, 
   ArrowLeft, 
-  DollarSign, 
   Compass, 
   Users, 
   TrendingUp, 
@@ -48,6 +47,7 @@ import { IntroPage } from "./pages/IntroPage";
 import { GeneratingPage } from "./pages/GeneratingPage";
 import { InterviewPage } from "./pages/InterviewPage";
 import { DeckPage } from "./pages/DeckPage";
+import { LegalPage, LegalPageId } from "./pages/LegalPage";
 import { exportToPPTX } from "./lib/pptxExport";
 import html2canvas from "html2canvas";
 import {
@@ -74,6 +74,19 @@ const INITIAL_CANVAS: PitchCanvas = {
   risks: { title: "⚡ Критические Риски", summary: "Аудит уязвимостей startup...", bullets: [], status: "locked" },
   branding: { title: "✨ Брендинг и Стиль", summary: "Определяем логотип, цвета и позиционирование...", bullets: [], status: "locked" }
 };
+
+const legalPagesByPath: Record<string, LegalPageId> = {
+  "/offer": "offer",
+  "/privacy": "privacy",
+  "/contacts": "contacts",
+  "/refunds": "refunds",
+  "/service-delivery": "service-delivery",
+};
+
+function getLegalPageFromPath(pathname: string): LegalPageId | null {
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+  return legalPagesByPath[normalizedPath] || null;
+}
 
 const EXAMPLE_DECKS = [
   {
@@ -285,6 +298,7 @@ const EXAMPLE_DECKS = [
 export default function App() {
   // Screen views: 'intro' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
   const [screen, setScreen] = useState<'intro' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'>('intro');
+  const [legalPage, setLegalPage] = useState<LegalPageId | null>(() => getLegalPageFromPath(window.location.pathname));
   
   // Custom design style and selection state
   const [selectedStyle, setSelectedStyle] = useState<'cobalt' | 'clean-light' | 'cosmic-dark'>('cobalt');
@@ -304,13 +318,6 @@ export default function App() {
   const [roasted, setRoasted] = useState(false);
   
   const [isWatermarkRemoved, setIsWatermarkRemoved] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [premiumCardNumber, setPremiumCardNumber] = useState("");
-  const [premiumCardExpiry, setPremiumCardExpiry] = useState("");
-  const [premiumCardCvc, setPremiumCardCvc] = useState("");
-  const [isPaying, setIsPaying] = useState(false);
-  const [isPaymentSuccess, setIsPaymentSuccess] = useState(false);
-  
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [sessionImages, setSessionImages] = useState<{ id: string; image: string; description: string }[]>([]);
   const [showImagePromptModal, setShowImagePromptModal] = useState(false);
@@ -357,6 +364,20 @@ export default function App() {
   const [authVerificationCode, setAuthVerificationCode] = useState("");
   const [oauthProviders, setOauthProviders] = useState<{ id: string; label: string; enabled: boolean }[]>([]);
   const vkidContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setLegalPage(getLegalPageFromPath(window.location.pathname));
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const openGeneratorRoot = () => {
+    setLegalPage(null);
+    window.history.pushState({}, document.title, "/");
+    setScreen("intro");
+  };
 
   // Saved decks library
   const [savedDecks, setSavedDecks] = useState<any[]>([]);
@@ -1291,25 +1312,6 @@ export default function App() {
     setTimeout(() => {
       setShareSuccess(false);
     }, 4000);
-  };
-
-  // Invest Stripe pay simulation
-  const handlePaymentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!premiumCardNumber || !premiumCardExpiry || !premiumCardCvc) {
-      alert("Пожалуйста, заполните все поля карты.");
-      return;
-    }
-    setIsPaying(true);
-    setTimeout(() => {
-      setIsPaying(false);
-      setIsPaymentSuccess(true);
-      setTimeout(() => {
-        setIsWatermarkRemoved(true);
-        setShowPremiumModal(false);
-        setIsPaymentSuccess(false);
-      }, 1500);
-    }, 2000);
   };
 
   // Reset states to restart
@@ -3358,7 +3360,14 @@ export default function App() {
       <main className="flex-grow flex flex-col justify-center max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         
         {/* VIEW: ADMIN PANEL SCREEN */}
-        {screen === 'admin' && (
+        {legalPage && (
+          <LegalPage
+            page={legalPage}
+            onBackToGenerator={openGeneratorRoot}
+          />
+        )}
+
+        {!legalPage && screen === 'admin' && (
           <AdminPanel 
             authToken={authToken} 
             onBack={() => setScreen('intro')} 
@@ -3367,7 +3376,7 @@ export default function App() {
         )}
 
         {/* VIEW: SUBSCRIPTION PLANS SCREEN */}
-        {screen === 'plans' && (
+        {!legalPage && screen === 'plans' && (
           <SubscriptionPlans
             user={user}
             onUpdateUser={(updatedUser) => {
@@ -3384,7 +3393,7 @@ export default function App() {
         )}
 
         {/* VIEW: ABOUT PROJECT SCREEN */}
-        {screen === 'about' && (
+        {!legalPage && screen === 'about' && (
           <AboutPage
             onBackToGenerator={() => setScreen('intro')}
             loadExampleDeck={loadExampleDeck}
@@ -3393,7 +3402,7 @@ export default function App() {
         )}
         
         {/* VIEW 1: INTRO SCREEN */}
-        {screen === 'intro' && (
+        {!legalPage && screen === 'intro' && (
           <IntroPage
             idea={idea}
             setIdea={setIdea}
@@ -3410,7 +3419,7 @@ export default function App() {
 
         {/* VIEW 2: THE VC BOARDROOM INTERVIEW SCREEN */}
         {/* VIEW 2: THE VC BOARDROOM INTERVIEW SCREEN */}
-        {screen === 'interview' && (
+        {!legalPage && screen === 'interview' && (
           <InterviewPage
             mode={mode}
             underlyingThoughts={underlyingThoughts}
@@ -3428,12 +3437,12 @@ export default function App() {
         )}
 
         {/* VIEW 3: LOADING TRANSITION TO MAGIC PITCH DECK */}
-        {screen === 'generating' && (
+        {!legalPage && screen === 'generating' && (
           <GeneratingPage generationProgress={generationProgress} />
         )}
 
         {/* VIEW 4: MAGIC FINAL PRESENTATION DECK STAGE */}
-        {screen === 'deck' && deck && (
+        {!legalPage && screen === 'deck' && deck && (
           <motion.div 
             id="screen-deck"
             initial={{ opacity: 0 }}
@@ -3442,7 +3451,7 @@ export default function App() {
             className="space-y-6"
           >
             
-            {/* Watermark Notice & Stripe premium unlock monetization */}
+            {/* Watermark Notice */}
             {!isWatermarkRemoved && (
               <div className="bg-gradient-to-br from-[#161618] to-[#0D0D0F] border border-white/10 rounded-lg p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
                 <div className="flex items-center space-x-3.5 text-left">
@@ -4109,116 +4118,17 @@ export default function App() {
       {/* FOOTER */}
       <footer className="border-t border-white/5 py-8 px-6 bg-[#0D0D0F] text-center font-mono text-[10px] text-slate-500 uppercase tracking-wider">
         <p>© 2026 Decksy AI • Умный венчурный симулятор и конструктор питч-деков.</p>
+        <nav className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[9px]">
+          <a className="hover:text-slate-300 transition-colors" href="/offer">Оферта</a>
+          <a className="hover:text-slate-300 transition-colors" href="/privacy">Политика конфиденциальности</a>
+          <a className="hover:text-slate-300 transition-colors" href="/contacts">Контакты</a>
+          <a className="hover:text-slate-300 transition-colors" href="/refunds">Возвраты</a>
+          <a className="hover:text-slate-300 transition-colors" href="/service-delivery">Получение услуги</a>
+        </nav>
         <p className="text-[9px] mt-2 text-slate-700 font-normal">Разработано с заботой о фаундерах и чистой юнит-экономике.</p>
       </footer>
 
       </div>
-
-      {/* STRIPE PAYMENT UNLOCK PREMIUM WATERMARK MODAL */}
-      <AnimatePresence>
-        {showPremiumModal && (
-          <div id="stripe-checkout-modal" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0D0D0F] border border-white/15 w-full max-w-sm rounded p-6 relative overflow-hidden shadow-2xl"
-            >
-              
-              {/* Brand Header */}
-              <div className="flex items-center space-x-2 text-white mb-5 pb-3 border-b border-white/5">
-                <DollarSign className="h-4 w-4" />
-                <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-slate-300">Stripe Checkout</h3>
-              </div>
-
-              {!isPaymentSuccess ? (
-                <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                  <div className="text-center space-y-1">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">План «Investor PRO»</h4>
-                    <p className="text-[10px] text-slate-400 mt-2 font-sans leading-relaxed">Очистка слайдов от водяных знаков, экспорт в PPTX высокого разрешения без водяных знаков.</p>
-                    <div className="text-2xl font-bold text-white font-mono mt-2">$9.99</div>
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1.5">Номер карты</label>
-                      <input
-                        type="text"
-                        placeholder="4242 4242 4242 4242"
-                        className="w-full bg-[#161618] text-slate-100 placeholder-slate-700 border border-white/10 focus:border-white/20 rounded px-3 py-2 text-xs focus:outline-none focus:ring-0 font-mono"
-                        value={premiumCardNumber}
-                        onChange={(e) => setPremiumCardNumber(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1.5">Срок действия</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          className="w-full bg-[#161618] text-slate-100 placeholder-slate-700 border border-white/10 focus:border-white/20 rounded px-3 py-2 text-xs focus:outline-none focus:ring-0 font-mono"
-                          value={premiumCardExpiry}
-                          onChange={(e) => setPremiumCardExpiry(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1.5">CVC код</label>
-                        <input
-                          type="password"
-                          placeholder="•••"
-                          maxLength={3}
-                          className="w-full bg-[#161618] text-slate-100 placeholder-slate-700 border border-white/10 focus:border-white/20 rounded px-3 py-2 text-xs focus:outline-none focus:ring-0 font-mono"
-                          value={premiumCardCvc}
-                          onChange={(e) => setPremiumCardCvc(e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-white/5 flex items-center space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowPremiumModal(false)}
-                      className="w-1/2 bg-[#161618] border border-white/10 text-slate-400 py-2.5 rounded-sm text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      Отменить
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isPaying}
-                      className="w-1/2 bg-white text-black py-2.5 rounded-sm text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center space-x-1 cursor-pointer disabled:opacity-50"
-                    >
-                      {isPaying ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span>Платёж...</span>
-                        </>
-                      ) : (
-                        <span>Купить PRO</span>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="text-center py-6 space-y-4">
-                  <div className="h-12 w-12 rounded-full bg-[#ffffff10] border border-green-500/20 text-green-400 flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="h-6 w-6 text-green-400" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-white">Платёж подтвержден!</h4>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">PRO-статус активирован.</p>
-                  </div>
-                </div>
-              )}
-
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* EXPORTING LOADING OVERLAY */}
       <AnimatePresence>
