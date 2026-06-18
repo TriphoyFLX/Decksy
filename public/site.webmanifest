@@ -1,0 +1,18 @@
+{
+  "name": "Decksy Ai",
+  "short_name": "Decksy Ai",
+  "description": "AI-конструктор pitch deck презентаций для стартапов и фаундеров.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#161616",
+  "theme_color": "#FF5D44",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
