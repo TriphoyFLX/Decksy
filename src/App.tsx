@@ -354,6 +354,7 @@ export default function App() {
   const [authInfo, setAuthInfo] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [oauthProviders, setOauthProviders] = useState<{ id: string; label: string; enabled: boolean }[]>([]);
+  const vkidContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Saved decks library
   const [savedDecks, setSavedDecks] = useState<any[]>([]);
@@ -428,6 +429,97 @@ export default function App() {
       })
       .catch((err) => console.warn("Failed to fetch OAuth providers", err));
   }, []);
+
+  useEffect(() => {
+    const vkEnabled = oauthProviders.some((provider) => provider.id === "vk" && provider.enabled);
+    if (!showAuthModal || !vkEnabled || !vkidContainerRef.current) return;
+
+    let cancelled = false;
+    const scriptId = "vkid-sdk";
+
+    const loadScript = () => new Promise<void>((resolve, reject) => {
+      if ((window as any).VKIDSDK) {
+        resolve();
+        return;
+      }
+
+      const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error("VK ID SDK load failed")), { once: true });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://unpkg.com/@vkid/sdk@%3C3.0.0/dist-sdk/umd/index.js";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("VK ID SDK load failed"));
+      document.head.appendChild(script);
+    });
+
+    loadScript()
+      .then(() => {
+        if (cancelled || !vkidContainerRef.current || !(window as any).VKIDSDK) return;
+
+        const VKID = (window as any).VKIDSDK;
+        vkidContainerRef.current.innerHTML = "";
+
+        VKID.Config.init({
+          app: 54642417,
+          redirectUrl: "https://decksy.ru/api/auth/oauth/vk/callback",
+          responseMode: VKID.ConfigResponseMode.Callback,
+          source: VKID.ConfigSource.LOWCODE,
+          scope: "email",
+        });
+
+        const oAuth = new VKID.OAuthList();
+        oAuth.render({
+          container: vkidContainerRef.current,
+          oauthList: ["vkid", "mail_ru"],
+        })
+          .on(VKID.WidgetEvents.ERROR, (error: any) => {
+            console.error("VK ID widget error", error);
+            setAuthError("Не удалось открыть VK ID / Mail.ru вход.");
+          })
+          .on(VKID.OAuthListInternalEvents.LOGIN_SUCCESS, async (payload: any) => {
+            try {
+              setAuthLoading(true);
+              setAuthError("");
+              const data = await VKID.Auth.exchangeCode(payload.code, payload.device_id);
+              const response = await fetch("/api/auth/oauth/vk-widget", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+              });
+              const result = await response.json();
+              if (!response.ok) {
+                throw new Error(result.error || "Не удалось войти через VK ID / Mail.ru.");
+              }
+
+              localStorage.setItem("decksy_token", result.token);
+              setAuthToken(result.token);
+              setUser(result.user);
+              setIsWatermarkRemoved(result.user.isPro || false);
+              setShowAuthModal(false);
+            } catch (err: any) {
+              console.error("VK ID auth failed", err);
+              setAuthError(err.message || "Ошибка входа через VK ID / Mail.ru.");
+            } finally {
+              setAuthLoading(false);
+            }
+          });
+      })
+      .catch((err) => {
+        console.error(err);
+        setAuthError("Не удалось загрузить VK ID SDK.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showAuthModal, oauthProviders]);
 
   const handleSubscriptionChanged = async () => {
     if (authToken) {
@@ -2928,27 +3020,42 @@ export default function App() {
               )}
 
               {oauthProviders.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 relative z-10">
-                  {oauthProviders.map((provider) => (
+                <div className="space-y-2 relative z-10">
+                  <div className="grid grid-cols-2 gap-2">
+                    {oauthProviders
+                      .filter((provider) => provider.id !== "vk" && provider.id !== "mailru")
+                      .map((provider) => (
+                        <button
+                          key={provider.id}
+                          type="button"
+                          disabled={!provider.enabled}
+                          onClick={() => {
+                            if (provider.enabled) {
+                              window.location.href = `/api/auth/oauth/${provider.id}`;
+                            }
+                          }}
+                          className={`py-2 rounded-lg border text-[10px] font-mono uppercase tracking-wider font-bold transition-colors ${
+                            provider.enabled
+                              ? "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 cursor-pointer"
+                              : "bg-white/[0.02] border-white/5 text-slate-600 cursor-not-allowed"
+                          }`}
+                          title={provider.enabled ? `Войти через ${provider.label}` : `${provider.label} OAuth пока не настроен`}
+                        >
+                          {provider.label}
+                        </button>
+                      ))}
+                  </div>
+                  {oauthProviders.some((provider) => provider.id === "vk" && provider.enabled) ? (
+                    <div ref={vkidContainerRef} className="min-h-[44px] rounded-lg overflow-hidden" />
+                  ) : (
                     <button
-                      key={provider.id}
                       type="button"
-                      disabled={!provider.enabled}
-                      onClick={() => {
-                        if (provider.enabled) {
-                          window.location.href = `/api/auth/oauth/${provider.id}`;
-                        }
-                      }}
-                      className={`py-2 rounded-lg border text-[10px] font-mono uppercase tracking-wider font-bold transition-colors ${
-                        provider.enabled
-                          ? "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 cursor-pointer"
-                          : "bg-white/[0.02] border-white/5 text-slate-600 cursor-not-allowed"
-                      }`}
-                      title={provider.enabled ? `Войти через ${provider.label}` : `${provider.label} OAuth пока не настроен`}
+                      disabled
+                      className="w-full py-2 rounded-lg border bg-white/[0.02] border-white/5 text-slate-600 cursor-not-allowed text-[10px] font-mono uppercase tracking-wider font-bold"
                     >
-                      {provider.label}
+                      VK ID / Mail.ru пока не настроен
                     </button>
-                  ))}
+                  )}
                 </div>
               )}
 

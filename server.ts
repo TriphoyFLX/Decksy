@@ -928,6 +928,10 @@ app.get("/api/auth/oauth/:provider", (req, res) => {
     return res.status(404).json({ error: "OAuth-провайдер не найден." });
   }
 
+  if (provider === "vk") {
+    return res.status(400).json({ error: "VK ID / Mail.ru вход выполняется через виджет на странице входа." });
+  }
+
   if (!isOAuthProviderEnabled(provider)) {
     return res.status(503).json({ error: `${OAUTH_PROVIDER_LABELS[provider]} OAuth пока не настроен.` });
   }
@@ -968,6 +972,29 @@ app.get("/api/auth/oauth/:provider/callback", async (req, res) => {
   } catch (err: any) {
     console.error(`${provider} OAuth callback error:`, err);
     res.status(500).send(authErrorHtml("Не удалось войти через соцсеть."));
+  }
+});
+
+app.post("/api/auth/oauth/vk-widget", async (req, res) => {
+  try {
+    if (!isOAuthProviderEnabled("vk")) {
+      return res.status(503).json({ error: "VK ID OAuth пока не настроен." });
+    }
+
+    const tokenData = req.body || {};
+    if (!tokenData.access_token || !tokenData.user_id) {
+      return res.status(400).json({ error: "VK ID не вернул обязательные данные авторизации." });
+    }
+
+    const profile = await fetchOAuthProfile("vk", tokenData);
+    const user = await findOrCreateOAuthUser("vk", profile);
+    res.json({
+      token: createSessionToken(user),
+      user: getUserResponse(user)
+    });
+  } catch (err: any) {
+    console.error("VK ID widget auth error:", err);
+    res.status(500).json({ error: "Не удалось войти через VK ID / Mail.ru." });
   }
 });
 
