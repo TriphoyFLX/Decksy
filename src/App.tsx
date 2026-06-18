@@ -329,7 +329,7 @@ export default function App() {
   const [activeAds, setActiveAds] = useState<any[]>([]);
 
   // --- New Database Authentication and Preserved Library States ---
-  const [user, setUser] = useState<{ id: number, email: string, name?: string | null, role?: string, isPro?: boolean } | null>(null);
+  const [user, setUser] = useState<{ id: number, email: string, name?: string | null, role?: string, isPro?: boolean, plan?: string } | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem("decksy_token"));
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');

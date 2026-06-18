@@ -50,6 +50,38 @@ validateProductionEnv();
 const app = express();
 const PORT = 3000;
 
+const PLAN_RANK = {
+  Free: 0,
+  Base: 1,
+  Middle: 2,
+  Pro: 3,
+} as const;
+
+type PlanId = keyof typeof PLAN_RANK;
+type PaidPlanId = Exclude<PlanId, "Free">;
+
+const PAID_PLANS = ["Base", "Middle", "Pro"] as const;
+
+function isPlanId(plan: unknown): plan is PlanId {
+  return typeof plan === "string" && Object.prototype.hasOwnProperty.call(PLAN_RANK, plan);
+}
+
+function isPaidPlanId(plan: unknown): plan is PaidPlanId {
+  return typeof plan === "string" && (PAID_PLANS as readonly string[]).includes(plan);
+}
+
+function getPlanRank(plan: string | null | undefined): number {
+  return isPlanId(plan) ? PLAN_RANK[plan] : PLAN_RANK.Free;
+}
+
+function isPlanUpgrade(currentPlan: string | null | undefined, targetPlan: PlanId): boolean {
+  return PLAN_RANK[targetPlan] > getPlanRank(currentPlan);
+}
+
+function hasPremiumFeatures(plan: string | null | undefined): boolean {
+  return getPlanRank(plan) >= PLAN_RANK.Middle;
+}
+
 // Initialize native Gemini Client
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -506,12 +538,11 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   }
 });
 
-// 0.4 API: Subscribe or change subscription plan (only downgrade to Free is allowed without payment)
+// 0.4 API: Subscribe or change subscription plan
 app.post("/api/auth/subscribe", authenticateToken, async (req: any, res) => {
   try {
     const { plan } = req.body;
-    const allowedPlans = ["Free", "Base", "Middle", "Pro"];
-    if (!allowedPlans.includes(plan)) {
+    if (!isPlanId(plan)) {
       return res.status(400).json({ error: "Неверный тарифный план." });
     }
 
@@ -519,23 +550,25 @@ app.post("/api/auth/subscribe", authenticateToken, async (req: any, res) => {
       return res.status(403).json({ error: "Для активации тарифов Base, Middle или Pro требуется выполнить оплату через ЮMoney." });
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data: {
-        plan: "Free",
-        isPro: false
-      }
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.userId }
     });
 
-    res.json({
-      message: `Тариф успешно изменен на «Free».`,
+    if (!currentUser) {
+      return res.status(404).json({ error: "Пользователь не найден." });
+    }
+
+    return res.status(409).json({
+      error: currentUser.plan === plan
+        ? "Этот тариф уже активен."
+        : "Понижение тарифа недоступно. Обратитесь в поддержку для изменения подписки.",
       user: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        name: updatedUser.name,
-        role: updatedUser.role,
-        isPro: updatedUser.isPro,
-        plan: updatedUser.plan
+        id: currentUser.id,
+        email: currentUser.email,
+        name: currentUser.name,
+        role: currentUser.role,
+        isPro: currentUser.isPro,
+        plan: currentUser.plan
       }
     });
   } catch (err: any) {
@@ -579,9 +612,25 @@ app.get("/api/yookassa/status", authenticateToken, async (req: any, res) => {
 app.post("/api/yookassa/create-payment", authenticateToken, async (req: any, res) => {
   try {
     const { tariffId } = req.body;
-    const allowedPlans = ["Base", "Middle", "Pro"];
-    if (!allowedPlans.includes(tariffId)) {
+    if (!isPaidPlanId(tariffId)) {
       return res.status(400).json({ error: "Неверный тарифный план." });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { plan: true },
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ error: "Пользователь не найден." });
+    }
+
+    if (!isPlanUpgrade(currentUser.plan, tariffId)) {
+      return res.status(409).json({
+        error: currentUser.plan === tariffId
+          ? "Этот тариф уже активен."
+          : "Нельзя оплатить тариф ниже текущего. Выберите более высокий тариф или обратитесь в поддержку."
+      });
     }
 
     const tariffPrices: Record<string, number> = {
@@ -702,21 +751,26 @@ app.get("/api/yookassa/check-payment/:id", authenticateToken, async (req: any, r
     console.log(`Live payment status for ${id} is: ${paymentData.status}`);
 
     if (paymentData.status === "succeeded") {
-      // Complete transaction and upgrade user
+      const shouldUpgradeUser = isPaidPlanId(payment.tariffId) && isPlanUpgrade(payment.user.plan, payment.tariffId);
+
       await prisma.payment.update({
         where: { id },
         data: { status: "succeeded" }
       });
 
-      await prisma.user.update({
-        where: { id: payment.userId },
-        data: {
-          plan: payment.tariffId,
-          isPro: true
-        }
-      });
+      if (shouldUpgradeUser) {
+        await prisma.user.update({
+          where: { id: payment.userId },
+          data: {
+            plan: payment.tariffId,
+            isPro: hasPremiumFeatures(payment.tariffId)
+          }
+        });
 
-      console.log(`Activated plan ${payment.tariffId} for user ${payment.userId} following succeeded payment check.`);
+        console.log(`Activated plan ${payment.tariffId} for user ${payment.userId} following succeeded payment check.`);
+      } else {
+        console.log(`Skipped non-upgrade payment ${id} for user ${payment.userId}; current plan is ${payment.user.plan}.`);
+      }
     } else if (paymentData.status === "canceled") {
       await prisma.payment.update({
         where: { id },
@@ -749,11 +803,22 @@ async function processYooKassaWebhook(body: any) {
     const userId = metadata.userId ? parseInt(metadata.userId, 10) : null;
     const tariffId = metadata.tariffId;
 
-    if (status === "succeeded" && userId && tariffId) {
+    if (status === "succeeded" && userId && isPaidPlanId(tariffId)) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!user) return false;
+
       // Match with database payment record
       const existingPayment = await prisma.payment.findUnique({
         where: { id: paymentId }
       });
+
+      if (existingPayment && existingPayment.userId !== userId) {
+        console.warn(`[Webhook] Payment ${paymentId} metadata user mismatch; ignoring notification.`);
+        return false;
+      }
 
       if (!existingPayment) {
         // Create retroactively if payment wasn't in DB yet
@@ -774,12 +839,16 @@ async function processYooKassaWebhook(body: any) {
         });
       }
 
-      // Upgrade our user account
+      if (!isPlanUpgrade(user.plan, tariffId)) {
+        console.log(`[Webhook] Skipped non-upgrade payment ${paymentId} for user ${userId}; current plan is ${user.plan}.`);
+        return true;
+      }
+
       await prisma.user.update({
         where: { id: userId },
         data: {
           plan: tariffId,
-          isPro: true
+          isPro: hasPremiumFeatures(tariffId)
         }
       });
 

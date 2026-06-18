@@ -164,8 +164,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSub
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка переключения подписки");
 
-      // Update in-place local states
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isPro: !u.isPro } : u));
+      // Update in-place local states from the server response to keep plan/isPro in sync.
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...data.user } : u));
       if (metrics) {
         const proDiff = data.user.isPro ? 1 : -1;
         setMetrics({ ...metrics, proUsers: metrics.proUsers + proDiff });

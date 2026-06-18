@@ -40,6 +40,15 @@ interface SubscriptionPlansProps {
   onBackToGenerator: () => void;
 }
 
+const PLAN_RANK: Record<string, number> = {
+  Free: 0,
+  Base: 1,
+  Middle: 2,
+  Pro: 3,
+};
+
+const getPlanRank = (plan?: string | null) => PLAN_RANK[plan || "Free"] ?? PLAN_RANK.Free;
+
 export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGenerator }: SubscriptionPlansProps) {
   // Navigation tabs in this billing/finances screen
   const [activeSubTab, setActiveSubTab] = useState<'tariffs' | 'economics' | 'calculator'>('tariffs');
@@ -319,13 +328,13 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       onOpenAuth();
       return;
     }
+
     if (user.plan === planId) {
       return; // Already on this plan
     }
 
-    if (planId === "Free") {
-      // Downgrade request (handled instantly for testing)
-      processPlanChange("Free");
+    if (getPlanRank(planId) <= getPlanRank(user.plan)) {
+      setErrorMessage("Понижение тарифа недоступно. Для изменения подписки обратитесь в поддержку.");
       return;
     }
 
@@ -466,6 +475,8 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             <div className="grid md:grid-cols-4 gap-4 pt-1">
               {plansList.map((p) => {
                 const isActive = user?.plan === p.id || (!user && p.id === "Free");
+                const isLowerTier = Boolean(user && getPlanRank(p.id) < getPlanRank(user.plan));
+                const isDisabled = isActive || isLowerTier;
                 return (
                   <div 
                     key={p.id} 
@@ -521,14 +532,14 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                     <div className="pt-6">
                       <button
                         onClick={() => handleSelectPlan(p.id, p.price)}
-                        disabled={isActive}
+                        disabled={isDisabled}
                         className={`w-full py-2.5 rounded-xl font-mono text-[10.5px] tracking-widest uppercase transition-all duration-300 font-extrabold cursor-pointer border ${
-                          isActive
+                          isDisabled
                             ? "bg-white/5 border-white/5 text-slate-500 cursor-not-allowed"
                             : "bg-white text-black border-transparent hover:bg-slate-200"
                         }`}
                       >
-                        {isActive ? "Активный тариф" : p.buttonText}
+                        {isActive ? "Активный тариф" : isLowerTier ? "Ниже текущего" : p.buttonText}
                       </button>
                     </div>
                   </div>
