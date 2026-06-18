@@ -5,6 +5,7 @@ import { createServer as createViteServer } from "vite";
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 import { prisma } from "./src/lib/prisma";
 import {
   generateLocalDeck,
@@ -51,6 +52,7 @@ validateProductionEnv();
 const app = express();
 const PORT = 3000;
 app.set("trust proxy", 1);
+const APP_URL = getConfiguredEnv("APP_URL") || "http://localhost:3000";
 
 const PLAN_CONFIG = {
   Free: { rank: 0, priceRub: 0, monthlyDeckLimit: 1, premium: false },
@@ -69,6 +71,56 @@ const ADMIN_EMAILS = new Set(
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
 );
+
+type OAuthProviderId = "google" | "yandex" | "vk" | "mailru";
+
+const OAUTH_PROVIDER_LABELS: Record<OAuthProviderId, string> = {
+  google: "Google",
+  yandex: "Яндекс",
+  vk: "VK ID",
+  mailru: "Mail.ru",
+};
+
+const OAUTH_ENV_PREFIX: Record<OAuthProviderId, string> = {
+  google: "GOOGLE",
+  yandex: "YANDEX",
+  vk: "VK",
+  mailru: "MAILRU",
+};
+
+function isOAuthProviderId(provider: string): provider is OAuthProviderId {
+  return provider === "google" || provider === "yandex" || provider === "vk" || provider === "mailru";
+}
+
+function getOAuthCredentials(provider: OAuthProviderId) {
+  const prefix = OAUTH_ENV_PREFIX[provider];
+  const clientId = getConfiguredEnv(`${prefix}_CLIENT_ID`);
+  const clientSecret = getConfiguredEnv(`${prefix}_CLIENT_SECRET`);
+  return { clientId, clientSecret };
+}
+
+function isOAuthProviderEnabled(provider: OAuthProviderId): boolean {
+  const { clientId, clientSecret } = getOAuthCredentials(provider);
+  return Boolean(clientId && clientSecret);
+}
+
+function getOAuthRedirectUri(provider: OAuthProviderId): string {
+  return `${APP_URL}/api/auth/oauth/${provider}/callback`;
+}
+
+function createHash(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function safeRedirectHtml(token: string) {
+  const tokenJson = JSON.stringify(token);
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Decksy Ai</title></head><body><script>localStorage.setItem("decksy_token", ${tokenJson}); window.location.replace("/");</script></body></html>`;
+}
+
+function authErrorHtml(message: string) {
+  const url = `/?auth_error=${encodeURIComponent(message)}`;
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Decksy Ai</title></head><body><script>window.location.replace(${JSON.stringify(url)});</script></body></html>`;
+}
 
 type RateLimitOptions = {
   windowMs: number;
@@ -143,6 +195,7 @@ function getUserResponse(user: any) {
     id: user.id,
     email: user.email,
     name: user.name,
+    emailVerified: user.emailVerified,
     role: user.role,
     isPro: user.isPro,
     plan: user.plan,
@@ -163,6 +216,8 @@ async function normalizeUserEntitlements(user: any) {
     data.role = "admin";
     data.plan = "Pro";
     data.isPro = true;
+    data.emailVerified = true;
+    data.emailVerifiedAt = user.emailVerifiedAt || now;
     data.planStartedAt = user.planStartedAt || now;
     data.planExpiresAt = null;
   } else if (!shouldBeAdmin && user.role !== "admin" && user.plan !== "Free" && user.planExpiresAt && user.planExpiresAt <= now) {
@@ -196,11 +251,271 @@ function createSessionToken(user: any): string {
       role: user.role,
       isPro: user.isPro,
       plan: user.plan,
+      emailVerified: user.emailVerified,
       tokenVersion: user.tokenVersion || 0,
     },
     JWT_SECRET,
     { expiresIn: "7d" }
   );
+}
+
+function isSmtpConfigured(): boolean {
+  return Boolean(getConfiguredEnv("SMTP_HOST") && getConfiguredEnv("SMTP_FROM"));
+}
+
+async function sendMail(to: string, subject: string, html: string, text: string) {
+  if (!isSmtpConfigured()) {
+    console.warn(`[Email] SMTP is not configured. Intended email to ${to}: ${text}`);
+    return false;
+  }
+
+  const port = Number(getConfiguredEnv("SMTP_PORT") || "587");
+  const user = getConfiguredEnv("SMTP_USER");
+  const pass = getConfiguredEnv("SMTP_PASS");
+  const transporter = nodemailer.createTransport({
+    host: getConfiguredEnv("SMTP_HOST"),
+    port,
+    secure: port === 465,
+    auth: user && pass ? { user, pass } : undefined,
+  });
+
+  await transporter.sendMail({
+    from: getConfiguredEnv("SMTP_FROM"),
+    to,
+    subject,
+    html,
+    text,
+  });
+  return true;
+}
+
+async function issueEmailVerification(user: any) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`;
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerificationTokenHash: createHash(token),
+      emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    }
+  });
+
+  const sent = await sendMail(
+    user.email,
+    "Подтвердите email в Decksy Ai",
+    `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#161616">
+        <h2>Добро пожаловать в Decksy Ai</h2>
+        <p>Подтвердите email, чтобы начать создавать и сохранять pitch deck презентации.</p>
+        <p><a href="${verifyUrl}" style="display:inline-block;background:#FF5D44;color:white;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Подтвердить email</a></p>
+        <p style="font-size:12px;color:#666">Ссылка действует 24 часа.</p>
+      </div>
+    `,
+    `Подтвердите email в Decksy Ai: ${verifyUrl}`
+  );
+
+  return { sent, verifyUrl };
+}
+
+function getOAuthAuthorizeUrl(provider: OAuthProviderId, state: string) {
+  const { clientId } = getOAuthCredentials(provider);
+  const redirectUri = getOAuthRedirectUri(provider);
+  const baseParams: Record<string, string> = {
+    response_type: "code",
+    client_id: clientId || "",
+    redirect_uri: redirectUri,
+    state,
+  };
+
+  if (provider === "google") {
+    return `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
+      ...baseParams,
+      scope: "openid email profile",
+      prompt: "select_account",
+    })}`;
+  }
+
+  if (provider === "yandex") {
+    return `https://oauth.yandex.ru/authorize?${new URLSearchParams({
+      ...baseParams,
+      scope: "login:email login:info",
+    })}`;
+  }
+
+  if (provider === "vk") {
+    return `https://oauth.vk.com/authorize?${new URLSearchParams({
+      ...baseParams,
+      scope: "email",
+      v: "5.199",
+    })}`;
+  }
+
+  return `https://connect.mail.ru/oauth/authorize?${new URLSearchParams({
+    ...baseParams,
+    scope: "openid email profile",
+  })}`;
+}
+
+async function exchangeOAuthCode(provider: OAuthProviderId, code: string) {
+  const { clientId, clientSecret } = getOAuthCredentials(provider);
+  const redirectUri = getOAuthRedirectUri(provider);
+  const tokenUrl = provider === "google"
+    ? "https://oauth2.googleapis.com/token"
+    : provider === "yandex"
+      ? "https://oauth.yandex.ru/token"
+      : provider === "vk"
+        ? "https://oauth.vk.com/access_token"
+        : "https://connect.mail.ru/oauth/token";
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: clientId || "",
+    client_secret: clientSecret || "",
+    redirect_uri: redirectUri,
+  });
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  const data = await response.json() as any;
+  if (!response.ok || data.error) {
+    throw new Error(data.error_description || data.error || "OAuth token exchange failed.");
+  }
+  return data;
+}
+
+async function fetchOAuthProfile(provider: OAuthProviderId, tokenData: any) {
+  if (provider === "google") {
+    const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const profile = await response.json() as any;
+    return {
+      providerAccountId: String(profile.sub),
+      email: String(profile.email || "").toLowerCase(),
+      emailVerified: profile.email_verified === true,
+      name: profile.name || profile.given_name || null,
+    };
+  }
+
+  if (provider === "yandex") {
+    const response = await fetch("https://login.yandex.ru/info?format=json", {
+      headers: { Authorization: `OAuth ${tokenData.access_token}` },
+    });
+    const profile = await response.json() as any;
+    return {
+      providerAccountId: String(profile.id),
+      email: String(profile.default_email || "").toLowerCase(),
+      emailVerified: Boolean(profile.default_email),
+      name: profile.real_name || profile.display_name || null,
+    };
+  }
+
+  if (provider === "vk") {
+    const userId = String(tokenData.user_id || "");
+    const response = await fetch(`https://api.vk.com/method/users.get?${new URLSearchParams({
+      user_ids: userId,
+      fields: "photo_100",
+      access_token: tokenData.access_token,
+      v: "5.199",
+    })}`);
+    const profile = await response.json() as any;
+    const user = profile.response?.[0] || {};
+    return {
+      providerAccountId: userId,
+      email: String(tokenData.email || "").toLowerCase(),
+      emailVerified: Boolean(tokenData.email),
+      name: [user.first_name, user.last_name].filter(Boolean).join(" ") || null,
+    };
+  }
+
+  const response = await fetch("https://oauth.mail.ru/userinfo", {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  });
+  const profile = await response.json() as any;
+  return {
+    providerAccountId: String(profile.sub || profile.id),
+    email: String(profile.email || "").toLowerCase(),
+    emailVerified: profile.email_verified !== false && Boolean(profile.email),
+    name: profile.name || [profile.first_name, profile.last_name].filter(Boolean).join(" ") || null,
+  };
+}
+
+async function findOrCreateOAuthUser(provider: OAuthProviderId, profile: any) {
+  if (!profile.providerAccountId) {
+    throw new Error("OAuth provider did not return account id.");
+  }
+  if (!profile.email || !profile.emailVerified) {
+    throw new Error("OAuth provider did not return a verified email.");
+  }
+
+  const existingAccount = await prisma.oAuthAccount.findUnique({
+    where: {
+      provider_providerAccountId: {
+        provider,
+        providerAccountId: profile.providerAccountId,
+      }
+    },
+    include: { user: true },
+  });
+
+  if (existingAccount) {
+    return normalizeUserEntitlements(existingAccount.user);
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: profile.email }
+  });
+
+  if (existingUser) {
+    const user = await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
+        oauthAccounts: {
+          create: {
+            provider,
+            providerAccountId: profile.providerAccountId,
+            email: profile.email,
+          }
+        }
+      }
+    });
+    return normalizeUserEntitlements(user);
+  }
+
+  const now = new Date();
+  const isConfiguredAdmin = isAdminEmail(profile.email);
+  const user = await prisma.user.create({
+    data: {
+      email: profile.email,
+      password: null,
+      name: profile.name,
+      emailVerified: true,
+      emailVerifiedAt: now,
+      role: isConfiguredAdmin ? "admin" : "user",
+      isPro: isConfiguredAdmin,
+      plan: isConfiguredAdmin ? "Pro" : "Free",
+      planStartedAt: isConfiguredAdmin ? now : null,
+      planExpiresAt: null,
+      monthlyDeckCount: 0,
+      monthlyDeckResetAt: addMonths(now, 1),
+      oauthAccounts: {
+        create: {
+          provider,
+          providerAccountId: profile.providerAccountId,
+          email: profile.email,
+        }
+      }
+    }
+  });
+  return normalizeUserEntitlements(user);
 }
 
 async function getUserWithFreshDeckWindow(userId: number) {
@@ -579,6 +894,9 @@ async function authenticateToken(req: any, res: any, next: any) {
     }
 
     const normalizedUser = await normalizeUserEntitlements(user);
+    if (!normalizedUser.emailVerified) {
+      return res.status(403).json({ error: "Подтвердите email, чтобы продолжить.", requiresEmailVerification: true });
+    }
     req.user = {
       userId: normalizedUser.id,
       email: normalizedUser.email,
@@ -595,6 +913,64 @@ async function authenticateToken(req: any, res: any, next: any) {
 }
 
 // 0.1 API: Register
+app.get("/api/auth/oauth/providers", (_req, res) => {
+  const providers = (Object.keys(OAUTH_PROVIDER_LABELS) as OAuthProviderId[]).map((id) => ({
+    id,
+    label: OAUTH_PROVIDER_LABELS[id],
+    enabled: isOAuthProviderEnabled(id),
+  }));
+  res.json({ providers });
+});
+
+app.get("/api/auth/oauth/:provider", (req, res) => {
+  const provider = String(req.params.provider);
+  if (!isOAuthProviderId(provider)) {
+    return res.status(404).json({ error: "OAuth-провайдер не найден." });
+  }
+
+  if (!isOAuthProviderEnabled(provider)) {
+    return res.status(503).json({ error: `${OAUTH_PROVIDER_LABELS[provider]} OAuth пока не настроен.` });
+  }
+
+  const state = jwt.sign(
+    { provider, purpose: "oauth-state", nonce: crypto.randomBytes(12).toString("hex") },
+    JWT_SECRET,
+    { expiresIn: "10m" }
+  );
+  res.redirect(getOAuthAuthorizeUrl(provider, state));
+});
+
+app.get("/api/auth/oauth/:provider/callback", async (req, res) => {
+  const provider = String(req.params.provider);
+  try {
+    if (!isOAuthProviderId(provider)) {
+      return res.status(404).send(authErrorHtml("OAuth-провайдер не найден."));
+    }
+
+    if (req.query.error) {
+      return res.status(400).send(authErrorHtml("Вход через соцсеть отменен или отклонен."));
+    }
+
+    const statePayload = jwt.verify(String(req.query.state || ""), JWT_SECRET) as any;
+    if (statePayload?.purpose !== "oauth-state" || statePayload?.provider !== provider) {
+      return res.status(400).send(authErrorHtml("OAuth state не прошел проверку."));
+    }
+
+    const code = String(req.query.code || "");
+    if (!code) {
+      return res.status(400).send(authErrorHtml("OAuth code не найден."));
+    }
+
+    const tokenData = await exchangeOAuthCode(provider, code);
+    const profile = await fetchOAuthProfile(provider, tokenData);
+    const user = await findOrCreateOAuthUser(provider, profile);
+    res.type("html").send(safeRedirectHtml(createSessionToken(user)));
+  } catch (err: any) {
+    console.error(`${provider} OAuth callback error:`, err);
+    res.status(500).send(authErrorHtml("Не удалось войти через соцсеть."));
+  }
+});
+
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
@@ -633,6 +1009,8 @@ app.post("/api/auth/register", async (req, res) => {
         email: trimmedEmail,
         password: hashedPassword,
         name: name ? name.trim() : null,
+        emailVerified: isConfiguredAdmin,
+        emailVerifiedAt: isConfiguredAdmin ? now : null,
         role: userRole,
         isPro: userIsPro,
         plan: userPlan,
@@ -643,11 +1021,19 @@ app.post("/api/auth/register", async (req, res) => {
       }
     });
 
-    // Create session token
-    const token = createSessionToken(user);
+    if (!isConfiguredAdmin) {
+      const verification = await issueEmailVerification(user);
+      return res.status(201).json({
+        requiresEmailVerification: true,
+        emailSent: verification.sent,
+        message: verification.sent
+          ? "Аккаунт создан. Проверьте почту и подтвердите email."
+          : "Аккаунт создан, но SMTP пока не настроен. Подтверждение email недоступно.",
+      });
+    }
 
     res.status(201).json({
-      token,
+      token: createSessionToken(user),
       user: getUserResponse(user)
     });
   } catch (err: any) {
@@ -676,6 +1062,10 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Неверный email или пароль." });
     }
 
+    if (!user.password) {
+      return res.status(400).json({ error: "Этот аккаунт создан через соцсеть. Войдите через OAuth-кнопку." });
+    }
+
     // Validate password
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
@@ -683,6 +1073,13 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     user = await normalizeUserEntitlements(user);
+
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        error: "Подтвердите email перед входом. Мы можем отправить письмо повторно.",
+        requiresEmailVerification: true
+      });
+    }
 
     // Create session token
     const token = createSessionToken(user);
@@ -716,6 +1113,67 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   } catch (err: any) {
     console.error("Get user context error:", err);
     res.status(500).json({ error: "Не удалось получить сессию пользователя." });
+  }
+});
+
+app.get("/api/auth/verify-email", async (req, res) => {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return res.status(400).send(authErrorHtml("Ссылка подтверждения некорректна."));
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerificationTokenHash: createHash(token),
+        emailVerificationExpiresAt: { gt: new Date() },
+      }
+    });
+
+    if (!user) {
+      return res.status(400).send(authErrorHtml("Ссылка подтверждения истекла или уже использована."));
+    }
+
+    const verifiedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      }
+    });
+
+    res.type("html").send(safeRedirectHtml(createSessionToken(verifiedUser)));
+  } catch (err: any) {
+    console.error("Verify email error:", err);
+    res.status(500).send(authErrorHtml("Не удалось подтвердить email."));
+  }
+});
+
+app.post("/api/auth/resend-verification", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "Email обязателен." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.emailVerified) {
+      return res.json({ success: true });
+    }
+
+    const verification = await issueEmailVerification(user);
+    res.json({
+      success: true,
+      emailSent: verification.sent,
+      message: verification.sent
+        ? "Письмо подтверждения отправлено повторно."
+        : "SMTP пока не настроен. Письмо подтверждения не отправлено.",
+    });
+  } catch (err: any) {
+    console.error("Resend verification error:", err);
+    res.status(500).json({ error: "Не удалось отправить письмо подтверждения." });
   }
 });
 
@@ -768,7 +1226,6 @@ app.post("/api/auth/subscribe", authenticateToken, async (req: any, res) => {
 
 // --- YOOKASSA INTEGRATION CONTROLLERS ---
 
-const APP_URL = getConfiguredEnv("APP_URL");
 const YOOKASSA_SHOP_ID = getConfiguredEnv("YOOKASSA_SHOP_ID") || "1386669";
 const YOOKASSA_SECRET_KEY = getConfiguredEnv("YOOKASSA_SECRET_KEY") || "";
 

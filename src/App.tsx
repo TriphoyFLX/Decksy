@@ -333,6 +333,7 @@ export default function App() {
     id: number,
     email: string,
     name?: string | null,
+    emailVerified?: boolean,
     role?: string,
     isPro?: boolean,
     plan?: string,
@@ -350,7 +351,9 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authError, setAuthError] = useState("");
+  const [authInfo, setAuthInfo] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [oauthProviders, setOauthProviders] = useState<{ id: string; label: string; enabled: boolean }[]>([]);
 
   // Saved decks library
   const [savedDecks, setSavedDecks] = useState<any[]>([]);
@@ -403,6 +406,27 @@ export default function App() {
 
   useEffect(() => {
     fetchActiveAds();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("auth_error");
+    if (oauthError) {
+      setAuthError(oauthError);
+      setShowAuthModal(true);
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/oauth/providers")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (Array.isArray(data?.providers)) {
+          setOauthProviders(data.providers);
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch OAuth providers", err));
   }, []);
 
   const handleSubscriptionChanged = async () => {
@@ -485,6 +509,7 @@ export default function App() {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
+    setAuthInfo("");
     setAuthLoading(true);
 
     const url = authTab === "login" ? "/api/auth/login" : "/api/auth/register";
@@ -505,6 +530,12 @@ export default function App() {
         return;
       }
 
+      if (data.requiresEmailVerification) {
+        setAuthInfo(data.message || "Проверьте почту и подтвердите email перед входом.");
+        setAuthPassword("");
+        return;
+      }
+
       // Success
       localStorage.setItem("decksy_token", data.token);
       setAuthToken(data.token);
@@ -516,6 +547,34 @@ export default function App() {
       setAuthEmail("");
       setAuthPassword("");
       setAuthName("");
+    } catch (err) {
+      console.error(err);
+      setAuthError("Сбой соединения с сервером.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setAuthError("");
+    setAuthInfo("");
+    if (!authEmail) {
+      setAuthError("Введите email, чтобы отправить подтверждение повторно.");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setAuthError(data.error || "Не удалось отправить письмо подтверждения.");
+        return;
+      }
+      setAuthInfo(data.message || "Если аккаунт существует, письмо подтверждения отправлено.");
     } catch (err) {
       console.error(err);
       setAuthError("Сбой соединения с сервером.");
@@ -2861,6 +2920,44 @@ export default function App() {
                 </div>
               )}
 
+              {authInfo && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-xs text-center flex items-center justify-center space-x-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{authInfo}</span>
+                </div>
+              )}
+
+              {oauthProviders.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 relative z-10">
+                  {oauthProviders.map((provider) => (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      disabled={!provider.enabled}
+                      onClick={() => {
+                        if (provider.enabled) {
+                          window.location.href = `/api/auth/oauth/${provider.id}`;
+                        }
+                      }}
+                      className={`py-2 rounded-lg border text-[10px] font-mono uppercase tracking-wider font-bold transition-colors ${
+                        provider.enabled
+                          ? "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 cursor-pointer"
+                          : "bg-white/[0.02] border-white/5 text-slate-600 cursor-not-allowed"
+                      }`}
+                      title={provider.enabled ? `Войти через ${provider.label}` : `${provider.label} OAuth пока не настроен`}
+                    >
+                      {provider.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative z-10 flex items-center gap-3 text-[9px] uppercase tracking-widest font-mono text-slate-600">
+                <span className="h-px bg-white/10 flex-1" />
+                <span>или email</span>
+                <span className="h-px bg-white/10 flex-1" />
+              </div>
+
               <form onSubmit={handleAuthSubmit} className="space-y-4 relative z-10">
                 {authTab === 'register' && (
                   <div className="space-y-1.5">
@@ -2893,7 +2990,7 @@ export default function App() {
                   <input
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     value={authPassword}
                     onChange={e => setAuthPassword(e.target.value)}
                     placeholder="••••••••"
@@ -2915,10 +3012,21 @@ export default function App() {
               </form>
 
               <div className="text-center pt-2 relative z-10 border-t border-white/5">
+                {authTab === 'login' && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={authLoading}
+                    className="block mx-auto mb-2 text-[11px] text-slate-400 hover:text-slate-200 transition-colors font-semibold bg-transparent border-none cursor-pointer disabled:opacity-50"
+                  >
+                    Отправить подтверждение email повторно
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setAuthError("");
+                    setAuthInfo("");
                     setAuthTab(authTab === 'login' ? 'register' : 'login');
                   }}
                   className="text-xs text-amber-500 hover:text-amber-400 transition-colors font-semibold bg-transparent border-none cursor-pointer"

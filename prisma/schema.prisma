@@ -10,8 +10,12 @@ generator client {
 model User {
   id                  Int         @id @default(autoincrement())
   email               String      @unique
-  password            String
+  password            String?
   name                String?
+  emailVerified       Boolean     @default(false)
+  emailVerifiedAt     DateTime?
+  emailVerificationTokenHash String?
+  emailVerificationExpiresAt DateTime?
   role                String      @default("user")
   isPro               Boolean     @default(false)
   plan                String      @default("Free")
@@ -24,6 +28,21 @@ model User {
   decks               PitchDeck[]
   yoomoneyAccessToken String?
   payments            Payment[]
+  oauthAccounts       OAuthAccount[]
+}
+
+model OAuthAccount {
+  id                Int      @id @default(autoincrement())
+  provider          String
+  providerAccountId String
+  email             String?
+  userId            Int
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Payment {
