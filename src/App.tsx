@@ -63,6 +63,7 @@ import { generatePythonPPTXCode } from "./lib/pythonGenerator";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide } from "./types";
 import { normalizeDeck, generateLocalDeck } from "./lib/deckBuilder";
 import { EditableText } from "./components/EditableText";
+import decksyLogo from "./images/logo.png";
 
 const INITIAL_CANVAS: PitchCanvas = {
   problem: { title: "🧩 Проблема", summary: "Ожидание более детальных ответов на вопросы инвестора...", bullets: [], status: "locked" },
@@ -2277,15 +2278,11 @@ export default function App() {
       {/* MOBILE TOP NAVIGATION BAR */}
       <div id="mobile-top-bar" className="lg:hidden h-16 border-b border-white/5 flex items-center justify-between px-5 bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-40 w-full shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={handleReset}>
-            <div className="w-7 h-7 bg-white flex items-center justify-center rounded-full border border-white/20 shadow-[0_0_28px_rgba(255,255,255,0.12)]">
-              <div className="w-2.5 h-2.5 bg-[#0A0A0B] rounded-full"></div>
-            </div>
-            <img 
-              src="/src/images/logo.png" 
-              alt="" 
-              className="h-5 object-contain" 
-              onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={handleReset}>
+            <img
+              src={decksyLogo}
+              alt="Decksy"
+              className="h-8 w-8 rounded-xl object-contain border border-white/10 bg-[#151515] shadow-[0_0_28px_rgba(255,93,68,0.16)]"
             />
             <span className="text-sm font-black tracking-tight text-white font-sans select-none">
               Decksy<span className="text-slate-400 font-medium"> Agent</span>
@@ -2441,15 +2438,11 @@ export default function App() {
         <div className="space-y-8">
           {/* Brand header */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={handleReset}>
-            <div className="w-9 h-9 bg-white flex items-center justify-center rounded-full border border-white/20 transition-transform hover:scale-105 shadow-[0_0_34px_rgba(255,255,255,0.12)]">
-              <div className="w-3 h-3 bg-[#0A0A0B] rounded-full"></div>
-            </div>
             <div className="flex items-center gap-2">
-              <img 
-                src="/src/images/logo.png" 
-                alt="" 
-                className="h-6 object-contain" 
-                onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+              <img
+                src={decksyLogo}
+                alt="Decksy"
+                className="h-10 w-10 rounded-2xl object-contain border border-white/10 bg-[#151515] transition-transform hover:scale-105 shadow-[0_0_34px_rgba(255,93,68,0.16)]"
               />
               <span className="text-lg font-black tracking-tight text-white font-sans">
                 Decksy<span className="text-slate-400 font-medium"> Agent</span>
