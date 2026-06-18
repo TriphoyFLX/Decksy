@@ -290,32 +290,31 @@ async function sendMail(to: string, subject: string, html: string, text: string)
 }
 
 async function issueEmailVerification(user: any) {
-  const token = crypto.randomBytes(32).toString("hex");
-  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`;
+  const code = crypto.randomInt(100000, 1000000).toString();
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      emailVerificationTokenHash: createHash(token),
-      emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      emailVerificationTokenHash: createHash(code),
+      emailVerificationExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
     }
   });
 
   const sent = await sendMail(
     user.email,
-    "Подтвердите email в Decksy Ai",
+    "Код подтверждения Decksy Ai",
     `
       <div style="font-family:Arial,sans-serif;line-height:1.5;color:#161616">
         <h2>Добро пожаловать в Decksy Ai</h2>
-        <p>Подтвердите email, чтобы начать создавать и сохранять pitch deck презентации.</p>
-        <p><a href="${verifyUrl}" style="display:inline-block;background:#FF5D44;color:white;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Подтвердить email</a></p>
-        <p style="font-size:12px;color:#666">Ссылка действует 24 часа.</p>
+        <p>Введите этот код на сайте, чтобы подтвердить email и активировать аккаунт:</p>
+        <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#FF5D44;margin:16px 0">${code}</p>
+        <p style="font-size:12px;color:#666">Код действует 15 минут. Если вы не регистрировались в Decksy Ai, просто проигнорируйте письмо.</p>
       </div>
     `,
-    `Подтвердите email в Decksy Ai: ${verifyUrl}`
+    `Код подтверждения Decksy Ai: ${code}. Код действует 15 минут.`
   );
 
-  return { sent, verifyUrl };
+  return { sent };
 }
 
 function getOAuthAuthorizeUrl(provider: OAuthProviderId, state: string) {
@@ -1054,8 +1053,8 @@ app.post("/api/auth/register", async (req, res) => {
         requiresEmailVerification: true,
         emailSent: verification.sent,
         message: verification.sent
-          ? "Аккаунт создан. Проверьте почту и подтвердите email."
-          : "Аккаунт создан, но SMTP пока не настроен. Подтверждение email недоступно.",
+          ? "Аккаунт создан. Мы отправили 6-значный код подтверждения на почту."
+          : "Аккаунт создан, но SMTP пока не настроен. Код подтверждения не отправлен.",
       });
     }
 
@@ -1178,6 +1177,47 @@ app.get("/api/auth/verify-email", async (req, res) => {
   }
 });
 
+app.post("/api/auth/verify-email-code", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const code = String(req.body.code || "").trim();
+
+    if (!email || !/^\d{6}$/.test(code)) {
+      return res.status(400).json({ error: "Введите email и 6-значный код подтверждения." });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email,
+        emailVerificationTokenHash: createHash(code),
+        emailVerificationExpiresAt: { gt: new Date() },
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Неверный или истекший код подтверждения." });
+    }
+
+    const verifiedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      }
+    });
+
+    res.json({
+      token: createSessionToken(verifiedUser),
+      user: getUserResponse(verifiedUser)
+    });
+  } catch (err: any) {
+    console.error("Verify email code error:", err);
+    res.status(500).json({ error: "Не удалось подтвердить email." });
+  }
+});
+
 app.post("/api/auth/resend-verification", async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -1195,8 +1235,8 @@ app.post("/api/auth/resend-verification", async (req, res) => {
       success: true,
       emailSent: verification.sent,
       message: verification.sent
-        ? "Письмо подтверждения отправлено повторно."
-        : "SMTP пока не настроен. Письмо подтверждения не отправлено.",
+        ? "Новый код подтверждения отправлен на почту."
+        : "SMTP пока не настроен. Код подтверждения не отправлен.",
     });
   } catch (err: any) {
     console.error("Resend verification error:", err);

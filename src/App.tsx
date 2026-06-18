@@ -353,6 +353,8 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [authInfo, setAuthInfo] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [authVerificationPending, setAuthVerificationPending] = useState(false);
+  const [authVerificationCode, setAuthVerificationCode] = useState("");
   const [oauthProviders, setOauthProviders] = useState<{ id: string; label: string; enabled: boolean }[]>([]);
   const vkidContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -623,7 +625,8 @@ export default function App() {
       }
 
       if (data.requiresEmailVerification) {
-        setAuthInfo(data.message || "Проверьте почту и подтвердите email перед входом.");
+        setAuthVerificationPending(true);
+        setAuthInfo(data.message || "Введите 6-значный код из письма, чтобы подтвердить email.");
         setAuthPassword("");
         return;
       }
@@ -666,7 +669,47 @@ export default function App() {
         setAuthError(data.error || "Не удалось отправить письмо подтверждения.");
         return;
       }
-      setAuthInfo(data.message || "Если аккаунт существует, письмо подтверждения отправлено.");
+      setAuthVerificationPending(true);
+      setAuthInfo(data.message || "Если аккаунт существует, код подтверждения отправлен.");
+    } catch (err) {
+      console.error(err);
+      setAuthError("Сбой соединения с сервером.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    setAuthError("");
+    setAuthInfo("");
+    if (!authEmail || !/^\d{6}$/.test(authVerificationCode.trim())) {
+      setAuthError("Введите email и 6-значный код из письма.");
+      return;
+    }
+
+    setAuthLoading(true);
+    try {
+      const response = await fetch("/api/auth/verify-email-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail, code: authVerificationCode.trim() })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setAuthError(data.error || "Не удалось подтвердить email.");
+        return;
+      }
+
+      localStorage.setItem("decksy_token", data.token);
+      setAuthToken(data.token);
+      setUser(data.user);
+      setIsWatermarkRemoved(data.user.isPro || false);
+      setShowAuthModal(false);
+      setAuthVerificationPending(false);
+      setAuthVerificationCode("");
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthName("");
     } catch (err) {
       console.error(err);
       setAuthError("Сбой соединения с сервером.");
@@ -3065,68 +3108,96 @@ export default function App() {
                 <span className="h-px bg-white/10 flex-1" />
               </div>
 
-              <form onSubmit={handleAuthSubmit} className="space-y-4 relative z-10">
-                {authTab === 'register' && (
+              {authVerificationPending ? (
+                <div className="space-y-4 relative z-10">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Ваше имя</label>
+                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Код из письма</label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={authVerificationCode}
+                      onChange={e => setAuthVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="123456"
+                      className="w-full bg-[#161618] border border-white/10 rounded px-3 py-2 text-center text-xl tracking-[0.35em] text-slate-200 placeholder-slate-700 focus:outline-none focus:border-[#F59E0B] font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 text-center">
+                      Мы отправили код на {authEmail || "вашу почту"}. Код действует 15 минут.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyEmailCode}
+                    disabled={authLoading || authVerificationCode.length !== 6}
+                    className="w-full py-2.5 bg-white text-black hover:bg-slate-200 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all font-bold uppercase text-xs tracking-widest rounded flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    {authLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Подтвердить email</span>}
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleAuthSubmit} className="space-y-4 relative z-10">
+                  {authTab === 'register' && (
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Ваше имя</label>
+                      <input
+                        type="text"
+                        required
+                        value={authName}
+                        onChange={e => setAuthName(e.target.value)}
+                        placeholder="Алексей"
+                        className="w-full bg-[#161618] border border-white/10 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#F59E0B] font-sans"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Email адрес</label>
+                    <input
+                      type="email"
                       required
-                      value={authName}
-                      onChange={e => setAuthName(e.target.value)}
-                      placeholder="Алексей"
+                      value={authEmail}
+                      onChange={e => setAuthEmail(e.target.value)}
+                      placeholder="founder@decksy.ai"
                       className="w-full bg-[#161618] border border-white/10 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#F59E0B] font-sans"
                     />
                   </div>
-                )}
 
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Email адрес</label>
-                  <input
-                    type="email"
-                    required
-                    value={authEmail}
-                    onChange={e => setAuthEmail(e.target.value)}
-                    placeholder="founder@decksy.ai"
-                    className="w-full bg-[#161618] border border-white/10 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#F59E0B] font-sans"
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Пароль</label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={authPassword}
+                      onChange={e => setAuthPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-[#161618] border border-white/10 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#F59E0B] font-sans"
+                    />
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Пароль</label>
-                  <input
-                    type="password"
-                    required
-                    minLength={8}
-                    value={authPassword}
-                    onChange={e => setAuthPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-[#161618] border border-white/10 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#F59E0B] font-sans"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full py-2.5 bg-white text-black hover:bg-slate-200 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all font-bold uppercase text-xs tracking-widest rounded flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  {authLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <span>{authTab === 'login' ? 'Войти' : 'Создать кабинет'}</span>
-                  )}
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-2.5 bg-white text-black hover:bg-slate-200 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all font-bold uppercase text-xs tracking-widest rounded flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    {authLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span>{authTab === 'login' ? 'Войти' : 'Создать кабинет'}</span>
+                    )}
+                  </button>
+                </form>
+              )}
 
               <div className="text-center pt-2 relative z-10 border-t border-white/5">
-                {authTab === 'login' && (
+                {(authTab === 'login' || authVerificationPending) && (
                   <button
                     type="button"
                     onClick={handleResendVerification}
                     disabled={authLoading}
                     className="block mx-auto mb-2 text-[11px] text-slate-400 hover:text-slate-200 transition-colors font-semibold bg-transparent border-none cursor-pointer disabled:opacity-50"
                   >
-                    Отправить подтверждение email повторно
+                    Отправить код повторно
                   </button>
                 )}
                 <button
@@ -3134,11 +3205,15 @@ export default function App() {
                   onClick={() => {
                     setAuthError("");
                     setAuthInfo("");
+                    setAuthVerificationPending(false);
+                    setAuthVerificationCode("");
                     setAuthTab(authTab === 'login' ? 'register' : 'login');
                   }}
                   className="text-xs text-amber-500 hover:text-amber-400 transition-colors font-semibold bg-transparent border-none cursor-pointer"
                 >
-                  {authTab === 'login' 
+                  {authVerificationPending
+                    ? 'Вернуться к входу'
+                    : authTab === 'login' 
                     ? 'Нет аккаунта? Зарегистрироваться' 
                     : 'Уже есть аккаунт? Войти'}
                 </button>
