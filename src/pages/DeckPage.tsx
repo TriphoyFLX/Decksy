@@ -11,8 +11,6 @@ import {
   Flame, 
   ShieldAlert, 
   CheckCircle2, 
-  DollarSign, 
-  Loader2, 
   Upload,
   Info
 } from "lucide-react";
@@ -48,17 +46,6 @@ interface DeckPageProps {
   handleRewriteSlideWithAI: (idx: number, desc: string) => void;
   isRewritingSlide: boolean;
   rewriteError: string | null;
-  showPremiumModal: boolean;
-  setShowPremiumModal: (v: boolean) => void;
-  isPaymentSuccess: boolean;
-  handlePaymentSubmit: (e: React.FormEvent) => void;
-  isPaying: boolean;
-  premiumCardNumber: string;
-  setPremiumCardNumber: (v: string) => void;
-  premiumCardExpiry: string;
-  setPremiumCardExpiry: (v: string) => void;
-  premiumCardCvc: string;
-  setPremiumCardCvc: (v: string) => void;
 }
 
 export const DeckPage: React.FC<DeckPageProps> = ({
@@ -89,17 +76,6 @@ export const DeckPage: React.FC<DeckPageProps> = ({
   handleRewriteSlideWithAI,
   isRewritingSlide,
   rewriteError,
-  showPremiumModal,
-  setShowPremiumModal,
-  isPaymentSuccess,
-  handlePaymentSubmit,
-  isPaying,
-  premiumCardNumber,
-  setPremiumCardNumber,
-  premiumCardExpiry,
-  setPremiumCardExpiry,
-  premiumCardCvc,
-  setPremiumCardCvc,
 }) => {
   const isThemeLight = selectedStyle === 'clean-light';
   const isThemeCobalt = selectedStyle === 'cobalt';
@@ -154,7 +130,7 @@ export const DeckPage: React.FC<DeckPageProps> = ({
       exit={{ opacity: 0 }}
       className="space-y-6"
     >
-      {/* Watermark Notice & Stripe premium unlock monetization */}
+      {/* Watermark Notice */}
       {!isWatermarkRemoved && (
         <div className="bg-gradient-to-br from-[#161618] to-[#0D0D0F] border border-white/10 rounded-lg p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
           <div className="flex items-center space-x-3.5 text-left">
@@ -753,110 +729,6 @@ export const DeckPage: React.FC<DeckPageProps> = ({
 
       </div>
 
-      {/* STRIPE PAYMENT UNLOCK PREMIUM WATERMARK MODAL */}
-      <AnimatePresence>
-        {showPremiumModal && (
-          <div id="stripe-checkout-modal" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0D0D0F] border border-white/15 w-full max-w-sm rounded p-6 relative overflow-hidden shadow-2xl"
-            >
-              
-              <div className="flex items-center space-x-2 text-white mb-5 pb-3 border-b border-white/5">
-                <DollarSign className="h-4 w-4" />
-                <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-slate-300">Stripe Checkout</h3>
-              </div>
-
-              {!isPaymentSuccess ? (
-                <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                  <div className="text-center space-y-1">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">План «Investor PRO»</h4>
-                    <p className="text-[10px] text-slate-400 mt-2 font-sans leading-relaxed">Очистка слайдов от водяных знаков, экспорт в PPTX высокого разрешения без водяных знаков.</p>
-                    <div className="text-2xl font-bold text-white font-mono mt-2">$9.99</div>
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Номер карты</label>
-                      <input
-                        type="text"
-                        placeholder="4242 4242 4242 4242"
-                        className="w-full bg-[#161618] text-slate-100 placeholder-slate-705 border border-white/10 focus:border-white/20 rounded px-3 py-2 text-xs focus:outline-none focus:ring-0 font-mono"
-                        value={premiumCardNumber}
-                        onChange={(e) => setPremiumCardNumber(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Срок действия</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          className="w-full bg-[#161618] text-slate-100 placeholder-slate-705 border border-white/10 focus:border-white/20 rounded px-3 py-2 text-xs focus:outline-none focus:ring-0 font-mono"
-                          value={premiumCardExpiry}
-                          onChange={(e) => setPremiumCardExpiry(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1.5 font-bold">CVC код</label>
-                        <input
-                          type="password"
-                          placeholder="•••"
-                          maxLength={3}
-                          className="w-full bg-[#161618] text-slate-100 placeholder-slate-705 border border-white/10 focus:border-white/20 rounded px-3 py-2 text-xs focus:outline-none focus:ring-0 font-mono"
-                          value={premiumCardCvc}
-                          onChange={(e) => setPremiumCardCvc(e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-white/5 flex items-center space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowPremiumModal(false)}
-                      className="w-1/2 bg-[#161618] border border-white/10 text-slate-400 py-2.5 rounded-sm text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      Отменить
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isPaying}
-                      className="w-1/2 bg-white text-black py-2.5 rounded-sm text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center space-x-1 cursor-pointer disabled:opacity-50"
-                    >
-                      {isPaying ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin animate-duration-1000" />
-                          <span>Платёж...</span>
-                        </>
-                      ) : (
-                        <span>Купить PRO</span>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="text-center py-6 space-y-4">
-                  <div className="h-12 w-12 rounded-full bg-[#ffffff10] border border-green-500/20 text-green-400 flex items-center justify-center mx-auto animate-bounce">
-                    <CheckCircle2 className="h-6 w-6 text-green-400" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-white">Платёж подтвержден!</h4>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">PRO-статус активирован.</p>
-                  </div>
-                </div>
-              )}
-
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };
