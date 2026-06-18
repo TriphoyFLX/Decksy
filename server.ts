@@ -304,12 +304,79 @@ async function issueEmailVerification(user: any) {
     user.email,
     "Код подтверждения Decksy Ai",
     `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#161616">
-        <h2>Добро пожаловать в Decksy Ai</h2>
-        <p>Введите этот код на сайте, чтобы подтвердить email и активировать аккаунт:</p>
-        <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#FF5D44;margin:16px 0">${code}</p>
-        <p style="font-size:12px;color:#666">Код действует 15 минут. Если вы не регистрировались в Decksy Ai, просто проигнорируйте письмо.</p>
-      </div>
+      <!doctype html>
+      <html lang="ru">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Код подтверждения Decksy Ai</title>
+        </head>
+        <body style="margin:0;padding:0;background:#070709;font-family:Inter,Arial,sans-serif;color:#f8fafc">
+          <div style="display:none;max-height:0;overflow:hidden;color:transparent;opacity:0">
+            Ваш код подтверждения Decksy Ai: ${code}. Код действует 15 минут.
+          </div>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#070709;margin:0;padding:32px 12px">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#101014;border:1px solid rgba(255,255,255,0.1);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(0,0,0,0.45)">
+                  <tr>
+                    <td style="background:radial-gradient(circle at 20% 0%,rgba(255,93,68,0.32),transparent 34%),radial-gradient(circle at 85% 10%,rgba(16,185,129,0.26),transparent 36%),linear-gradient(135deg,#141416,#09090b);padding:34px 30px 26px;border-bottom:1px solid rgba(255,255,255,0.08)">
+                      <div style="display:inline-block;background:rgba(255,93,68,0.12);border:1px solid rgba(255,93,68,0.28);border-radius:999px;color:#fb923c;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:7px 12px">
+                        Decksy Secure Login
+                      </div>
+                      <h1 style="margin:18px 0 8px;font-size:30px;line-height:1.05;letter-spacing:-0.6px;color:#ffffff;font-weight:900">
+                        Подтвердите email
+                      </h1>
+                      <p style="margin:0;color:#cbd5e1;font-size:14px;line-height:1.6">
+                        Введите код ниже на сайте Decksy Ai, чтобы активировать аккаунт и начать сохранять pitch deck презентации.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:32px 30px 8px;text-align:center">
+                      <p style="margin:0 0 12px;color:#94a3b8;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase">
+                        Ваш код подтверждения
+                      </p>
+                      <div style="display:inline-block;background:#ffffff;color:#09090b;border-radius:18px;padding:18px 24px;border:1px solid rgba(255,255,255,0.16);box-shadow:0 18px 40px rgba(255,93,68,0.16)">
+                        <span style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace;font-size:34px;line-height:1;font-weight:900;letter-spacing:10px">${code}</span>
+                      </div>
+                      <p style="margin:18px auto 0;max-width:380px;color:#cbd5e1;font-size:13px;line-height:1.6">
+                        Код действует <strong style="color:#ffffff">15 минут</strong>. Если срок истёк, запросите новый код в окне входа.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:24px 30px 30px">
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0b0d;border:1px solid rgba(255,255,255,0.08);border-radius:18px">
+                        <tr>
+                          <td style="padding:18px 18px">
+                            <p style="margin:0 0 8px;color:#ffffff;font-size:13px;font-weight:800">
+                              Безопасность аккаунта
+                            </p>
+                            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6">
+                              Никому не передавайте этот код. Команда Decksy Ai никогда не попросит код подтверждения в личных сообщениях.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:20px 30px 26px;background:#0b0b0d;border-top:1px solid rgba(255,255,255,0.06);text-align:center">
+                      <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6">
+                        Если вы не регистрировались в Decksy Ai, просто проигнорируйте это письмо.
+                      </p>
+                      <p style="margin:10px 0 0;color:#475569;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase">
+                        Decksy Ai · AI-конструктор pitch deck презентаций
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
     `,
     `Код подтверждения Decksy Ai: ${code}. Код действует 15 минут.`
   );
