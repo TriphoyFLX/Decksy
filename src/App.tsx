@@ -329,7 +329,18 @@ export default function App() {
   const [activeAds, setActiveAds] = useState<any[]>([]);
 
   // --- New Database Authentication and Preserved Library States ---
-  const [user, setUser] = useState<{ id: number, email: string, name?: string | null, role?: string, isPro?: boolean, plan?: string } | null>(null);
+  const [user, setUser] = useState<{
+    id: number,
+    email: string,
+    name?: string | null,
+    role?: string,
+    isPro?: boolean,
+    plan?: string,
+    planExpiresAt?: string | null,
+    monthlyDeckCount?: number,
+    monthlyDeckLimit?: number,
+    monthlyDeckResetAt?: string | null,
+  } | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem("decksy_token"));
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -514,6 +525,12 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (authToken) {
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      }).catch((err) => console.warn("Server logout failed", err));
+    }
     localStorage.removeItem("decksy_token");
     setAuthToken(null);
     setUser(null);

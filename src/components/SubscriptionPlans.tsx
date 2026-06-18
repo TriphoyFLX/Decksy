@@ -31,6 +31,10 @@ interface UserProfile {
   role?: string;
   isPro?: boolean;
   plan?: string;
+  planExpiresAt?: string | null;
+  monthlyDeckCount?: number;
+  monthlyDeckLimit?: number;
+  monthlyDeckResetAt?: string | null;
 }
 
 interface SubscriptionPlansProps {
@@ -250,7 +254,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
     {
       id: "Base",
       name: "Базовый",
-      price: "2 ₽",
+      price: "149 ₽",
       perMonth: "/мес",
       desc: "Оптимален для точечной работы",
       features: [
@@ -265,7 +269,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
     {
       id: "Middle",
       name: "Миддл",
-      price: "2 ₽",
+      price: "299 ₽",
       perMonth: "/мес",
       desc: "Полноценный контент и экспорт",
       features: [
@@ -282,7 +286,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
     {
       id: "Pro",
       name: "Проф",
-      price: "2 ₽",
+      price: "499 ₽",
       perMonth: "/мес",
       desc: "Для серийных стартаперов",
       features: [
@@ -450,9 +454,22 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                   Купив платный тариф Decksy, вы не только снимаете ограничения, разблокируете редактор и водяные знаки, но и вносите вклад в масштабирование ИИ-инфраструктуры приложения.
                 </p>
                 {user ? (
-                  <div className="inline-flex items-center space-x-2 text-xs text-sky-400 font-mono mt-1 pt-1">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>Ваш статус: <strong className="text-white bg-sky-950 border border-sky-800/40 px-2 py-0.5 rounded uppercase text-[10px]">{user.plan || "Free"}</strong></span>
+                  <div className="space-y-1 text-xs text-sky-400 font-mono mt-1 pt-1">
+                    <div className="inline-flex items-center space-x-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Ваш статус: <strong className="text-white bg-sky-950 border border-sky-800/40 px-2 py-0.5 rounded uppercase text-[10px]">{user.plan || "Free"}</strong></span>
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Генерации: <strong className="text-slate-200">{user.monthlyDeckCount ?? 0}</strong>
+                      {" / "}
+                      <strong className="text-slate-200">{Number.isFinite(user.monthlyDeckLimit) ? user.monthlyDeckLimit : "∞"}</strong>
+                      {user.monthlyDeckResetAt && (
+                        <span> · сброс {new Date(user.monthlyDeckResetAt).toLocaleDateString("ru")}</span>
+                      )}
+                      {user.planExpiresAt && (
+                        <span> · тариф до {new Date(user.planExpiresAt).toLocaleDateString("ru")}</span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-xs text-emerald-400 font-mono">
@@ -551,7 +568,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             <div className="p-3.5 bg-yellow-950/10 border border-yellow-500/10 rounded-xl flex items-start space-x-2">
               <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
               <p className="text-[11px] text-slate-400 leading-normal">
-                При смене тарифа новый объем презентаций в месяц зачисляется мгновенно. Списание происходит ежемесячно в симулированной песочнице Stripe Checkout. Все функции реальны — после симуляции оплаты с вашего аккаунта сразу снимаются водяные знаки, подключаются темы и дается доступ к изменению слайдов!
+                При повышении тарифа новый месячный лимит презентаций зачисляется после подтверждения оплаты. Понижение тарифа недоступно из интерфейса и API; для изменения подписки обратитесь в поддержку.
               </p>
             </div>
           </motion.div>

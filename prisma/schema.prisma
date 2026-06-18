@@ -15,6 +15,11 @@ model User {
   role                String      @default("user")
   isPro               Boolean     @default(false)
   plan                String      @default("Free")
+  planStartedAt       DateTime?
+  planExpiresAt       DateTime?
+  monthlyDeckCount    Int         @default(0)
+  monthlyDeckResetAt  DateTime?
+  tokenVersion        Int         @default(0)
   createdAt           DateTime    @default(now())
   decks               PitchDeck[]
   yoomoneyAccessToken String?

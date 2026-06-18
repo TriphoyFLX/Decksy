@@ -31,6 +31,7 @@ function validateProductionEnv() {
     "APP_URL",
     "DATABASE_URL",
     "JWT_SECRET",
+    "ADMIN_EMAILS",
     "YOOKASSA_SHOP_ID",
     "YOOKASSA_SECRET_KEY",
   ];
@@ -49,21 +50,57 @@ validateProductionEnv();
 
 const app = express();
 const PORT = 3000;
+app.set("trust proxy", 1);
 
-const PLAN_RANK = {
-  Free: 0,
-  Base: 1,
-  Middle: 2,
-  Pro: 3,
+const PLAN_CONFIG = {
+  Free: { rank: 0, priceRub: 0, monthlyDeckLimit: 1, premium: false },
+  Base: { rank: 1, priceRub: 149, monthlyDeckLimit: 5, premium: false },
+  Middle: { rank: 2, priceRub: 299, monthlyDeckLimit: 15, premium: true },
+  Pro: { rank: 3, priceRub: 499, monthlyDeckLimit: 30, premium: true },
 } as const;
 
-type PlanId = keyof typeof PLAN_RANK;
+type PlanId = keyof typeof PLAN_CONFIG;
 type PaidPlanId = Exclude<PlanId, "Free">;
 
 const PAID_PLANS = ["Base", "Middle", "Pro"] as const;
+const ADMIN_EMAILS = new Set(
+  (getConfiguredEnv("ADMIN_EMAILS") || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+type RateLimitOptions = {
+  windowMs: number;
+  max: number;
+  message: string;
+};
+
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function createRateLimiter(name: string, options: RateLimitOptions) {
+  return (req: any, res: any, next: any) => {
+    const now = Date.now();
+    const key = `${name}:${req.ip || req.socket?.remoteAddress || "unknown"}`;
+    const current = rateLimitBuckets.get(key);
+
+    if (!current || current.resetAt <= now) {
+      rateLimitBuckets.set(key, { count: 1, resetAt: now + options.windowMs });
+      return next();
+    }
+
+    if (current.count >= options.max) {
+      res.setHeader("Retry-After", Math.ceil((current.resetAt - now) / 1000).toString());
+      return res.status(429).json({ error: options.message });
+    }
+
+    current.count += 1;
+    next();
+  };
+}
 
 function isPlanId(plan: unknown): plan is PlanId {
-  return typeof plan === "string" && Object.prototype.hasOwnProperty.call(PLAN_RANK, plan);
+  return typeof plan === "string" && Object.prototype.hasOwnProperty.call(PLAN_CONFIG, plan);
 }
 
 function isPaidPlanId(plan: unknown): plan is PaidPlanId {
@@ -71,15 +108,146 @@ function isPaidPlanId(plan: unknown): plan is PaidPlanId {
 }
 
 function getPlanRank(plan: string | null | undefined): number {
-  return isPlanId(plan) ? PLAN_RANK[plan] : PLAN_RANK.Free;
+  return isPlanId(plan) ? PLAN_CONFIG[plan].rank : PLAN_CONFIG.Free.rank;
 }
 
 function isPlanUpgrade(currentPlan: string | null | undefined, targetPlan: PlanId): boolean {
-  return PLAN_RANK[targetPlan] > getPlanRank(currentPlan);
+  return PLAN_CONFIG[targetPlan].rank > getPlanRank(currentPlan);
 }
 
 function hasPremiumFeatures(plan: string | null | undefined): boolean {
-  return getPlanRank(plan) >= PLAN_RANK.Middle;
+  return isPlanId(plan) ? PLAN_CONFIG[plan].premium : false;
+}
+
+function isAdminEmail(email: string | null | undefined): boolean {
+  return Boolean(email && ADMIN_EMAILS.has(email.trim().toLowerCase()));
+}
+
+function addMonths(date: Date, months: number): Date {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function getPlanLimit(plan: string | null | undefined, role?: string): number {
+  if (role === "admin") return Number.POSITIVE_INFINITY;
+  return isPlanId(plan) ? PLAN_CONFIG[plan].monthlyDeckLimit : PLAN_CONFIG.Free.monthlyDeckLimit;
+}
+
+function getPlanPriceRub(plan: PaidPlanId): number {
+  return PLAN_CONFIG[plan].priceRub;
+}
+
+function getUserResponse(user: any) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    isPro: user.isPro,
+    plan: user.plan,
+    planStartedAt: user.planStartedAt,
+    planExpiresAt: user.planExpiresAt,
+    monthlyDeckCount: user.monthlyDeckCount,
+    monthlyDeckResetAt: user.monthlyDeckResetAt,
+    monthlyDeckLimit: getPlanLimit(user.plan, user.role),
+  };
+}
+
+async function normalizeUserEntitlements(user: any) {
+  const now = new Date();
+  const data: any = {};
+  const shouldBeAdmin = isAdminEmail(user.email);
+
+  if (shouldBeAdmin && (user.role !== "admin" || user.plan !== "Pro" || !user.isPro)) {
+    data.role = "admin";
+    data.plan = "Pro";
+    data.isPro = true;
+    data.planStartedAt = user.planStartedAt || now;
+    data.planExpiresAt = null;
+  } else if (!shouldBeAdmin && user.role !== "admin" && user.plan !== "Free" && user.planExpiresAt && user.planExpiresAt <= now) {
+    data.plan = "Free";
+    data.isPro = false;
+    data.planStartedAt = null;
+    data.planExpiresAt = null;
+  } else if (user.isPro !== hasPremiumFeatures(user.plan) && user.role !== "admin") {
+    data.isPro = hasPremiumFeatures(user.plan);
+  }
+
+  if (!user.monthlyDeckResetAt || user.monthlyDeckResetAt <= now) {
+    data.monthlyDeckCount = 0;
+    data.monthlyDeckResetAt = addMonths(now, 1);
+  }
+
+  if (Object.keys(data).length === 0) return user;
+
+  return prisma.user.update({
+    where: { id: user.id },
+    data,
+  });
+}
+
+function createSessionToken(user: any): string {
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      isPro: user.isPro,
+      plan: user.plan,
+      tokenVersion: user.tokenVersion || 0,
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+}
+
+async function getUserWithFreshDeckWindow(userId: number) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user) return null;
+
+  return normalizeUserEntitlements(user);
+}
+
+async function assertDeckGenerationAllowed(userId: number) {
+  const user = await getUserWithFreshDeckWindow(userId);
+  if (!user) {
+    return {
+      ok: false as const,
+      status: 404,
+      payload: { error: "Пользователь не найден." },
+    };
+  }
+
+  const monthlyLimit = getPlanLimit(user.plan, user.role);
+  if (Number.isFinite(monthlyLimit) && user.monthlyDeckCount >= monthlyLimit) {
+    return {
+      ok: false as const,
+      status: 429,
+      payload: {
+        error: `Месячный лимит тарифа «${user.plan}» исчерпан: ${user.monthlyDeckCount}/${monthlyLimit} презентаций.`,
+        plan: user.plan,
+        monthlyDeckCount: user.monthlyDeckCount,
+        monthlyDeckLimit: monthlyLimit,
+        monthlyDeckResetAt: user.monthlyDeckResetAt,
+      },
+    };
+  }
+
+  return { ok: true as const, user, monthlyLimit };
+}
+
+async function recordDeckGeneration(userId: number) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      monthlyDeckCount: { increment: 1 },
+    },
+  });
 }
 
 // Initialize native Gemini Client
@@ -103,6 +271,35 @@ function getGeminiClient(): GoogleGenAI | null {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
+
+app.use("/api/auth/login", createRateLimiter("auth-login", {
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Слишком много попыток входа. Попробуйте позже.",
+}));
+app.use("/api/auth/register", createRateLimiter("auth-register", {
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: "Слишком много регистраций с этого IP. Попробуйте позже.",
+}));
+app.use(["/api/interview", "/api/generate_deck", "/api/rewrite_slide"], createRateLimiter("ai", {
+  windowMs: 60 * 60 * 1000,
+  max: 40,
+  message: "Слишком много ИИ-запросов за короткое время. Попробуйте позже.",
+}));
+app.use("/api", createRateLimiter("api", {
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: "Слишком много запросов. Попробуйте позже.",
+}));
 
 // Log every API request for real-time traffic statistics
 app.use(async (req, res, next) => {
@@ -363,7 +560,7 @@ One slide only. type="${SLIDE_TYPES[i]}". Russian. 4 bullets with numbers/metric
 const JWT_SECRET = getConfiguredEnv("JWT_SECRET") || "decksy-dev-secret-default-key";
 
 // JWT Authentication Middleware
-function authenticateToken(req: any, res: any, next: any) {
+async function authenticateToken(req: any, res: any, next: any) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
@@ -371,13 +568,30 @@ function authenticateToken(req: any, res: any, next: any) {
     return res.status(401).json({ error: "Для этого действия требуется авторизация." });
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as any;
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId }
+    });
+
+    if (!user || (payload.tokenVersion || 0) !== user.tokenVersion) {
       return res.status(403).json({ error: "Сессия истекла или недействительна. Войдите заново." });
     }
-    req.user = user;
+
+    const normalizedUser = await normalizeUserEntitlements(user);
+    req.user = {
+      userId: normalizedUser.id,
+      email: normalizedUser.email,
+      name: normalizedUser.name,
+      role: normalizedUser.role,
+      isPro: normalizedUser.isPro,
+      plan: normalizedUser.plan,
+      tokenVersion: normalizedUser.tokenVersion,
+    };
     next();
-  });
+  } catch {
+    return res.status(403).json({ error: "Сессия истекла или недействительна. Войдите заново." });
+  }
 }
 
 // 0.1 API: Register
@@ -387,6 +601,10 @@ app.post("/api/auth/register", async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email и пароль обязательны для заполнения." });
+    }
+
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: "Пароль должен быть не короче 8 символов." });
     }
 
     const trimmedEmail = email.trim().toLowerCase();
@@ -403,11 +621,11 @@ app.post("/api/auth/register", async (req, res) => {
     // Secure password hashing
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Auto-promote roomop86@gmail.com to admin/pro by default
-    const isRoomop = trimmedEmail === "roomop86@gmail.com";
-    const userRole = isRoomop ? "admin" : "user";
-    const userIsPro = isRoomop ? true : false;
-    const userPlan = isRoomop ? "Pro" : "Free";
+    const isConfiguredAdmin = isAdminEmail(trimmedEmail);
+    const userRole = isConfiguredAdmin ? "admin" : "user";
+    const userIsPro = isConfiguredAdmin;
+    const userPlan = isConfiguredAdmin ? "Pro" : "Free";
+    const now = new Date();
 
     // Create user in database
     const user = await prisma.user.create({
@@ -418,26 +636,19 @@ app.post("/api/auth/register", async (req, res) => {
         role: userRole,
         isPro: userIsPro,
         plan: userPlan,
+        planStartedAt: isConfiguredAdmin ? now : null,
+        planExpiresAt: null,
+        monthlyDeckCount: 0,
+        monthlyDeckResetAt: addMonths(now, 1),
       }
     });
 
     // Create session token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, name: user.name, role: user.role, isPro: user.isPro, plan: user.plan },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = createSessionToken(user);
 
     res.status(201).json({
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isPro: user.isPro,
-        plan: user.plan
-      }
+      user: getUserResponse(user)
     });
   } catch (err: any) {
     console.error("Registration error:", err);
@@ -471,31 +682,14 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Неверный email или пароль." });
     }
 
-    // Auto-escalate roomop86@gmail.com to Admin/PRO status if not already set
-    if (trimmedEmail === "roomop86@gmail.com" && (user.role !== "admin" || !user.isPro || user.plan !== "Pro")) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { role: "admin", isPro: true, plan: "Pro" }
-      });
-    }
+    user = await normalizeUserEntitlements(user);
 
     // Create session token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, name: user.name, role: user.role, isPro: user.isPro, plan: user.plan },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = createSessionToken(user);
 
     res.json({
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isPro: user.isPro,
-        plan: user.plan
-      }
+      user: getUserResponse(user)
     });
   } catch (err: any) {
     console.error("Login error:", err);
@@ -514,27 +708,28 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
       return res.status(404).json({ error: "Пользователь не найден." });
     }
 
-    // Auto-escalate roomop86@gmail.com to Admin/PRO status
-    if (user.email === "roomop86@gmail.com" && (user.role !== "admin" || !user.isPro || user.plan !== "Pro")) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { role: "admin", isPro: true, plan: "Pro" }
-      });
-    }
+    user = await normalizeUserEntitlements(user);
 
     res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isPro: user.isPro,
-        plan: user.plan
-      }
+      user: getUserResponse(user)
     });
   } catch (err: any) {
     console.error("Get user context error:", err);
     res.status(500).json({ error: "Не удалось получить сессию пользователя." });
+  }
+});
+
+// 0.3.1 API: Logout and invalidate the current token family
+app.post("/api/auth/logout", authenticateToken, async (req: any, res) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { tokenVersion: { increment: 1 } }
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Logout error:", err);
+    res.status(500).json({ error: "Не удалось завершить сессию." });
   }
 });
 
@@ -562,14 +757,7 @@ app.post("/api/auth/subscribe", authenticateToken, async (req: any, res) => {
       error: currentUser.plan === plan
         ? "Этот тариф уже активен."
         : "Понижение тарифа недоступно. Обратитесь в поддержку для изменения подписки.",
-      user: {
-        id: currentUser.id,
-        email: currentUser.email,
-        name: currentUser.name,
-        role: currentUser.role,
-        isPro: currentUser.isPro,
-        plan: currentUser.plan
-      }
+      user: getUserResponse(currentUser)
     });
   } catch (err: any) {
     console.error("Subscription update error:", err);
@@ -633,12 +821,7 @@ app.post("/api/yookassa/create-payment", authenticateToken, async (req: any, res
       });
     }
 
-    const tariffPrices: Record<string, number> = {
-      "Base": 2,
-      "Middle": 2,
-      "Pro": 2
-    };
-    const amount = tariffPrices[tariffId];
+    const amount = getPlanPriceRub(tariffId);
 
     const appUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
     const returnUrl = `${appUrl}/?tab=tariffs&payment_check=1`;
@@ -759,11 +942,14 @@ app.get("/api/yookassa/check-payment/:id", authenticateToken, async (req: any, r
       });
 
       if (shouldUpgradeUser) {
+        const activatedAt = new Date();
         await prisma.user.update({
           where: { id: payment.userId },
           data: {
             plan: payment.tariffId,
-            isPro: hasPremiumFeatures(payment.tariffId)
+            isPro: hasPremiumFeatures(payment.tariffId),
+            planStartedAt: activatedAt,
+            planExpiresAt: addMonths(activatedAt, 1),
           }
         });
 
@@ -848,7 +1034,9 @@ async function processYooKassaWebhook(body: any) {
         where: { id: userId },
         data: {
           plan: tariffId,
-          isPro: hasPremiumFeatures(tariffId)
+          isPro: hasPremiumFeatures(tariffId),
+          planStartedAt: new Date(),
+          planExpiresAt: addMonths(new Date(), 1),
         }
       });
 
@@ -939,6 +1127,10 @@ app.get("/api/admin/users", authenticateAdmin, async (req, res) => {
         role: true,
         isPro: true,
         plan: true,
+        planStartedAt: true,
+        planExpiresAt: true,
+        monthlyDeckCount: true,
+        monthlyDeckResetAt: true,
         createdAt: true,
       },
     });
@@ -961,12 +1153,15 @@ app.post("/api/admin/users/:id/toggle-pro", authenticateAdmin, async (req, res) 
 
     const nextIsPro = !target.isPro;
     const nextPlan = nextIsPro ? "Pro" : "Free";
+    const now = new Date();
 
     const updated = await prisma.user.update({
       where: { id: userId },
       data: { 
         isPro: nextIsPro,
-        plan: nextPlan
+        plan: nextPlan,
+        planStartedAt: nextIsPro ? now : null,
+        planExpiresAt: null,
       },
     });
 
@@ -1506,6 +1701,11 @@ function autoMapImagesToSlides(slides: any[], sessionImages: any[]) {
 
 // 2. API: Generate 10-Slide Pitch Deck and Roast Analysis
 app.post("/api/generate_deck", authenticateToken, async (req, res) => {
+  const quota = await assertDeckGenerationAllowed((req as any).user.userId);
+  if (!quota.ok) {
+    return res.status(quota.status).json(quota.payload);
+  }
+
   const idea = req.body.idea;
   const mode = req.body.mode || "investor";
   const messages = req.body.messages || [];
@@ -1535,7 +1735,17 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
   // Map session images systematically
   autoMapImagesToSlides(deck.slides, sessionImages);
 
-  res.json(deck);
+  const updatedUser = await recordDeckGeneration((req as any).user.userId);
+
+  res.json({
+    ...deck,
+    usage: {
+      plan: updatedUser.plan,
+      monthlyDeckCount: updatedUser.monthlyDeckCount,
+      monthlyDeckLimit: getPlanLimit(updatedUser.plan, updatedUser.role),
+      monthlyDeckResetAt: updatedUser.monthlyDeckResetAt,
+    },
+  });
 });
 
 // 2.5 API: Rewrite slide using image description/theme

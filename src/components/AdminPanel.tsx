@@ -28,6 +28,11 @@ interface UserData {
   name: string | null;
   role: string;
   isPro: boolean;
+  plan: string;
+  planStartedAt?: string | null;
+  planExpiresAt?: string | null;
+  monthlyDeckCount?: number;
+  monthlyDeckResetAt?: string | null;
   createdAt: string;
 }
 
@@ -539,7 +544,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSub
                         </tr>
                       ) : (
                         filteredUsers.map((u) => {
-                          const isMe = u.email === "roomop86@gmail.com";
+                          const isProtectedAdmin = u.role === "admin" && u.isPro;
                           return (
                             <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
                               <td className="py-3 px-4 text-slate-500">#{u.id}</td>
@@ -563,8 +568,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSub
                                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
                                     : "bg-slate-900 text-slate-600 border border-transparent"
                                 }`}>
-                                  {u.isPro ? "PRO / PREMIUM - ACTIVE" : "БАЗОВЫЙ ТАРИФ"}
+                                  {u.plan || (u.isPro ? "Pro" : "Free")}
                                 </span>
+                                <div className="text-[8px] text-slate-600 mt-1">
+                                  {u.monthlyDeckCount ?? 0} генераций
+                                  {u.planExpiresAt && ` · до ${new Date(u.planExpiresAt).toLocaleDateString("ru")}`}
+                                </div>
                               </td>
                               <td className="py-3 px-4 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
@@ -582,7 +591,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSub
                                   </button>
 
                                   {/* Toggle Admin Button */}
-                                  {!isMe && (
+                                  {!isProtectedAdmin && (
                                     <button
                                       onClick={() => handleToggleRole(u.id, u.email)}
                                       className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-sm cursor-pointer transition-colors border-none ${
@@ -597,7 +606,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSub
                                   )}
 
                                   {/* Delete user */}
-                                  {!isMe && (
+                                  {!isProtectedAdmin && (
                                     <>
                                       {confirmDeleteUser === u.id ? (
                                         <div className="flex items-center gap-1.5">
