@@ -884,6 +884,7 @@ app.post("/api/yookassa/create-payment", authenticateToken, async (req: any, res
       success: true,
       paymentId: paymentData.id,
       confirmationUrl: paymentData.confirmation?.confirmation_url,
+      amountRub: amount,
       status: paymentData.status
     });
   } catch (err: any) {
