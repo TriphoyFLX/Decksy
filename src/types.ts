@@ -25,12 +25,20 @@ export interface PitchCanvas {
   branding: CanvasSection;
 }
 
+export interface SlideVisualData {
+  layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics';
+  teamMembers?: { name: string; role: string; image: string }[];
+  metrics?: { label: string; value: string; highlight?: boolean }[];
+  accentImage?: string;
+  images?: string[];
+}
+
 export interface Slide {
   title: string;
   subtitle?: string;
   content: string[];
   type: 'title' | 'problem' | 'solution' | 'market' | 'pricing' | 'competition' | 'launch' | 'risks' | 'traction' | 'ask' | 'sauce' | 'tech';
-  visualData?: any; // Used to style or render specific graphics (lists, metrics, grids)
+  visualData?: SlideVisualData;
   speechScript: string; // The speech script for this slide
   image?: string; // Base64 data-URL or image URL
   imageDescription?: string; // Theme or what is depicted in the image

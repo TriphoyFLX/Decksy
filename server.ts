@@ -13,6 +13,7 @@ import {
   isDeckComplete,
   SLIDE_TYPES,
 } from "./src/lib/deckBuilder";
+import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
 import { GoogleGenAI, Type } from "@google/genai";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -796,7 +797,8 @@ const DECK_SLIDE_SCHEMA = `{
   "type": "SLIDE_TYPE",
   "speechScript": "3-5 sentences in Russian for the speaker",
   "image": "Optional exact matched image ID from the uploaded list, or empty if none",
-  "imageDescription": "Optional exact matched image description, or empty if none"
+  "imageDescription": "Optional exact matched image description, or empty if none",
+  "visualData": "Optional { layout, teamMembers: [{name, role}], metrics: [{label, value}] }"
 }`;
 
 async function generateDeckWithAI(
@@ -818,7 +820,8 @@ ${sessionImages.map((img: any) => `- ID: "${img.id}" (Description: "${img.descri
 CRITICAL BINDING RULE:
 For any slides where these uploaded images fit perfectly, set the slide's "image" property to the exact ID (e.g. "${sessionImages[0].id}") and "imageDescription" to its description.
 Examples of logical mapping:
-- Logos (лого, бренд) go on the 'title' slide (and sometimes as a watermark)
+- Team/founder photos (команд, CEO, основатель, portrait) → assign to slide type "sauce" with visualData.teamMembers
+- Logos (лого, бренд) go on the 'title' slide
 - App UI screenshots/mockups go on 'solution' or 'moat' slides
 - Market size graphs, trends, TAM/SAM/SOM go on 'target_market' slide
 - Table screenshots, revenue plan tables go on 'business_model' slide
@@ -1360,7 +1363,7 @@ app.post("/api/auth/subscribe", authenticateToken, async (req: any, res) => {
 
 // --- YOOKASSA INTEGRATION CONTROLLERS ---
 
-const YOOKASSA_SHOP_ID = getConfiguredEnv("YOOKASSA_SHOP_ID") || "1386669";
+const YOOKASSA_SHOP_ID = getConfiguredEnv("YOOKASSA_SHOP_ID") || "";
 const YOOKASSA_SECRET_KEY = getConfiguredEnv("YOOKASSA_SECRET_KEY") || "";
 
 // Helper to construct YooKassa Basic Auth headers
@@ -1379,6 +1382,7 @@ app.get("/api/yookassa/status", authenticateToken, async (req: any, res) => {
   try {
     res.json({
       shopId: YOOKASSA_SHOP_ID,
+      configured: Boolean(YOOKASSA_SHOP_ID && YOOKASSA_SECRET_KEY),
       isTest: YOOKASSA_SECRET_KEY.startsWith("test_")
     });
   } catch (err: any) {
@@ -1390,6 +1394,10 @@ app.get("/api/yookassa/status", authenticateToken, async (req: any, res) => {
 // 2. POST Initiate payment in YooKassa
 app.post("/api/yookassa/create-payment", authenticateToken, async (req: any, res) => {
   try {
+    if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) {
+      return res.status(503).json({ error: "Платежный шлюз не настроен. Обратитесь в поддержку." });
+    }
+
     const { tariffId } = req.body;
     if (!isPaidPlanId(tariffId)) {
       return res.status(400).json({ error: "Неверный тарифный план." });
@@ -2193,104 +2201,6 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
   }
 });
 
-function autoMapImagesToSlides(slides: any[], sessionImages: any[]) {
-  if (!sessionImages || sessionImages.length === 0 || !Array.isArray(slides)) return;
-
-  // 1. Keep track of which slide already has an image ID assigned (like 'img_xxx')
-  const assignedImageIds = new Set<string>();
-  for (const s of slides) {
-    if (s.image && typeof s.image === "string" && s.image.startsWith("img_")) {
-      assignedImageIds.add(s.image);
-    }
-  }
-
-  // 2. Identify images that have NOT been explicitly assigned by the LLM (unassigned)
-  const unassignedImages = sessionImages.filter((img: any) => !assignedImageIds.has(img.id));
-
-  // 3. For any unassigned image, resolve a reasonable slide index semantically
-  for (const img of unassignedImages) {
-    const descLower = (img.description || "").toLowerCase();
-    let targetIndex = -1;
-
-    if (descLower.includes("лого") || descLower.includes("logo") || descLower.includes("бренд") || descLower.includes("brand")) {
-      targetIndex = 0; // Title Slide
-    } else if (
-      descLower.includes("продукт") || 
-      descLower.includes("интерфейс") || 
-      descLower.includes("скриншот") || 
-      descLower.includes("приложен") || 
-      descLower.includes("экран") || 
-      descLower.includes("product") || 
-      descLower.includes("screen") || 
-      descLower.includes("mockup")
-    ) {
-      targetIndex = 2; // Solution/Product Slide
-    } else if (
-      descLower.includes("рынок") || 
-      descLower.includes("диаграмм") || 
-      descLower.includes("график") || 
-      descLower.includes("маркет") || 
-      descLower.includes("market") || 
-      descLower.includes("chart") || 
-      descLower.includes("tam") || 
-      descLower.includes("som") || 
-      descLower.includes("sam")
-    ) {
-      targetIndex = 3; // Target Market Slide
-    } else if (
-      descLower.includes("бизнес-модель") || 
-      descLower.includes("модель") || 
-      descLower.includes("цена") || 
-      descLower.includes("монет") || 
-      descLower.includes("revenue") || 
-      descLower.includes("model") || 
-      descLower.includes("price")
-    ) {
-      targetIndex = 4; // Business Model
-    } else if (
-      descLower.includes("таблица") || 
-      descLower.includes("конкурент") || 
-      descLower.includes("сравнен") || 
-      descLower.includes("матриц") || 
-      descLower.includes("competitor") || 
-      descLower.includes("moat")
-    ) {
-      targetIndex = 6; // Competitors Matrix
-    } else if (
-      descLower.includes("кьюар") || 
-      descLower.includes("qr") || 
-      descLower.includes("контакт") || 
-      descLower.includes("founders") || 
-      descLower.includes("презентац") || 
-      descLower.includes("предложен") || 
-      descLower.includes("команд") || 
-      descLower.includes("team") || 
-      descLower.includes("ask")
-    ) {
-      targetIndex = 9; // Ask/Contacts slide
-    } else {
-      // Find first empty slot
-      targetIndex = slides.findIndex((s: any) => !s.image || s.image === "" || s.image.includes("local"));
-    }
-
-    if (targetIndex !== -1 && targetIndex < slides.length) {
-      slides[targetIndex].image = img.image; // Assign actual base64
-      slides[targetIndex].imageDescription = img.description;
-    }
-  }
-
-  // 4. For any slides that the LLM matched by ID, replace the placeholder ID string with the actual base64 data URL
-  for (const s of slides) {
-    if (s.image && typeof s.image === "string" && s.image.startsWith("img_")) {
-      const matched = sessionImages.find((img: any) => img.id === s.image);
-      if (matched) {
-        s.image = matched.image;
-        s.imageDescription = matched.description || s.imageDescription;
-      }
-    }
-  }
-}
-
 // 2. API: Generate 10-Slide Pitch Deck and Roast Analysis
 app.post("/api/generate_deck", authenticateToken, async (req, res) => {
   const quota = await assertDeckGenerationAllowed((req as any).user.userId);
@@ -2325,7 +2235,7 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
   );
 
   // Map session images systematically
-  autoMapImagesToSlides(deck.slides, sessionImages);
+  enrichSlidesWithVisuals(deck.slides, sessionImages);
 
   const updatedUser = await recordDeckGeneration((req as any).user.userId);
 

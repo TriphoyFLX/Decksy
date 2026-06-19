@@ -2,6 +2,14 @@ import React from "react";
 import { Flame, Sparkles, LockKeyhole } from "lucide-react";
 import { Slide } from "../types";
 import { EditableText } from "./EditableText";
+import {
+  SlideSectionHeader,
+  PremiumImage,
+  TeamPlateGrid,
+  MetricBento,
+  SplitContentLayout,
+  HeroTitleSlide,
+} from "../lib/slideVisuals";
 
 export const getThemeStyles = (
   slideIndex: number, 
@@ -165,130 +173,69 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     return match ? match[1] : "";
   };
 
+  // TEAM SLIDE — founder photos from user uploads
+  if (slide.visualData?.layout === "team" && slide.visualData.teamMembers?.length) {
+    return (
+      <div className="flex flex-col h-full py-1 justify-between">
+        <SlideSectionHeader
+          sectionLabel={slide.sectionLabel || "👥 Команда • Founders & Core Team"}
+          title={T(title, "title", "", "span")}
+          subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+          accentClass="text-violet-400"
+          selectedStyle={selectedStyle}
+        />
+        <TeamPlateGrid
+          members={slide.visualData.teamMembers}
+          selectedStyle={selectedStyle}
+          forExport={forExport}
+        />
+        {content.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+            {content.slice(0, 2).map((item, i) => (
+              <div
+                key={i}
+                className={`rounded-xl p-2 text-[9px] border text-left ${theme.innerCardBg}`}
+              >
+                {B(item, i, theme.bulletTextColor)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // 1. TITLE SLIDE (Index 0 or type === 'title')
   if (index === 0 || type === "title") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
-    
-    const firstLetter = (title || "A").trim().charAt(0).toUpperCase();
-    let logoMarkBg = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
-    let logoMarkColor = "text-white";
-    let logoMarkShadow = "shadow-[0_12px_30px_rgba(16,185,129,0.25)]";
-    if (isLight) {
-      logoMarkBg = "linear-gradient(135deg, #111115 0%, #1a1a20 100%)";
-      logoMarkColor = "text-white";
-      logoMarkShadow = "shadow-[0_12px_24px_rgba(0,0,0,0.15)]";
-    } else if (isCobalt) {
-      logoMarkBg = "linear-gradient(135deg, #0071e3 0%, #004bc2 100%)";
-      logoMarkColor = "text-white";
-      logoMarkShadow = "shadow-[0_12px_30px_rgba(0,113,227,0.3)]";
-    }
+
+    const badgeEl = (
+      <div
+        className="mx-auto inline-flex items-center space-x-1.5 border px-2.5 py-0.5 rounded-full uppercase tracking-widest font-mono text-[9px] mb-2"
+        style={{
+          background: isLight ? "rgba(0,0,0,0.03)" : isCobalt ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+          borderColor: isLight ? "rgba(0,0,0,0.08)" : isCobalt ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.15)",
+          color: isLight ? "#004de6" : isCobalt ? "#9bf0e1" : "#9bf0e1",
+        }}
+      >
+        <span className={`h-1 w-1 rounded-full ${isLight ? 'bg-blue-600' : 'bg-[#10b981]'}`} />
+        {T(slide.badge || "✦ INVESTOR DECK", "badge", "", "span")}
+      </div>
+    );
 
     return (
-      <div className="flex flex-col justify-between h-full py-1 text-center font-sans">
-        {/* SQUIRCLE BRAND MARK FROM APEX TEMPLATE */}
-        <div className="flex flex-col items-center justify-center pt-2">
-          <div 
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg sm:text-xl font-extrabold tracking-tighter ${logoMarkColor} ${logoMarkShadow} border border-white/5`}
-            style={{ background: logoMarkBg }}
-          >
-            {firstLetter}
-          </div>
-        </div>
-
-        <div
-          className="mx-auto inline-flex items-center space-x-1.5 border px-2.5 py-0.5 rounded-full uppercase tracking-widest font-mono text-[9px]"
-          style={{
-            background: isLight ? "rgba(0,0,0,0.03)" : isCobalt ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
-            borderColor: isLight ? "rgba(0,0,0,0.08)" : isCobalt ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.1)5",
-            color: isLight ? "#004de6" : isCobalt ? "#9bf0e1" : "#9bf0e1",
-          }}
-        >
-          <span className={`h-1 w-1 rounded-full ${isLight ? 'bg-blue-600' : 'bg-[#10b981]'}`} style={forExport ? { animation: "none" } : undefined}></span>
-          {T(slide.badge || "✦ SERIES B INVESTOR DECK", "badge", "", "span")}
-        </div>
-
-        <div className="space-y-2.5 my-auto">
-          {T(
-            title,
-            "title",
-            (isLight ? "text-neutral-900 font-extrabold" : isCobalt ? "text-white font-black" : "text-white font-black") + 
-            " tracking-tighter uppercase leading-none font-display " + 
-            (forExport ? "text-5xl" : "text-lg sm:text-2xl md:text-3xl lg:text-4xl"),
-            "h1"
-          )}
-          {subtitle && T(
-            subtitle,
-            "subtitle",
-            (isLight ? "text-neutral-500" : isCobalt ? "text-blue-105" : "text-slate-400") + 
-            " font-medium font-sans max-w-xl mx-auto tracking-normal " + 
-            (forExport ? "text-base" : "text-xs sm:text-sm"),
-            "p"
-          )}
-        </div>
-
-        {/* DENSE HORIZONTAL BENTO CARD SPLIT FOR CATEGORIES */}
-        <div className="grid grid-cols-3 gap-2 border-t pt-2" style={{ borderColor: isLight ? "rgba(0,0,0,0.08)" : isCobalt ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)" }}>
-          {slide.image ? (
-            <>
-              {content.slice(0, 2).map((item, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg p-1.5 text-center border text-left flex flex-col justify-between"
-                  style={{
-                    background: isLight ? "rgba(0,0,0,0.01)" : isCobalt ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)",
-                    borderColor: isLight ? "rgba(0,0,0,0.05)" : isCobalt ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
-                  }}
-                >
-                  <span className={`block uppercase tracking-wider font-mono ${isLight ? 'text-neutral-450' : 'text-slate-550'}`} style={{ fontSize: "7px" }}>
-                    Презентация {i + 1}
-                  </span>
-                  {B(
-                    item,
-                    i,
-                    `block font-sans font-medium text-[9px] sm:text-[10px] leading-tight mt-0.5 ${isLight ? 'text-neutral-800' : isCobalt ? 'text-white' : 'text-slate-300'}`,
-                    "span"
-                  )}
-                </div>
-              ))}
-              <div 
-                className="rounded-lg overflow-hidden border relative flex flex-col justify-between bg-black/20 h-[50px] md:h-auto min-h-[40px]"
-                style={{
-                  borderColor: isLight ? "rgba(0,0,0,0.08)" : isCobalt ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)"
-                }}
-              >
-                <img src={slide.image} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={slide.imageDescription || "Image"} />
-                {slide.imageDescription && (
-                  <div className="absolute bottom-1 left-1 right-1 bg-black/75 backdrop-blur-sm p-1 rounded text-[7px] text-white truncate text-center leading-none">
-                    {slide.imageDescription}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            content.slice(0, 3).map((item, i) => (
-              <div
-                key={i}
-                className="rounded-lg p-1.5 text-center border text-left flex flex-col justify-between"
-                style={{
-                  background: isLight ? "rgba(0,0,0,0.01)" : isCobalt ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)",
-                  borderColor: isLight ? "rgba(0,0,0,0.05)" : isCobalt ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
-                }}
-              >
-                <span className={`block uppercase tracking-wider font-mono ${isLight ? 'text-neutral-450' : 'text-slate-550'}`} style={{ fontSize: "7px" }}>
-                  Раздел 0{i + 1}
-                </span>
-                {B(
-                  item,
-                  i,
-                  `block font-sans font-medium text-[9px] sm:text-[10px] leading-tight mt-0.5 ${isLight ? 'text-neutral-800' : isCobalt ? 'text-white' : 'text-slate-300'}`,
-                  "span"
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      <HeroTitleSlide
+        title={T(title, "title", "", "span")}
+        subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+        badge={badgeEl}
+        content={content}
+        image={slide.image}
+        imageDescription={slide.imageDescription}
+        selectedStyle={selectedStyle}
+        forExport={forExport}
+        renderBullet={(text, i, className) => B(text, i, className)}
+      />
     );
   }
 
@@ -325,14 +272,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           </div>
 
           {slide.image ? (
-            <div className="rounded-xl overflow-hidden border border-white/10 relative flex flex-col justify-between bg-black/20 h-[100px] md:h-auto min-h-[50px]">
-              <img src={slide.image} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={slide.imageDescription || "Problem Illustration"} />
-              {slide.imageDescription && (
-                <div className="absolute bottom-1 left-1 right-1 bg-black/75 backdrop-blur-sm p-1 rounded text-[7px] text-white truncate text-center leading-none">
-                  {slide.imageDescription}
-                </div>
-              )}
-            </div>
+            <PremiumImage src={slide.image} alt={slide.imageDescription} caption={slide.imageDescription} variant="hero" forExport={forExport} />
           ) : (
             <div className="space-y-1.5 flex flex-col justify-center">
               {content.slice(1, 4).map((item, i) => {
@@ -376,49 +316,42 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           )}
         </div>
 
-        {/* Minimal tidy row blocks */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 my-auto">
-          {content.slice(0, slide.image ? 2 : 3).map((item, i) => {
-            const parsed = parseBullet(item);
-            return (
-              <div key={i} className={`rounded-xl p-3 text-left transition-all flex flex-col justify-between space-y-2 border ${
-                isLight 
-                  ? 'bg-white border-neutral-200 shadow-sm hover:border-neutral-300' 
-                  : isCobalt 
-                    ? 'bg-white border-blue-105 shadow-sm shadow-blue-500/5 hover:border-blue-200' 
-                    : 'bg-gradient-to-b from-white/[0.025] to-white/[0.012] hover:from-white/[0.04] border border-white/5 hover:border-white/10'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className={`h-5 w-5 rounded-lg flex items-center justify-center border ${isLight ? 'bg-emerald-50 text-emerald-600 border-emerald-200/60' : 'bg-[#10b981]/10 text-emerald-450 border border-emerald-500/20'}`}>
-                    <Sparkles className="h-3 w-3" />
+        <SplitContentLayout
+          image={slide.image}
+          imageCaption={slide.imageDescription}
+          forExport={forExport}
+          left={
+            <div className={`grid gap-2 ${slide.image ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"}`}>
+              {content.slice(0, slide.image ? 4 : 3).map((item, i) => {
+                const parsed = parseBullet(item);
+                return (
+                  <div key={i} className={`rounded-xl p-3 text-left flex flex-col justify-between space-y-2 border ${
+                    isLight 
+                      ? 'bg-white border-neutral-200 shadow-sm' 
+                      : isCobalt 
+                        ? 'bg-white border-blue-105 shadow-sm' 
+                        : 'bg-gradient-to-b from-white/[0.04] to-white/[0.02] border border-white/8'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className={`h-5 w-5 rounded-lg flex items-center justify-center border ${isLight ? 'bg-emerald-50 text-emerald-600 border-emerald-200/60' : 'bg-[#10b981]/10 text-emerald-400 border border-emerald-500/20'}`}>
+                        <Sparkles className="h-3 w-3" />
+                      </div>
+                      <span className={`text-[7px] font-mono uppercase tracking-widest font-bold ${isLight ? 'text-neutral-450' : 'text-slate-500'}`}>0{i+1}</span>
+                    </div>
+                    <div>
+                      {parsed.label ? (
+                        <h4 className={`text-[9.5px] font-display font-black uppercase tracking-tight mb-0.5 ${isLight ? 'text-neutral-950' : isCobalt ? 'text-slate-900' : 'text-white'}`}>{parsed.label}</h4>
+                      ) : null}
+                      <p className={`text-[10px] leading-snug font-sans ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-600' : 'text-slate-300'}`}>
+                        {parsed.detail}
+                      </p>
+                    </div>
                   </div>
-                  <span className={`text-[7px] font-mono uppercase tracking-widest font-bold ${isLight ? 'text-neutral-450' : 'text-slate-500'}`}>Компонент 0{i+1}</span>
-                </div>
-                <div>
-                  {parsed.label ? (
-                    <h4 className={`text-[9.5px] font-display font-black uppercase tracking-tight mb-0.5 ${isLight ? 'text-neutral-950' : isCobalt ? 'text-slate-900' : 'text-white'}`}>{parsed.label}</h4>
-                  ) : null}
-                  <p className={`text-[9.5px] leading-snug font-sans ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-655' : 'text-slate-350'}`}>
-                    {parsed.detail}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-          {slide.image && (
-            <div 
-              className="rounded-xl overflow-hidden border border-white/10 relative flex flex-col justify-between bg-black/20"
-              style={{ minHeight: '80px', height: '100%' }}
-            >
-              <img src={slide.image} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={slide.imageDescription || "Solution Illustration"} />
-              {slide.imageDescription && (
-                <div className="absolute bottom-1 left-1 right-1 bg-black/75 backdrop-blur-sm p-1 rounded text-[7px] text-white truncate text-center leading-none">
-                  {slide.imageDescription}
-                </div>
-              )}
+                );
+              })}
             </div>
-          )}
-        </div>
+          }
+        />
 
         <div className={`flex items-center space-x-2 border p-1.5 rounded-lg text-left ${isLight ? 'bg-emerald-50/20 border-emerald-200/50' : 'bg-[#10b981]/5 border border-[#10b981]/15'}`}>
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0 animate-pulse"></span>
@@ -446,7 +379,14 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           )}
         </div>
 
-        {/* Elegant bento stats block */}
+        {slide.visualData?.metrics && slide.visualData.metrics.length >= 2 ? (
+          <SplitContentLayout
+            image={slide.image}
+            imageCaption={slide.imageDescription}
+            forExport={forExport}
+            left={<MetricBento metrics={slide.visualData.metrics} selectedStyle={selectedStyle} />}
+          />
+        ) : (
         <div className="grid grid-cols-3 gap-3 my-auto">
           {content.slice(0, slide.image ? 2 : 3).map((item, i) => {
             const parsed = parseBullet(item);
@@ -491,20 +431,11 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
               </div>
             );
           })}
-          {slide.image && (
-            <div 
-              className="rounded-xl overflow-hidden border border-white/10 relative flex flex-col justify-between bg-black/20"
-              style={{ minHeight: '80px', height: '100%' }}
-            >
-              <img src={slide.image} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={slide.imageDescription || "Market Illustration"} />
-              {slide.imageDescription && (
-                <div className="absolute bottom-1 left-1 right-1 bg-black/75 backdrop-blur-sm p-1 rounded text-[7px] text-white truncate text-center leading-none">
-                  {slide.imageDescription}
-                </div>
-              )}
-            </div>
+          {slide.image && !slide.visualData?.metrics?.length && (
+            <PremiumImage src={slide.image} alt={slide.imageDescription} caption={slide.imageDescription} variant="hero" forExport={forExport} />
           )}
         </div>
+        )}
 
         {content[3] ? (
           <div className={`text-[9.5px] border-t pt-1.5 flex items-center justify-between ${isLight ? 'border-neutral-200 text-neutral-600' : isCobalt ? 'border-blue-105 text-slate-600' : 'border-white/5 text-slate-400'}`}>
@@ -990,17 +921,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           </div>
 
           {slide.image && (
-            <div 
-              className="rounded-xl overflow-hidden border border-white/10 relative flex flex-col justify-between bg-black/20"
-              style={{ minHeight: '80px', height: '100%' }}
-            >
-              <img src={slide.image} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={slide.imageDescription || "Ask Illustration"} />
-              {slide.imageDescription && (
-                <div className="absolute bottom-1 left-1 right-1 bg-black/75 backdrop-blur-sm p-1 rounded text-[7px] text-white truncate text-center leading-none">
-                  {slide.imageDescription}
-                </div>
-              )}
-            </div>
+            <PremiumImage src={slide.image} alt={slide.imageDescription} caption={slide.imageDescription} variant="hero" forExport={forExport} className="my-auto" />
           )}
         </div>
 

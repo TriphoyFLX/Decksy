@@ -154,73 +154,113 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
             </button>
           </div>
           
-          {/* Image uploader region before presentation generation */}
-          <div className="bg-white/[0.035] p-3 rounded-2xl border border-white/8 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                Project visuals для агента
-              </span>
-              <label className="text-[9.5px] text-sky-400 hover:text-sky-300 font-mono font-semibold uppercase tracking-wider cursor-pointer flex items-center gap-1">
-                <span>➕ Добавить изображение</span>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
+          {/* Visual assets for deck */}
+          <div className="bg-white/[0.035] p-4 rounded-2xl border border-white/8 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-semibold text-slate-300 block">Фото и материалы</span>
+                <span className="text-[10px] text-slate-500">Команда, продукт, лого — вставятся в слайды автоматически</span>
+              </div>
+              <label className="text-[10px] text-white bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-1.5 rounded-full cursor-pointer shrink-0 transition-colors">
+                + Загрузить
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
+                    const files = Array.from(e.target.files || []);
+                    files.forEach((file, idx) => {
                       const reader = new FileReader();
                       reader.onloadend = () => {
-                        if (typeof reader.result === 'string') {
-                          setSessionImages(prev => [
-                            ...prev, 
-                            { 
-                              id: `img_${Date.now()}`, 
-                              image: reader.result, 
-                              description: "Главный экран приложения" 
-                            }
+                        if (typeof reader.result === "string") {
+                          setSessionImages((prev) => [
+                            ...prev,
+                            {
+                              id: `img_${Date.now()}_${idx}`,
+                              image: reader.result,
+                              description: "Скриншот продукта",
+                            },
                           ]);
                         }
                       };
                       reader.readAsDataURL(file);
-                    }
+                    });
+                    e.target.value = "";
                   }}
                 />
               </label>
             </div>
 
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                ["CEO / Основатель", "CEO — основатель проекта"],
+                ["Команда", "Фото команды, co-founder"],
+                ["Продукт", "Скриншот приложения / UI"],
+                ["Логотип", "Логотип бренда"],
+                ["Рынок", "График TAM / SAM / SOM"],
+              ].map(([label, desc]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = () => {
+                      const file = input.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (typeof reader.result === "string") {
+                          setSessionImages((prev) => [
+                            ...prev,
+                            { id: `img_${Date.now()}`, image: reader.result, description: desc },
+                          ]);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    };
+                    input.click();
+                  }}
+                  className="text-[10px] px-2.5 py-1 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-white/8 transition-colors cursor-pointer bg-transparent"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {sessionImages.length === 0 ? (
-              <p className="text-[9.5px] text-slate-600 italic">
-                Нет загруженных картинок к проекту. Добавьте схемы, скриншоты продукта или QR-коды, чтобы ИИ автоматически включил их в презентацию.
+              <p className="text-[10px] text-slate-600 text-center py-4 border border-dashed border-white/8 rounded-xl">
+                Загрузите фото команды, скриншоты продукта или логотип — они появятся на слайдах
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-32 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
                 {sessionImages.map((sImg, sIdx) => (
-                  <div key={sImg.id} className="flex gap-2 bg-black/40 border border-white/10 p-2 rounded relative group">
+                  <div key={sImg.id} className="relative group rounded-xl overflow-hidden border border-white/10 bg-black/40">
                     <button
                       type="button"
-                      onClick={() => setSessionImages(prev => prev.filter(item => item.id !== sImg.id))}
-                      className="absolute top-1 right-1 text-[9px] text-red-500 hover:text-red-400 font-mono z-10 cursor-pointer"
+                      onClick={() => setSessionImages((prev) => prev.filter((item) => item.id !== sImg.id))}
+                      className="absolute top-1 right-1 z-10 h-5 w-5 rounded-full bg-black/70 text-[10px] text-red-400 hover:text-red-300 cursor-pointer border-none"
                       title="Удалить"
                     >
-                      ✖
+                      ×
                     </button>
-                    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-black/50 border border-white/10 flex items-center justify-center">
-                      <img src={sImg.image} className="h-full w-full object-cover" alt="Thumb" referrerPolicy="no-referrer" />
+                    <div className="aspect-[4/3]">
+                      <img src={sImg.image} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                     </div>
-                    <div className="flex-grow space-y-1">
-                      <span className="text-[8px] font-mono text-slate-400 uppercase tracking-widest block font-bold">Изображение #{sIdx + 1}</span>
-                      <input
-                        type="text"
-                        value={sImg.description}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSessionImages(prev => prev.map(item => item.id === sImg.id ? { ...item, description: val } : item));
-                        }}
-                        placeholder="Описание (например: Продукт)..."
-                        className="w-full bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none focus:border-sky-400/30 font-sans"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={sImg.description}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSessionImages((prev) =>
+                          prev.map((item) => (item.id === sImg.id ? { ...item, description: val } : item))
+                        );
+                      }}
+                      placeholder={`Фото #${sIdx + 1}`}
+                      className="w-full bg-black/60 border-none border-t border-white/10 px-2 py-1.5 text-[9px] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                    />
                   </div>
                 ))}
               </div>
