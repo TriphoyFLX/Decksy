@@ -55,20 +55,20 @@ export const OutlinePage: React.FC<OutlinePageProps> = ({
           Назад
         </button>
         <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
-          Шаг 1 · План презентации
+          Шаг 3 · План презентации
         </span>
       </div>
 
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-white tracking-tight">Presentation outline</h1>
         <p className="text-sm text-slate-400">
-          Investor pitch: 12 слайдов (title + 11 бизнес-блоков). Заполните брендинг — ИИ не выдумает название.
+          Investor pitch: 12 слайдов. Данные из интервью — можно поправить перед генерацией.
         </p>
       </div>
 
       <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 space-y-3">
         <p className="text-[10px] font-mono uppercase tracking-widest text-violet-300 font-bold">
-          Брендинг и владелец
+          Брендинг из интервью
         </p>
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -115,6 +115,16 @@ export const OutlinePage: React.FC<OutlinePageProps> = ({
             onChange={(e) => onBrandingChange({ quote: e.target.value })}
             placeholder="Кофе, который объединяет соседей"
             className="w-full rounded-lg border border-white/10 bg-[#1a1a1c] px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-400/40"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-500">Пожелания по слайдам</label>
+          <textarea
+            value={branding.slideNotes || ""}
+            onChange={(e) => onBrandingChange({ slideNotes: e.target.value })}
+            placeholder="Например: на слайде команды — фото основателя, на продукте — скриншот приложения"
+            rows={2}
+            className="w-full rounded-lg border border-white/10 bg-[#1a1a1c] px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-400/40 resize-none"
           />
         </div>
         <div className="flex items-center gap-3">

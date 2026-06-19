@@ -69,7 +69,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           )}
         </h1>
         <p className="mt-4 text-sm sm:text-base text-slate-400 font-normal">
-          Опишите идею. Агент соберёт питч.
+          Опишите идею — агент проведёт интервью и соберёт план.
         </p>
       </div>
 

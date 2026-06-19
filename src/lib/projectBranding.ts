@@ -7,6 +7,7 @@ export interface ProjectBranding {
   founderRole: string;
   quote: string;
   logoImage?: string;
+  slideNotes?: string;
 }
 
 export const EMPTY_PROJECT_BRANDING: ProjectBranding = {
@@ -31,6 +32,8 @@ export function brandingContextForAI(branding?: ProjectBranding): string {
     branding.tagline?.trim() && `Tagline: "${branding.tagline.trim()}"`,
     branding.founderName?.trim() && `Founder: ${branding.founderName.trim()}, role: ${branding.founderRole || "Основатель"}`,
     branding.quote?.trim() && `Brand quote for title slide: "${branding.quote.trim()}"`,
+    branding.slideNotes?.trim() &&
+      `User wishes for specific slides (reflect in outline bullets): ${branding.slideNotes.trim()}`,
   ].filter(Boolean);
   if (!lines.length) {
     return `
@@ -95,15 +98,50 @@ function buildTitleSpeech(company: string, b: ProjectBranding, fallback: string)
   return fallback;
 }
 
+function pickBulletValue(bullets: string[], pattern: RegExp): string {
+  const line = bullets.find((b) => pattern.test(b));
+  if (!line) return "";
+  return line.replace(/^[^:]+:\s*/i, "").replace(/^«|»$/g, "").trim();
+}
+
 export function parseBrandingFromCanvas(canvas?: Record<string, any>): ProjectBranding {
   const b = canvas?.branding;
   const bullets = Array.isArray(b?.bullets) ? b.bullets : [];
+  const slideNotesBullets = bullets.filter((x: string) => /слайд|пожелан|хочу на/i.test(x));
+  const slideNotes = slideNotesBullets.join("\n") || bullets.slice(5).join("\n");
   return {
-    companyName: bullets[0] || b?.summary?.split("|")[0]?.trim() || "",
-    tagline: bullets[1] || "",
-    founderName: bullets[2]?.replace(/^основатель:\s*/i, "") || "",
-    founderRole: bullets[3] || "Основатель",
-    quote: bullets[4]?.replace(/^«|»$/g, "") || "",
+    companyName:
+      pickBulletValue(bullets, /назван|компан/i) ||
+      bullets[0]?.replace(/^название:\s*/i, "") ||
+      b?.summary?.split("|")[0]?.trim() ||
+      "",
+    tagline: pickBulletValue(bullets, /слоган|tagline/i) || bullets[1]?.replace(/^слоган:\s*/i, "") || "",
+    founderName:
+      pickBulletValue(bullets, /основатель|founder|ceo/i) ||
+      bullets[2]?.replace(/^основатель:\s*/i, "") ||
+      "",
+    founderRole: pickBulletValue(bullets, /роль|role/i) || bullets[3] || "Основатель",
+    quote: pickBulletValue(bullets, /цитат|quote/i) || bullets[4]?.replace(/^«|»$/g, "") || "",
+    slideNotes: slideNotes || undefined,
     logoImage: canvas?._logoImage,
+  };
+}
+
+export function mergeBrandingFromInterview(
+  canvas: Record<string, any> | undefined,
+  current: ProjectBranding,
+  sessionImages: { description: string; image: string }[] = []
+): ProjectBranding {
+  const fromCanvas = parseBrandingFromCanvas(canvas);
+  const logoImg = sessionImages.find((i) => /лого/i.test(i.description))?.image;
+  return {
+    ...current,
+    companyName: fromCanvas.companyName || current.companyName,
+    tagline: fromCanvas.tagline || current.tagline,
+    founderName: fromCanvas.founderName || current.founderName,
+    founderRole: fromCanvas.founderRole || current.founderRole,
+    quote: fromCanvas.quote || current.quote,
+    slideNotes: fromCanvas.slideNotes || current.slideNotes,
+    logoImage: logoImg || current.logoImage || fromCanvas.logoImage,
   };
 }

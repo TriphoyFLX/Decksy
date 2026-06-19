@@ -70,7 +70,7 @@ import { SlideConstructor } from "./components/SlideConstructor";
 import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, type DeckTemplateId } from "./lib/deckTheme";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide, DeckThemeCustom, ProjectBranding } from "./types";
 import { normalizeDeck, generateLocalDeck, SLIDE_TYPES } from "./lib/deckBuilder";
-import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING } from "./lib/projectBranding";
+import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, mergeBrandingFromInterview } from "./lib/projectBranding";
 import { enrichSlidesWithVisuals } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
 import {
@@ -971,8 +971,9 @@ export default function App() {
     return deckData;
   };
 
-  // Start outline flow (main path: intro → outline → templates → generate)
-  const fetchOutline = async () => {
+  // Interview → outline → templates → generate
+  const fetchOutline = async (brandingOverride?: ProjectBranding) => {
+    const branding = brandingOverride ?? projectBranding;
     setIsLoading(true);
     try {
       const response = await fetch("/api/generate_outline", {
@@ -981,19 +982,34 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ idea: idea.trim(), mode, branding: projectBranding }),
+        body: JSON.stringify({
+          idea: idea.trim(),
+          mode,
+          branding,
+          canvas,
+          messages: messages.map((m) => ({ sender: m.sender, text: m.text })),
+          sessionImages: sessionImages.map((s) => ({ id: s.id, description: s.description })),
+        }),
       });
       if (response.ok) {
         const data = await response.json();
         setPresentationOutline(data);
       } else {
-        setPresentationOutline(generateLocalOutline(idea.trim(), mode, projectBranding));
+        setPresentationOutline(generateLocalOutline(idea.trim(), mode, branding));
       }
     } catch {
-      setPresentationOutline(generateLocalOutline(idea.trim(), mode, projectBranding));
+      setPresentationOutline(generateLocalOutline(idea.trim(), mode, branding));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleProceedToOutline = async () => {
+    const mergedBranding = mergeBrandingFromInterview(canvas, projectBranding, sessionImages);
+    setProjectBranding(mergedBranding);
+    setPresentationOutline(null);
+    setScreen("outline");
+    await fetchOutline(mergedBranding);
   };
 
   const handleStartInterview = async () => {
@@ -1005,8 +1021,32 @@ export default function App() {
       return;
     }
     setPresentationOutline(null);
-    setScreen("outline");
-    await fetchOutline();
+    setProjectBranding(EMPTY_PROJECT_BRANDING);
+    setIsLoading(true);
+    setScreen("interview");
+    setCanvas(INITIAL_CANVAS);
+    setSessionImages([]);
+    setCurrentQuestionIndex(1);
+    setInvestorSentiment("skeptical");
+    setUnderlyingThoughts("Собираю данные о бренде и бизнесе — задам несколько коротких вопросов.");
+
+    const initialGreeting = `Привет! Идея: "${idea}". Сначала брендинг — ответьте по пунктам (•):
+• Точное название компании/проекта
+• Слоган или цитата для титульного слайда
+• Ваше имя и роль (основатель, CEO)
+• Пожелания по слайдам (например: «на слайде команды — фото основателя»)
+
+Загрузите лого и фото через кнопку «Фото» внизу чата.`;
+
+    const welcomeMsg: Message = {
+      id: "init-question",
+      sender: "investor",
+      text: initialGreeting,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setMessages([welcomeMsg]);
+    setIsLoading(false);
   };
 
   const handleBrandingChange = (patch: Partial<ProjectBranding>) => {
@@ -1025,7 +1065,9 @@ export default function App() {
 
   const handleRegenerateOutline = () => {
     if (idea.trim().length < 15) return;
-    fetchOutline();
+    const mergedBranding = mergeBrandingFromInterview(canvas, projectBranding, sessionImages);
+    setProjectBranding(mergedBranding);
+    fetchOutline(mergedBranding);
   };
 
   const handleUpdateOutlineSlide = (index: number, patch: Partial<OutlineSlide>) => {
@@ -1088,7 +1130,7 @@ export default function App() {
     setScreen("generating");
 
     try {
-      const initialMessages: Message[] = [
+      const initialMessages: Message[] = messages.length > 0 ? messages : [
         {
           id: "msg_outline",
           sender: "investor",
@@ -1109,7 +1151,7 @@ export default function App() {
           idea: idea.trim(),
           mode,
           messages: initialMessages,
-          canvas: INITIAL_CANVAS,
+          canvas: { ...canvas, _projectBranding: projectBranding },
           sessionImages: compressedImages,
           outline: presentationOutline,
           templateId: selectedTemplate,
@@ -1135,7 +1177,7 @@ export default function App() {
           prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev
         );
       }
-      const deckData = await finalizeDeckFromPayload(payload, idea.trim(), mode, INITIAL_CANVAS, sessionImages);
+      const deckData = await finalizeDeckFromPayload(payload, idea.trim(), mode, canvas, sessionImages);
       setScreen("deck");
       if (authToken) {
         saveDeckToDatabase(deckData);
@@ -1147,38 +1189,6 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleStartLegacyInterview = async () => {
-    if (!idea.trim()) return;
-    if (!authToken || !user) {
-      setAuthError("Войдите или зарегистрируйтесь, чтобы общаться с ИИ и создавать презентации.");
-      setAuthTab("login");
-      setShowAuthModal(true);
-      return;
-    }
-    setIsLoading(true);
-    setScreen("interview");
-    setCanvas(INITIAL_CANVAS);
-    setSessionImages([]);
-    setCurrentQuestionIndex(1);
-    setInvestorSentiment('skeptical');
-    setUnderlyingThoughts("Собираю факты для деки — задам несколько коротких вопросов.");
-    
-    const initialGreeting = `Привет! Идея: "${idea}". Сначала брендинг — ответьте по пунктам (•):
-• Точное название компании/проекта
-• Слоган или цитата
-• Ваше имя и роль`;
-
-    const welcomeMsg: Message = {
-      id: "init-question",
-      sender: "investor",
-      text: initialGreeting,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setMessages([welcomeMsg]);
-    setIsLoading(false);
   };
 
   const handleFastGenerateDeck = async (
@@ -1352,7 +1362,7 @@ export default function App() {
   };
 
   const isInterviewDoneMessage = (text: string) =>
-    /достаточно|автоматически соберу|соберу презентацию|интервью заверш|скачать файл pptx|поделиться ссылкой|разнести мой pitch/i.test(text);
+    /достаточно|автоматически соберу|соберу план|соберу презентацию|интервью заверш|скачать файл pptx|поделиться ссылкой|разнести мой pitch/i.test(text);
 
   const runGenerateDeck = async () => {
     if (user && user.role !== "admin") {
@@ -1423,7 +1433,7 @@ export default function App() {
     if (sessionImages.length === 0) {
       setShowImagePromptModal(true);
     } else {
-      setIsSelectingStyle(true);
+      handleProceedToOutline();
     }
   };
 
@@ -2951,7 +2961,17 @@ export default function App() {
           <div className="flex items-center space-x-2.5">
             <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
             <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
-              {screen === 'intro' ? "Новый проект" : screen === 'interview' ? "Уточняем детали" : screen === 'generating' ? "Собираем pitch deck..." : "Презентация"}
+              {screen === 'intro'
+                ? "Новый проект"
+                : screen === 'interview'
+                  ? "Интервью"
+                  : screen === 'outline'
+                    ? "План слайдов"
+                    : screen === 'templates'
+                      ? "Выбор шаблона"
+                      : screen === 'generating'
+                        ? "Собираем pitch deck..."
+                        : "Презентация"}
             </span>
           </div>
 
@@ -3047,7 +3067,7 @@ export default function App() {
               <div className="text-center space-y-2 relative z-10">
                 <div className="mx-auto inline-flex items-center space-x-1 border border-white/10 px-3 py-0.5 rounded-full uppercase tracking-widest font-mono text-[9px] text-sky-400">
                   <Image className="h-3 w-3" />
-                  <span>ШАГ 1.5 • ДОБАВЛЕНИЕ КАРТИНОК И СХЕМ</span>
+                  <span>ШАГ 2 • ДОБАВЛЕНИЕ КАРТИНОК</span>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white font-display">
                   Добавьте визуальные материалы к проекту
@@ -3158,22 +3178,22 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setShowImagePromptModal(false);
-                    setIsSelectingStyle(true);
+                    handleProceedToOutline();
                   }}
                   className="w-full sm:w-auto px-5 py-2.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors rounded uppercase text-[10px] font-bold tracking-widest cursor-pointer border border-white/5 text-center"
                 >
-                  {sessionImages.length === 0 ? "Пропустить этот шаг" : "Продолжить"}
+                  {sessionImages.length === 0 ? "Пропустить, к плану" : "К плану презентации"}
                 </button>
                 {sessionImages.length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
                       setShowImagePromptModal(false);
-                      setIsSelectingStyle(true);
+                      handleProceedToOutline();
                     }}
                     className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:opacity-90 transition-all font-bold uppercase text-[10px] tracking-widest cursor-pointer rounded flex items-center justify-center space-x-2"
                   >
-                    <span>Готово, к дизайну</span>
+                    <span>Готово, собрать план</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -3770,7 +3790,7 @@ export default function App() {
             onAddSlide={handleAddOutlineSlide}
             onRemoveSlide={handleRemoveOutlineSlide}
             onContinue={handleOutlineToTemplates}
-            onBack={() => setScreen('intro')}
+            onBack={() => setScreen('interview')}
             isPro={isWatermarkRemoved}
           />
         )}

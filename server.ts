@@ -805,9 +805,32 @@ const DECK_SLIDE_SCHEMA = `{
   "visualData": "Optional { layout, teamMembers: [{name, role}], metrics: [{label, value}] }"
 }`;
 
-async function generateOutlineWithAI(idea: string, mode: string, branding: any = null): Promise<any> {
+async function generateOutlineWithAI(
+  idea: string,
+  mode: string,
+  branding: any = null,
+  interviewContext: { canvas?: any; messages?: any[]; sessionImages?: any[] } = {}
+): Promise<any> {
   const slideTypeList = SLIDE_TYPES.map((t, i) => `${i + 1}. type="${t}"`).join("\n");
   const brandingCtx = brandingContextForAI(branding);
+
+  let interviewCtx = "";
+  if (interviewContext.canvas && Object.keys(interviewContext.canvas).length > 0) {
+    interviewCtx += `\nInterview canvas (facts from dialogue):\n${JSON.stringify(interviewContext.canvas, null, 2).slice(0, 4500)}`;
+  }
+  if (interviewContext.messages?.length) {
+    const chat = interviewContext.messages
+      .filter((m: any) => m.sender === "user")
+      .map((m: any) => `- ${m.text}`)
+      .join("\n");
+    if (chat) interviewCtx += `\nFounder answers from interview:\n${chat.slice(0, 3500)}`;
+  }
+  if (interviewContext.sessionImages?.length) {
+    interviewCtx += `\nUploaded images to consider in outline: ${interviewContext.sessionImages
+      .map((i: any) => i.description || "image")
+      .join(", ")}`;
+  }
+
   try {
     const result = await callLLM(
       `You are a business pitch deck outline generator. Return JSON only:
@@ -831,7 +854,7 @@ ${businessPromptForAI()}
 - Business pitch format for investors
 - Each non-title slide: 3-4 concise bullets (metrics only if user provided)
 - No buzzwords: moat, viral loops, patented AI`,
-      `Startup idea: ${idea}\nMode: ${mode}${brandingCtx}\nGenerate the 12-slide investor business outline.`,
+      `Startup idea: ${idea}\nMode: ${mode}${brandingCtx}${interviewCtx}\nGenerate the 12-slide investor business outline. Honor user slide wishes from branding/interview.`,
       3500
     );
     if (result?.slides?.length >= 8) {
@@ -2232,7 +2255,7 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
       3. Ask a follow-up or challenge ONLY when: answer is empty/vague, contradicts itself, or has an obvious red flag you disagree with.
       4. ONE question per turn maximum. Max 2 short sentences total in nextQuestion.
       5. Always ask the founder to reply in bullet points: end with "Ответьте по пунктам (• ...)" when asking something new.
-      6. If all canvas blocks are "compiled" OR userTurns >= ${modeLimits}: set interviewComplete=true and nextQuestion = "Отлично, данных достаточно! Сейчас автоматически соберу презентацию..." — do NOT mention PPTX/PDF buttons.
+      6. If all canvas blocks are "compiled" OR userTurns >= ${modeLimits}: set interviewComplete=true and nextQuestion = "Отлично, данных достаточно! Сейчас автоматически соберу план презентации..." — do NOT mention PPTX/PDF buttons.
 
       Return JSON:
       {
@@ -2278,8 +2301,8 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
     if (interviewComplete) {
       result.interviewComplete = true;
       result.nextQuestion =
-        "Отлично, данных достаточно! Сейчас автоматически соберу презентацию...";
-      result.underlyingThoughts = "Интервью завершено — запускаю генерацию деки.";
+        "Отлично, данных достаточно! Сейчас автоматически соберу план презентации...";
+      result.underlyingThoughts = "Интервью завершено — формирую план слайдов.";
     }
 
     res.json(result);
@@ -2294,13 +2317,20 @@ app.post("/api/generate_outline", authenticateToken, async (req, res) => {
   const idea = req.body.idea;
   const mode = req.body.mode || "investor";
   const branding = req.body.branding || null;
+  const canvas = req.body.canvas || null;
+  const messages = req.body.messages || [];
+  const sessionImages = req.body.sessionImages || [];
 
   if (!idea || String(idea).trim().length < 15) {
     return res.status(400).json({ error: "Опишите идею минимум в 15 символов." });
   }
 
   try {
-    const outline = await generateOutlineWithAI(String(idea).trim(), mode, branding);
+    const outline = await generateOutlineWithAI(String(idea).trim(), mode, branding, {
+      canvas,
+      messages,
+      sessionImages,
+    });
     res.json(outline);
   } catch (err: any) {
     console.error("API Error in /api/generate_outline:", err.message?.slice(0, 200));
@@ -2515,13 +2545,14 @@ function getMockInterviewResponse(messages: any[], mode: string, idea: string) {
 • Точное название компании/проекта
 • Слоган или цитата для титульного слайда
 • Ваше имя и роль (основатель, CEO)
+• Пожелания по слайдам (что хотите на конкретных слайдах)
 Ответьте по пунктам (•).`;
     } else if (turnIndex === 1) {
       nextQuestion = `Ок, брендинг записал. Теперь клиент и проблема: кто платит и какую боль решаете? Ответьте по пунктам (•).`;
     } else if (turnIndex < maxTurns) {
       nextQuestion = questions[turnIndex - 2] || questions[questions.length - 1];
     } else {
-      nextQuestion = `Отлично, данных достаточно! Сейчас автоматически соберу презентацию...`;
+      nextQuestion = `Отлично, данных достаточно! Сейчас автоматически соберу план презентации...`;
     }
   }
 
@@ -2547,7 +2578,7 @@ function getMockInterviewResponse(messages: any[], mode: string, idea: string) {
     nextQuestion,
     interviewComplete,
     investorSentiment: sentiment,
-    underlyingThoughts: interviewComplete ? "Интервью завершено — запускаю генерацию деки." : thoughts,
+    underlyingThoughts: interviewComplete ? "Интервью завершено — формирую план слайдов." : thoughts,
     canvasUpdates: {
       branding: {
         summary: "Брендинг и основатель",

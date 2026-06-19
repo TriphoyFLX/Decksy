@@ -72,7 +72,7 @@ export const TemplatePickerPage: React.FC<TemplatePickerPageProps> = ({
       <div className="grid lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-4">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1">Шаг 2</p>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1">Шаг 4 · Шаблон</p>
             <h1 className="text-2xl font-semibold text-white">Template preview</h1>
             <p className="text-sm text-slate-400 mt-1">
               {TEMPLATE_CATALOG[selectedTemplate].name} · {TEMPLATE_CATALOG[selectedTemplate].source}

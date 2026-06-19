@@ -78,6 +78,8 @@ export interface ProjectBranding {
   founderRole: string;
   quote: string;
   logoImage?: string;
+  /** Пожелания по конкретным слайдам из интервью */
+  slideNotes?: string;
 }
 
 export interface PitchDeck {

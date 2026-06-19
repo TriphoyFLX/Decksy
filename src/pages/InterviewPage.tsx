@@ -55,6 +55,9 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-300">Интервью</span>
           <span className="text-[10px] text-slate-500 font-mono uppercase px-2 py-0.5 rounded-full border border-white/10">
+            Шаг 1
+          </span>
+          <span className="text-[10px] text-slate-500 font-mono uppercase px-2 py-0.5 rounded-full border border-white/10">
             {mode}
           </span>
         </div>
@@ -185,7 +188,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
               disabled={isLoading}
               className="ml-auto text-[11px] font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-slate-200 disabled:opacity-40 cursor-pointer border-none transition-colors"
             >
-              Собрать pitch deck →
+              Собрать план →
             </button>
           </div>
 
