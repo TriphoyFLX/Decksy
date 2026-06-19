@@ -150,139 +150,6 @@ export function applyExportSafeStyles(root: HTMLElement) {
   });
 
   root.querySelectorAll<HTMLElement>("*").forEach((el) => {
-    const cls = typeof el.className === "string" ? el.className : "";
-    if (cls) {
-      const classes = cls.split(/\s+/).filter(Boolean);
-      
-      // Determine if this element has desktop grid columns
-      let hasDesktopColumns = false;
-      let desktopColClass = "";
-      for (const c of classes) {
-        if (c.includes("grid-cols-2") || c.includes("grid-cols-3") || c.includes("grid-cols-4")) {
-          hasDesktopColumns = true;
-          if (c.includes("grid-cols-2")) desktopColClass = "grid-cols-2";
-          if (c.includes("grid-cols-3")) desktopColClass = "grid-cols-3";
-          if (c.includes("grid-cols-4")) desktopColClass = "grid-cols-4";
-        }
-      }
-
-      let updatedClasses = classes.map((c) => {
-        let activeClass = c;
-        // Strip responsive prefixes
-        if (c.includes(":")) {
-          const parts = c.split(":");
-          const prefix = parts[0];
-          const actual = parts[1];
-          if (["sm", "md", "lg", "xl", "2xl"].includes(prefix)) {
-            activeClass = actual;
-          }
-        }
-        
-        // Remove mobile-only grid-cols-1 if we have a multi-column desktop layout
-        if (hasDesktopColumns && activeClass === "grid-cols-1") {
-          return "";
-        }
-        
-        // Match specific font size scaling
-        const textMap: Record<string, string> = {
-          'text-[7px]': 'text-[18px]',
-          'text-[7.5px]': 'text-[19px]',
-          'text-[8px]': 'text-[21px]',
-          'text-[8.5px]': 'text-[22px]',
-          'text-[9px]': 'text-[23px]',
-          'text-[9.5px]': 'text-[25px]',
-          'text-[10px]': 'text-[26px]',
-          'text-[10.5px]': 'text-[27px]',
-          'text-[11px]': 'text-[29px]',
-          'text-xs': 'text-[30px]',
-          'text-sm': 'text-[36px]',
-          'text-md': 'text-[42px]',
-          'text-base': 'text-[42px]',
-          'text-lg': 'text-[48px]',
-          'text-xl': 'text-[54px]',
-          'text-2xl': 'text-[62px]',
-          'text-3xl': 'text-[72px]',
-          'text-4xl': 'text-[82px]',
-          'text-5xl': 'text-[96px]',
-        };
-
-        if (textMap[activeClass]) return textMap[activeClass];
-
-        // Custom pixel check (e.g. text-[9.5px])
-        const customTextMatch = activeClass.match(/^text-\[(\d+\.?\d*)px\]$/);
-        if (customTextMatch) {
-          const originalSize = parseFloat(customTextMatch[1]);
-          const scaledSize = Math.round(originalSize * 2.6);
-          return `text-[${scaledSize}px]`;
-        }
-
-        const customLeadingMatch = activeClass.match(/^leading-\[(\d+\.?\d*)px\]$/);
-        if (customLeadingMatch) {
-          const originalSize = parseFloat(customLeadingMatch[1]);
-          const scaledSize = Math.round(originalSize * 2.6);
-          return `leading-[${scaledSize}px]`;
-        }
-
-        // Match standard spacings, widths, heights
-        const spacingMap: Record<string, string> = {
-          'gap-1': 'gap-[10px]',
-          'gap-1.5': 'gap-[15px]',
-          'gap-2': 'gap-[20px]',
-          'gap-2.5': 'gap-[24px]',
-          'gap-3': 'gap-[30px]',
-          'gap-4': 'gap-[40px]',
-          'gap-5': 'gap-[50px]',
-          'gap-6': 'gap-[60px]',
-          'p-1': 'p-[10px]',
-          'p-1.5': 'p-[15px]',
-          'p-2': 'p-[20px]',
-          'p-2.5': 'p-[25px]',
-          'p-3': 'p-[30px]',
-          'p-4': 'p-[40px]',
-          'p-5': 'p-[50px]',
-          'py-1': 'py-[10px]',
-          'py-1.5': 'py-[15px]',
-          'py-2': 'py-[20px]',
-          'px-2': 'px-[20px]',
-          'px-2.5': 'px-[25px]',
-          'px-3': 'px-[30px]',
-          'px-4': 'px-[40px]',
-          'pb-1': 'pb-[10px]',
-          'pb-1.5': 'pb-[15px]',
-          'pb-2': 'pb-[20px]',
-          'pt-1': 'pt-[10px]',
-          'pt-2': 'pt-[20px]',
-          'h-5': 'h-[48px]',
-          'w-5': 'w-[48px]',
-          'h-4': 'h-[38px]',
-          'w-4': 'w-[38px]',
-          'h-3': 'h-[28px]',
-          'w-3': 'w-[28px]',
-          'h-12': 'h-[110px]',
-          'w-12': 'w-[110px]',
-          'h-9': 'h-[80px]',
-          'w-9': 'w-[80px]',
-          'h-1.5': 'h-[15px]',
-          'w-1.5': 'w-[15px]',
-          'h-[100px]': 'h-[250px]',
-          'h-[50px]': 'h-[125px]',
-          'rounded-lg': 'rounded-[20px]',
-          'rounded-xl': 'rounded-[30px]',
-          'rounded-2xl': 'rounded-[40px]',
-        };
-
-        if (spacingMap[activeClass]) return spacingMap[activeClass];
-
-        return activeClass;
-      }).filter(Boolean);
-
-      if (hasDesktopColumns && !updatedClasses.includes(desktopColClass)) {
-        updatedClasses.push(desktopColClass);
-      }
-
-      el.className = updatedClasses.join(" ");
-    }
-
     const nextCls = typeof el.className === "string" ? el.className : "";
     const hasClipText =
       nextCls.includes("bg-clip-text") ||
@@ -312,19 +179,26 @@ export function applyExportSafeStyles(root: HTMLElement) {
   });
 }
 
+/** Base slide frame size before scale-up to 1280×720 export. */
 export const EXPORT_SLIDE_WIDTH = 1280;
 export const EXPORT_SLIDE_HEIGHT = 720;
+export const EXPORT_BASE_WIDTH = 512;
+export const EXPORT_BASE_HEIGHT = 288;
+export const EXPORT_FRAME_SCALE = EXPORT_SLIDE_WIDTH / EXPORT_BASE_WIDTH;
 
 export function getExportHtml2canvasOptions(element: HTMLElement) {
+  const w = element.offsetWidth || EXPORT_BASE_WIDTH;
+  const h = element.offsetHeight || EXPORT_BASE_HEIGHT;
+  const scale = Math.max(1, EXPORT_SLIDE_WIDTH / w);
   return {
-    scale: 2,
+    scale,
     useCORS: true,
-    backgroundColor: null,
+    backgroundColor: "#000000",
     logging: false,
-    width: EXPORT_SLIDE_WIDTH,
-    height: EXPORT_SLIDE_HEIGHT,
-    windowWidth: EXPORT_SLIDE_WIDTH,
-    windowHeight: EXPORT_SLIDE_HEIGHT,
+    width: w,
+    height: h,
+    windowWidth: w,
+    windowHeight: h,
     scrollX: 0,
     scrollY: 0,
     onclone: (clonedDoc: Document) => {

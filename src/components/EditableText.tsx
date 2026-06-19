@@ -86,7 +86,7 @@ export function EditableText({
       id="editable-text-container"
     >
       {value || (
-        <span className="text-zinc-500 italic">Нажмите для редактирования...</span>
+        <span className="opacity-0 select-none pointer-events-none" aria-hidden="true">.</span>
       )}
       <span className="absolute -right-5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-cyan-400 text-xs">
         ✏️

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react";
-import { Bot, Brain, CheckCircle2, Loader2, Send } from "lucide-react";
-import { motion } from "motion/react";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowUp, Brain, CheckCircle2, ChevronDown, ChevronUp, ImagePlus, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Message, PitchCanvas, Mode } from "../types";
 
 interface InterviewPageProps {
@@ -33,340 +33,260 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
   canvas,
 }) => {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [showMemory, setShowMemory] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
 
-  // Auto-scroll chat area on new message
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  const compiledCount = Object.values(canvas).filter((c) => c.status === "compiled").length;
+
   return (
-    <motion.div 
+    <motion.div
       id="screen-interview"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="grid lg:grid-cols-12 gap-6 py-2 overflow-hidden h-full max-h-[85vh]"
+      className="flex flex-col w-full max-w-4xl mx-auto h-[calc(100dvh-8rem)] min-h-[520px]"
     >
-      {/* LEFT COLUMN: AGENT CHAT */}
-      <div className="lg:col-span-7 flex flex-col justify-between bg-[#101012]/95 border border-white/10 rounded-[28px] p-5 shadow-2xl relative overflow-hidden h-[75vh]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.05),transparent_34%)] pointer-events-none" />
-        
-        {/* Agent header */}
-        <div className="relative z-10 border-b border-white/10 pb-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-11 w-11 rounded-2xl bg-white text-black flex items-center justify-center relative border border-white/10 flex-shrink-0 shadow-[0_16px_40px_rgba(255,255,255,0.08)]">
-              <Bot className="h-5 w-5" />
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-400 rounded-full border-2 border-[#101012]"></span>
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Decksy Agent</span>
-                <span className="font-mono text-[9px] text-slate-300 bg-white/8 border border-white/10 px-2 py-0.5 rounded-full uppercase font-bold tracking-tight">{mode} mode</span>
-              </h3>
-              <p className="text-[11px] text-slate-500 truncate max-w-[200px] sm:max-w-xs font-mono">{underlyingThoughts}</p>
-            </div>
-          </div>
-
-          <div className={`text-xs border px-3 py-1.5 rounded-full font-mono flex items-center space-x-1.5 ${currentSentiment.bg}`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse"></span>
-            <span>{currentSentiment.label}</span>
-          </div>
+      {/* Minimal top bar */}
+      <div className="flex items-center justify-between px-1 pb-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-300">Интервью</span>
+          <span className="text-[10px] text-slate-500 font-mono uppercase px-2 py-0.5 rounded-full border border-white/10">
+            {mode}
+          </span>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMemory((v) => !v)}
+            className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 transition-colors cursor-pointer bg-transparent"
+          >
+            <Brain className="h-3.5 w-3.5" />
+            Память {compiledCount}/8
+            {showMemory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          <span className={`text-[10px] border px-2.5 py-1 rounded-full font-mono hidden sm:inline ${currentSentiment.bg}`}>
+            {currentSentiment.label}
+          </span>
+        </div>
+      </div>
 
-        {/* Chat bubbles area */}
-        <div className="relative z-10 flex-grow overflow-y-auto py-4 space-y-5 px-1 my-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {/* Collapsible memory panel */}
+      <AnimatePresence>
+        {showMemory && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden shrink-0 mb-3"
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-2xl border border-white/10 bg-white/[0.03] max-h-48 overflow-y-auto">
+              {(Object.entries(canvas) as [string, any][]).map(([key, item]) => (
+                <div
+                  key={key}
+                  className={`rounded-xl p-2.5 border text-left ${
+                    item.status === "compiled"
+                      ? "bg-white/[0.06] border-white/15"
+                      : item.status === "thinking"
+                        ? "bg-white/[0.04] border-white/10 animate-pulse"
+                        : "bg-transparent border-white/5 opacity-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-[9px] font-semibold text-slate-300 truncate">{item.title}</span>
+                    {item.status === "compiled" && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0" />}
+                  </div>
+                  <p className="text-[9px] text-slate-500 line-clamp-2 leading-snug">
+                    {item.status === "compiled" ? item.summary : item.status === "thinking" ? "Анализирую..." : "Ожидание"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main chat — takes all available space */}
+      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-white/10 bg-[#141416]/80 overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-6">
+          {messages.length === 0 && (
+            <p className="text-center text-slate-500 text-sm py-12">Начните диалог — агент задаст вопросы по бизнесу</p>
+          )}
           {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {m.sender === 'user' ? (
-                <div className="flex gap-3 max-w-[86%] ml-auto flex-row-reverse">
-                  <div className="w-9 h-9 rounded-2xl bg-white flex-shrink-0 flex items-center justify-center border border-white/20">
-                    <span className="text-[10px] font-bold text-black font-mono uppercase">You</span>
-                  </div>
-                  <div className="bg-white text-black p-4 rounded-2xl rounded-tr-md border border-white/10 shadow-lg">
-                    <div className="text-sm text-black leading-relaxed whitespace-pre-line">{m.text}</div>
-                    <span className="block text-[9px] text-slate-500 mt-1.5 text-right font-mono uppercase tracking-widest">
-                      {m.timestamp}
-                    </span>
-                  </div>
+            <div key={m.id} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[92%] sm:max-w-[85%] ${m.sender === "user" ? "text-right" : "text-left"}`}>
+                <div
+                  className={`inline-block text-left px-4 py-3.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-line ${
+                    m.sender === "user"
+                      ? "bg-white text-black rounded-br-md"
+                      : "bg-white/[0.07] text-slate-100 border border-white/8 rounded-bl-md"
+                  }`}
+                >
+                  {m.text}
                 </div>
-              ) : (
-                <div className="flex gap-3 max-w-[88%]">
-                  <div className="w-9 h-9 rounded-2xl bg-white/8 flex-shrink-0 flex items-center justify-center border border-white/12">
-                    <Bot className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="space-y-2 flex-grow">
-                    <div className="bg-white/[0.055] p-4 rounded-2xl rounded-tl-md border border-white/8">
-                      <div className="text-sm leading-relaxed text-slate-100 whitespace-pre-line">{m.text}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] text-slate-500 font-mono">context updated</span>
-                      <span className="text-[9px] text-slate-600 font-mono">{m.timestamp}</span>
-                    </div>
-                  </div>
+                <div className={`text-[10px] text-slate-600 mt-1.5 font-mono ${m.sender === "user" ? "text-right" : ""}`}>
+                  {m.timestamp}
                 </div>
-              )}
+              </div>
             </div>
           ))}
           {isLoading && (
-            <div className="flex gap-3 max-w-[85%]">
-              <div className="w-9 h-9 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center border border-white/20 animate-pulse">
-                <Bot className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-white/[0.055] p-4 rounded-2xl rounded-tl-md border border-white/8 flex items-center space-x-2 text-slate-400 text-xs font-mono">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-                <span>Agent анализирует контекст...</span>
-              </div>
+            <div className="flex items-center gap-2 text-slate-500 text-sm pl-1">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>{underlyingThoughts || "Думаю..."}</span>
             </div>
           )}
           <div ref={chatEndRef} />
         </div>
 
-        {/* Chat Reply Area */}
-        <div className="relative z-10 border-t border-white/10 pt-4 space-y-3">
-          <div className="relative">
+        {/* Input area — ChatGPT style */}
+        <div className="shrink-0 border-t border-white/10 p-3 sm:p-4 space-y-3 bg-[#0d0d0f]/90">
+          <div className="relative flex items-end rounded-[1.5rem] border border-white/12 bg-[#2a2a2c] focus-within:border-white/25 transition-colors">
             <textarea
               id="interview-answer-input"
-              rows={2}
+              rows={3}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
               }}
-              placeholder="Дайте агенту больше контекста: клиент, боль, продукт, рынок, цифры... (Enter — отправить)"
-              className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl p-4 pr-36 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-white/30 resize-none text-xs leading-relaxed font-sans"
+              placeholder="Ответьте подробно: клиент, боль, продукт, как работает, цифры, конкуренты..."
+              className="w-full min-h-[72px] max-h-[200px] bg-transparent border-none rounded-[1.5rem] px-5 py-4 pr-14 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none resize-none leading-relaxed"
             />
             <button
               id="send-answer-btn"
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading}
-              className="absolute right-3 bottom-3.5 px-4 py-2 bg-white text-black font-bold uppercase text-[10px] rounded-xl hover:bg-slate-200 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+              className="absolute right-2.5 bottom-2.5 h-9 w-9 rounded-full bg-white text-black flex items-center justify-center disabled:opacity-30 hover:bg-slate-200 transition-colors cursor-pointer border-none"
+              aria-label="Отправить"
             >
-              <Send className="h-3 w-3" />
-              Send
+              <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
             </button>
           </div>
-          
-          {/* Visual assets for deck */}
-          <div className="bg-white/[0.035] p-4 rounded-2xl border border-white/8 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-semibold text-slate-300 block">Фото и материалы</span>
-                <span className="text-[10px] text-slate-500">Команда, продукт, лого — вставятся в слайды автоматически</span>
-              </div>
-              <label className="text-[10px] text-white bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-1.5 rounded-full cursor-pointer shrink-0 transition-colors">
-                + Загрузить
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    files.forEach((file, idx) => {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        if (typeof reader.result === "string") {
-                          setSessionImages((prev) => [
-                            ...prev,
-                            {
-                              id: `img_${Date.now()}_${idx}`,
-                              image: reader.result,
-                              description: "Скриншот продукта",
-                            },
-                          ]);
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    });
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                ["CEO / Основатель", "CEO — основатель проекта"],
-                ["Команда", "Фото команды, co-founder"],
-                ["Продукт", "Скриншот приложения / UI"],
-                ["Логотип", "Логотип бренда"],
-                ["Рынок", "График TAM / SAM / SOM"],
-              ].map(([label, desc]) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.onchange = () => {
-                      const file = input.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        if (typeof reader.result === "string") {
-                          setSessionImages((prev) => [
-                            ...prev,
-                            { id: `img_${Date.now()}`, image: reader.result, description: desc },
-                          ]);
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    };
-                    input.click();
-                  }}
-                  className="text-[10px] px-2.5 py-1 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-white/8 transition-colors cursor-pointer bg-transparent"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {sessionImages.length === 0 ? (
-              <p className="text-[10px] text-slate-600 text-center py-4 border border-dashed border-white/8 rounded-xl">
-                Загрузите фото команды, скриншоты продукта или логотип — они появятся на слайдах
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
-                {sessionImages.map((sImg, sIdx) => (
-                  <div key={sImg.id} className="relative group rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                    <button
-                      type="button"
-                      onClick={() => setSessionImages((prev) => prev.filter((item) => item.id !== sImg.id))}
-                      className="absolute top-1 right-1 z-10 h-5 w-5 rounded-full bg-black/70 text-[10px] text-red-400 hover:text-red-300 cursor-pointer border-none"
-                      title="Удалить"
-                    >
-                      ×
-                    </button>
-                    <div className="aspect-[4/3]">
-                      <img src={sImg.image} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
-                    </div>
-                    <input
-                      type="text"
-                      value={sImg.description}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSessionImages((prev) =>
-                          prev.map((item) => (item.id === sImg.id ? { ...item, description: val } : item))
-                        );
-                      }}
-                      placeholder={`Фото #${sIdx + 1}`}
-                      className="w-full bg-black/60 border-none border-t border-white/10 px-2 py-1.5 text-[9px] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPhotos((v) => !v)}
+              className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 cursor-pointer bg-transparent"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              Фото {sessionImages.length > 0 ? `(${sessionImages.length})` : ""}
+            </button>
             <button
               id="fast-generate-btn"
               onClick={handleGenerateDeck}
               disabled={isLoading}
-              className="flex-1 bg-white hover:bg-slate-200 text-black font-extrabold uppercase text-[10px] py-3.5 px-4 rounded-2xl cursor-pointer disabled:opacity-50 transition-colors tracking-widest"
+              className="ml-auto text-[11px] font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-slate-200 disabled:opacity-40 cursor-pointer border-none transition-colors"
             >
-              Compile pitch deck
+              Собрать pitch deck →
             </button>
-            <div className="flex items-center justify-center gap-2 opacity-40 px-2">
-              <div className="w-2 h-2 rounded-full bg-white"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest">Auto-Save</span>
-            </div>
           </div>
-        </div>
 
-      </div>
-
-      {/* RIGHT COLUMN: AGENT MEMORY */}
-      <div className="lg:col-span-5 flex flex-col justify-between bg-[#101012]/95 border border-white/10 rounded-[28px] p-5 shadow-xl h-[75vh]">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Brain className="h-4 w-4 text-slate-400" />
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold block">Agent Memory</h3>
-          </div>
-          <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-            Decksy Agent собирает контекст стартапа в память и постепенно компилирует секции будущего pitch deck.
-          </p>
-        </div>
-
-        {/* Canvas elements with visual statuses */}
-        <div className="flex-grow overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {(Object.entries(canvas) as [string, any][]).map(([key, item]) => {
-            const isLocked = item.status === 'locked';
-            const isThinking = item.status === 'thinking';
-            const isCompiled = item.status === 'compiled';
-
-            return (
-              <div
-                key={key}
-                className={`relative group rounded-2xl border p-4 overflow-hidden transition-all duration-155 ${
-                  isCompiled 
-                    ? "bg-white/[0.06] border-white/15 text-slate-100" 
-                    : isThinking 
-                    ? "bg-white/[0.045] border-white/20 text-slate-400 animate-pulse" 
-                    : "bg-white/[0.025] border-white/5 text-slate-600 opacity-45 grayscale"
-                }`}
+          <AnimatePresence>
+            {showPhotos && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
               >
-                {/* Left background indicator bar */}
-                {isCompiled && (
-                  <div className="absolute inset-y-0 left-0 bg-green-500/10 w-full z-0"></div>
-                )}
-                {isThinking && (
-                  <div className="absolute inset-y-0 left-0 bg-white/5 w-1/3 z-0"></div>
-                )}
-
-                <div className="relative z-10 flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-slate-300">
-                    {item.title}
-                  </span>
-
-                  {isCompiled ? (
-                    <span className="text-[9px] text-emerald-400 font-mono font-bold tracking-widest inline-flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      SAVED
-                    </span>
-                  ) : isThinking ? (
-                    <span className="text-[9px] text-amber-500 font-mono font-bold tracking-widest animate-pulse">
-                      THINKING
-                    </span>
-                  ) : (
-                    <span className="text-[9px] text-slate-600 font-mono">
-                      WAITING
-                    </span>
-                  )}
-                </div>
-
-                <div className="relative z-10">
-                  {isCompiled ? (
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-slate-300 leading-relaxed font-semibold">{item.summary}</p>
-                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc list-inside bg-black/30 p-2 rounded-xl border border-white/5">
-                        {item.bullets.map((bullet: string, bIdx: number) => (
-                          <li key={bIdx} className="leading-relaxed">{bullet}</li>
-                        ))}
-                      </ul>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3 space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      ["CEO", "CEO — основатель"],
+                      ["Команда", "Фото команды"],
+                      ["Продукт", "Скриншот продукта"],
+                      ["Лого", "Логотип"],
+                    ].map(([label, desc]) => (
+                      <label key={label} className="text-[10px] px-2.5 py-1 rounded-full border border-white/10 text-slate-400 hover:text-white cursor-pointer">
+                        + {label}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (typeof reader.result === "string") {
+                                setSessionImages((prev) => [
+                                  ...prev,
+                                  { id: `img_${Date.now()}`, image: reader.result, description: desc },
+                                ]);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    ))}
+                    <label className="text-[10px] px-2.5 py-1 rounded-full border border-dashed border-white/15 text-slate-500 hover:text-white cursor-pointer">
+                      Загрузить файлы
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          Array.from(e.target.files || []).forEach((file, idx) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (typeof reader.result === "string") {
+                                setSessionImages((prev) => [
+                                  ...prev,
+                                  { id: `img_${Date.now()}_${idx}`, image: reader.result, description: "Материал проекта" },
+                                ]);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          });
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {sessionImages.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {sessionImages.map((sImg, sIdx) => (
+                        <div key={sImg.id} className="shrink-0 w-24">
+                          <div className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                            <img src={sImg.image} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setSessionImages((prev) => prev.filter((i) => i.id !== sImg.id))}
+                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/80 text-red-400 text-xs border-none cursor-pointer"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <input
+                            value={sImg.description}
+                            onChange={(e) =>
+                              setSessionImages((prev) =>
+                                prev.map((i) => (i.id === sImg.id ? { ...i, description: e.target.value } : i))
+                              )
+                            }
+                            className="w-full mt-1 text-[8px] bg-transparent border-none text-slate-400 focus:outline-none"
+                            placeholder={`#${sIdx + 1}`}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <p className="text-[11px] font-mono text-slate-655">
-                      {isThinking 
-                        ? "Agent сопоставляет ответы с pitch deck методологией..." 
-                        : "Появится после уточнения контекста в диалоге."}
-                    </p>
                   )}
                 </div>
-              </div>
-            );
-          })}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-
       </div>
     </motion.div>
   );

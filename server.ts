@@ -13,6 +13,8 @@ import {
   isDeckComplete,
   SLIDE_TYPES,
 } from "./src/lib/deckBuilder";
+import { generateLocalOutline, outlineToDeckContext } from "./src/lib/outlineBuilder";
+import { brandingContextForAI, parseBrandingFromCanvas } from "./src/lib/projectBranding";
 import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
 import { assignDeckVariants } from "./src/lib/deckVariants";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -673,7 +675,7 @@ app.use("/api/auth/register", createRateLimiter("auth-register", {
   max: 10,
   message: "Слишком много регистраций с этого IP. Попробуйте позже.",
 }));
-app.use(["/api/interview", "/api/generate_deck", "/api/rewrite_slide"], createRateLimiter("ai", {
+app.use(["/api/interview", "/api/generate_deck", "/api/generate_outline", "/api/rewrite_slide"], createRateLimiter("ai", {
   windowMs: 60 * 60 * 1000,
   max: 40,
   message: "Слишком много ИИ-запросов за короткое время. Попробуйте позже.",
@@ -802,13 +804,62 @@ const DECK_SLIDE_SCHEMA = `{
   "visualData": "Optional { layout, teamMembers: [{name, role}], metrics: [{label, value}] }"
 }`;
 
+async function generateOutlineWithAI(idea: string, mode: string, branding: any = null): Promise<any> {
+  const slideTypeList = SLIDE_TYPES.map((t, i) => `${i + 1}. type="${t}"`).join("\n");
+  const brandingCtx = brandingContextForAI(branding);
+  try {
+    const result = await callLLM(
+      `You are a business pitch deck outline generator. Return JSON only:
+{
+  "title": "Company name from user branding ONLY",
+  "subtitle": "Tagline from user branding or idea",
+  "slides": [
+    { "id": "outline_1", "type": "title", "title": "...", "bullets": [] },
+    { "id": "outline_2", "type": "problem", "title": "...", "bullets": ["bullet 1", "bullet 2", "bullet 3"] }
+  ]
+}
+
+Generate exactly 10 slides. Types in strict order:
+${slideTypeList}
+
+Rules:
+- ALL text in Russian (company name can be English if user provided)
+- NEVER invent a brand/company name — use only user-provided name or "Название проекта"
+- Title slide bullets: founder name, quote, tagline from branding
+- Business pitch format for investors
+- Each non-title slide: 3-4 concise bullets (metrics only if user provided)
+- No buzzwords: moat, viral loops, patented AI`,
+      `Startup idea: ${idea}\nMode: ${mode}${brandingCtx}\nGenerate the 10-slide business outline.`,
+      3500
+    );
+    if (result?.slides?.length >= 8) {
+      const companyName = branding?.companyName?.trim() || result.title || "Название проекта";
+      return {
+        title: companyName,
+        subtitle: branding?.tagline?.trim() || result.subtitle || idea.slice(0, 120),
+        slides: result.slides.slice(0, 10).map((s: any, i: number) => ({
+          id: s.id || `outline_${i + 1}`,
+          type: s.type || SLIDE_TYPES[i],
+          title: i === 0 ? companyName : (s.title || ""),
+          bullets: Array.isArray(s.bullets) ? s.bullets : [],
+        })),
+      };
+    }
+  } catch (err: any) {
+    console.warn("Outline AI generation failed:", err.message?.slice(0, 120));
+  }
+  return generateLocalOutline(idea, mode, branding || undefined);
+}
+
 async function generateDeckWithAI(
   idea: string,
   mode: string,
   messages: any[],
   canvas: any,
   isFastGeneration: boolean,
-  sessionImages: any[] = []
+  sessionImages: any[] = [],
+  outline: any = null,
+  branding: any = null
 ): Promise<any | null> {
   const slideTypeList = SLIDE_TYPES.map((t, i) => `${i + 1}. type="${t}"`).join("\n");
 
@@ -833,11 +884,19 @@ If an image is assigned to a slide, you MUST write "speechScript" addressing or 
 `;
   }
 
+  const brandingCtx = brandingContextForAI(branding);
+
+  const outlineContext = outline?.slides?.length
+    ? `\nAPPROVED PRESENTATION OUTLINE (follow this structure — expand bullets into full slide content):\n${outlineToDeckContext(outline)}\n`
+    : "";
+
   const baseContext = `
 Startup Idea: ${idea}
 Interview Mode: ${mode}
+${brandingCtx}
 ${isFastGeneration ? "FAST GENERATION: Create a complete detailed pitch deck from the idea alone." : ""}
 ${!isFastGeneration ? `Conversation:\n${messages.map((m: any) => `${m.sender}: ${m.text}`).join("\n")}\n\nCanvas:\n${JSON.stringify(canvas, null, 2)}` : ""}
+${outlineContext}
 ${imageContext}
 `;
 
@@ -860,14 +919,23 @@ Schema:
 }
 
 Rules:
-- ALL text in Russian (startup name can be English)
-- Each slide MUST have 4-5 specific bullets with numbers, $ amounts, percentages
+- Title slide (type=title): MUST show companyName, tagline/subtitle, founderName, founderRole, brandQuote from branding. Fields: founderName, founderRole, brandQuote on slide object.
+- NEVER invent company/brand names (no "Ritual Coffee", no creative names). Use exact user name or "Название проекта".
+- If founder name unknown — leave founderName empty, do NOT invent a person.
+- Each slide MUST have 4-5 specific bullets with numbers, $ amounts, percentages — ONLY if user provided them in interview/canvas
 - Use format "Label: Value" for market/pricing bullets (e.g. "TAM: $4.2 млрд")
 - speechScript required for every slide
 - Vary slide titles and structures — avoid generic repeated phrasing across decks
 - Use distinct sectionLabel and badge text per slide
 - Assign unique angles: stats-heavy problem slide, product-demo solution, roadmap launch, etc.
-- СТРОГОЕ ПРАВИЛО: НЕ выдумывайте новые функции, фичи, интеграции или продукты, о которых не писал пользователь! Опирайтесь ТОЛЬКО на реальное описание идеи пользователя и его ответы в интервью/канвасе. Не фантазируйте лишнено во благо "обогащения" — пишите строго по делу!`,
+- СТРОГОЕ ПРАВИЛО: НЕ выдумывайте новые функции, фичи, интеграции или продукты, о которых не писал пользователь! Опирайтесь ТОЛЬКО на реальное описание идеи пользователя и его ответы в интервью/канвасе.
+- ЗАПРЕЩЕНО без доказательств: "патентуемая архитектура", "120k размеченных данных", "moat", "feedback loop", "pipeline", "viral loops", выдуманные ML-преимущества
+- Для marketplace/P2P: обязательно описать операционку — escrow/депозит, страхование/порча, верификация, споры, юридическое оформление (если пользователь упоминал)
+- Юнит-экономика: CAC/LTV/комиссия только из фактов интервью; если данных нет — пиши "требует валидации", не выдумывай цифры
+- Конкуренты: почему пользователь уйдёт с Avito/аналогов — конкретный механизм, не "нет доверия"
+- GTM: один реалистичный сценарий запуска (район, первые 100 пользователей), без "15 инфлюенсеров за 6 месяцев"
+- Риски: реальные операционные риски модели (кража, мошенничество, страховые кейсы), не "API dependency"
+- Пиши что делает пользователь за 10 секунд, а не абстрактные "инновации"`,
       `${baseContext}\nGenerate the complete 10-slide pitch deck.`,
       8000
     );
@@ -894,8 +962,8 @@ Rules:
         `Return JSON: { "slides": [ ${DECK_SLIDE_SCHEMA} x5 ] }
 Generate exactly 5 slides for a pitch deck. Types in order:
 ${typesForBatch}
-All text in Russian. 4-5 bullets per slide with specific metrics.
-СТРОГОЕ ПРАВИЛО: НЕ выдумывайте новые фичи, функции и интеграции, которых нет в описании пользователя и его ответах. Ссылайтесь только на реальные факты и ценности проекта.`,
+All text in Russian. 4-5 bullets per slide with specific metrics ONLY from user facts.
+СТРОГОЕ ПРАВИЛО: НЕ выдумывайте фичи и цифры. Без moat/pipeline/viral/патентов. Операционка, риски, GTM — реалистично.`,
         `${baseContext}\nGenerate ${batch.label}.`,
         1200
       );
@@ -922,8 +990,8 @@ All text in Russian. 4-5 bullets per slide with specific metrics.
     try {
       const slideResult = await callLLM(
         `Return JSON: { "slide": ${DECK_SLIDE_SCHEMA.replace("SLIDE_TYPE", SLIDE_TYPES[i])} }
-One slide only. type="${SLIDE_TYPES[i]}". Russian. 4 bullets with numbers/metrics.
-СТРОГОЕ ПРАВИЛО: НЕ выдумывайте новые функции или продукты, о которых не заявлял пользователь! Опирайтесь на реальное описание.`,
+One slide only. type="${SLIDE_TYPES[i]}". Russian. 4 bullets with numbers/metrics from user facts only.
+СТРОГОЕ ПРАВИЛО: НЕ выдумывайте функции или цифры. Без AI-хайпа и фейкового moat.`,
         `${baseContext}\nGenerate slide ${i + 1} (${SLIDE_TYPES[i]}).`,
         350
       );
@@ -2139,6 +2207,16 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
       Mode: ${mode.toUpperCase()} — ${modeInstructions}
       User answers so far: ${userTurns}. Hard limit: ${modeLimits} investor questions total.
 
+      QUESTION ORDER (follow canvas blocks in this priority):
+      1. branding — FIRST: exact company name, tagline/quote, founder name and role, logo if any
+      2. problem — paying customer and pain
+      3. solution — how product works
+      4. market — TAM/SAM, target segment
+      5. moneyModel — pricing, unit economics
+      6. competitors — differentiation
+      7. goToMarket — first 100 customers
+      8. risks — main risks and mitigation
+
       CORE RULES:
       1. If the founder's last answer is reasonable and covers the topic — briefly acknowledge ("Понял, фиксирую." / "Ок, записал.") and move to the NEXT unfilled canvas block. Do NOT dig deeper.
       2. If the founder's last answer is gibberish, off-topic, empty, or nonsense (e.g., "пкпкер", "фигня", meaningless keys, or random text without real content):
@@ -2164,7 +2242,8 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
           "moneyModel": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
           "competitors": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
           "goToMarket": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "risks": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" }
+          "risks": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "branding": { "summary": "Company name | tagline | founder", "bullets": ["Название: ...", "Слоган: ...", "Основатель: ..."], "status": "locked" | "thinking" | "compiled" }
         }
       }
 
@@ -2205,6 +2284,25 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
   }
 });
 
+// 1.5 API: Generate business presentation outline
+app.post("/api/generate_outline", authenticateToken, async (req, res) => {
+  const idea = req.body.idea;
+  const mode = req.body.mode || "investor";
+  const branding = req.body.branding || null;
+
+  if (!idea || String(idea).trim().length < 15) {
+    return res.status(400).json({ error: "Опишите идею минимум в 15 символов." });
+  }
+
+  try {
+    const outline = await generateOutlineWithAI(String(idea).trim(), mode, branding);
+    res.json(outline);
+  } catch (err: any) {
+    console.error("API Error in /api/generate_outline:", err.message?.slice(0, 200));
+    res.json(generateLocalOutline(String(idea).trim(), mode, branding || undefined));
+  }
+});
+
 // 2. API: Generate 10-Slide Pitch Deck and Roast Analysis
 app.post("/api/generate_deck", authenticateToken, async (req, res) => {
   const quota = await assertDeckGenerationAllowed((req as any).user.userId);
@@ -2217,30 +2315,46 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
   const messages = req.body.messages || [];
   const canvas = req.body.canvas || {};
   const sessionImages = req.body.sessionImages || [];
+  const outline = req.body.outline || null;
+  const templateId = req.body.templateId || null;
+  const branding = req.body.branding || null;
+  const canvasWithBranding = {
+    ...canvas,
+    _projectBranding: branding || parseBrandingFromCanvas(canvas),
+  };
 
   if (!idea) {
     return res.status(400).json({ error: "No startup idea provided." });
   }
 
-  const isFastGeneration = messages.length <= 1;
+  const isFastGeneration = messages.length <= 1 || Boolean(outline?.slides?.length);
   let aiDeck: any = null;
 
   try {
-    aiDeck = await generateDeckWithAI(idea, mode, messages, canvas, isFastGeneration, sessionImages);
+    aiDeck = await generateDeckWithAI(
+      idea,
+      mode,
+      messages,
+      canvasWithBranding,
+      isFastGeneration,
+      sessionImages,
+      outline,
+      branding || parseBrandingFromCanvas(canvas)
+    );
   } catch (err: any) {
     console.error("API Error in /api/generate_deck (using local generator):", err.message?.slice(0, 200));
   }
 
   const deck = normalizeDeck(
-    aiDeck || generateLocalDeck(idea, mode, canvas),
+    aiDeck || generateLocalDeck(idea, mode, canvasWithBranding),
     idea,
     mode,
-    canvas
+    canvasWithBranding
   );
 
   // Map session images systematically
   enrichSlidesWithVisuals(deck.slides, sessionImages);
-  assignDeckVariants(deck, idea, (req as any).user?.userId);
+  assignDeckVariants(deck, idea, (req as any).user?.userId, templateId || undefined);
 
   const updatedUser = await recordDeckGeneration((req as any).user.userId);
 
@@ -2359,7 +2473,7 @@ function getClarificationQuestion(turnIndex: number, idea: string): string {
     `Кажется, этот ответ не относится к вопросу. Давайте подробнее про рынок: кто ваш клиент, каков объем рынка (TAM/SAM) и откуда эти цифры? Ответьте по пунктам (•).`,
     `Не уловил суть ответа. Давайте сфокусируемся на монетизации: какая у вас бизнес-модель, цена и плановые показатели LTV/CAC? Ответьте по пунктам (•).`,
     `Ответ не содержит конкретики. Как вы планируете выходить на рынок (GTM)? Как вы получите первые 100 платящих клиентов? Ответьте по пунктам (•).`,
-    `Давайте вернемся к сути. Кто ваши ключевые конкуренты и в чём ваше кардинальное отличие (moat)? Ответьте по пунктам (•).`,
+    `Давайте вернемся к сути. Кто ваши ключевые конкуренты и почему пользователь уйдёт к вам, а не к ним? Опишите конкретный механизм (не «инновация»). Ответьте по пунктам (•).`,
     `Пожалуйста, ответьте на вопрос по существу. Каковы главные риски вашего стартапа и какой объем инвестиций вы ищете? Ответьте по пунктам (•).`
   ];
   return challenges[turnIndex - 1] || challenges[challenges.length - 1];
@@ -2383,19 +2497,24 @@ function getMockInterviewResponse(messages: any[], mode: string, idea: string) {
     `Ок, записал. Рынок: кто клиент, TAM/SAM, откуда цифры? Ответьте по пунктам (•).`,
     `Принято. Монетизация: модель, цена, LTV/CAC если есть. Ответьте по пунктам (•).`,
     `Понял. GTM: как получите первых 100 клиентов? Ответьте по пунктам (•).`,
-    `Ок. Конкуренты и ваше отличие — в чём moat? Ответьте по пунктам (•).`,
+    `Ок. Конкуренты и ваше отличие — что конкретно делает продукт лучше аналогов? Ответьте по пунктам (•).`,
     `Последний блок: главные риски и сколько инвестиций ищете? Ответьте по пунктам (•).`,
   ];
 
-  // We can cycle questions or show the completion prompt if turnIndex goes past our questions array
   let nextQuestion = "";
   if (isLastGibberish) {
     nextQuestion = getClarificationQuestion(turnIndex, idea);
   } else {
     if (turnIndex === 0) {
-      nextQuestion = `Идея: "${idea}". Отвечайте коротко, по пунктам (•). Первый блок — клиент и проблема: кто платит и какую боль решаете?`;
+      nextQuestion = `Идея: "${idea}". Первый блок — брендинг и владелец:
+• Точное название компании/проекта
+• Слоган или цитата для титульного слайда
+• Ваше имя и роль (основатель, CEO)
+Ответьте по пунктам (•).`;
+    } else if (turnIndex === 1) {
+      nextQuestion = `Ок, брендинг записал. Теперь клиент и проблема: кто платит и какую боль решаете? Ответьте по пунктам (•).`;
     } else if (turnIndex < maxTurns) {
-      nextQuestion = questions[turnIndex - 1] || questions[questions.length - 1];
+      nextQuestion = questions[turnIndex - 2] || questions[questions.length - 1];
     } else {
       nextQuestion = `Отлично, данных достаточно! Сейчас автоматически соберу презентацию...`;
     }
@@ -2425,6 +2544,15 @@ function getMockInterviewResponse(messages: any[], mode: string, idea: string) {
     investorSentiment: sentiment,
     underlyingThoughts: interviewComplete ? "Интервью завершено — запускаю генерацию деки." : thoughts,
     canvasUpdates: {
+      branding: {
+        summary: "Брендинг и основатель",
+        bullets: [
+          "Название: уточните у пользователя",
+          "Слоган: уточните у пользователя",
+          "Основатель: уточните у пользователя",
+        ],
+        status: turnIndex >= 1 ? "compiled" : "thinking",
+      },
       problem: {
         summary: `Фокусированная боль рынка в контексте: "${idea}"`,
         bullets: [
@@ -2441,7 +2569,7 @@ function getMockInterviewResponse(messages: any[], mode: string, idea: string) {
           "Встроенный ИИ-помощник минимизирует время выполнения задач",
           "Простота использования и мгновенный wow-эффект для пользователя"
         ],
-        status: turnIndex >= 2 ? "compiled" : "thinking"
+        status: turnIndex >= 3 ? "compiled" : "thinking"
       },
       market: {
         summary: "Растущий рынок цифровых B2B/B2C услуг",

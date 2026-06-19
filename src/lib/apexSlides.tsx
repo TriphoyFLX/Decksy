@@ -1,9 +1,58 @@
 import React from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  MapPin,
+  Users,
+  Wallet,
+  TrendingDown,
+  Coffee,
+  ImagePlus,
+  Zap,
+  Shield,
+  Target,
+  User,
+} from "lucide-react";
 import type { Slide } from "../types";
 import { PremiumImage } from "./slideVisuals";
+import { getConstructorStyle } from "../components/SlideConstructor";
+import type { SlideConstructorLayout } from "../types";
 
 const APEX_BLUE = "#0071e3";
 const APEX_GREEN = "#30d158";
+
+const PAIN_ICON_COLORS = [
+  { bg: "rgba(226,75,74,0.14)", fg: "#ff6b6b" },
+  { bg: "rgba(255,179,0,0.12)", fg: "#ffb340" },
+  { bg: "rgba(0,113,227,0.12)", fg: "#4da3ff" },
+  { bg: "rgba(48,209,88,0.1)", fg: "#30d158" },
+];
+
+function pickPainIcon(text: string, index: number): LucideIcon {
+  const t = text.toLowerCase();
+  if (/врем|час|минут|очеред|жд|долго/.test(t)) return Clock;
+  if (/цен|дорог|стоим|бюджет|денег|руб|₽|\$/.test(t)) return Wallet;
+  if (/район|гео|локац|адрес|рядом|мест/.test(t)) return MapPin;
+  if (/клиент|посетител|люд|аудитор|пользовател/.test(t)) return Users;
+  if (/качеств|вкус|уровен|сервис/.test(t)) return Coffee;
+  if (/конкурен|рынок|доля|потер/.test(t)) return TrendingDown;
+  return [AlertTriangle, Zap, Shield, Target][index % 4];
+}
+
+function extractMetricHint(text: string): string | null {
+  const delta = text.match(/(?:↑|↓)\s*[\d,.]+%?(?:\s*YoY)?/i);
+  if (delta) return delta[0];
+  const pct = text.match(/[\d,.]+\s*%/);
+  if (pct) return pct[0];
+  return null;
+}
+
+function shortInsight(text: string, max = 42): string {
+  const cleaned = text.replace(/^[^:]+:\s*/, "").trim();
+  if (!cleaned) return "";
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
+}
 
 export const ApexSectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <p className="text-[8px] sm:text-[9px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: APEX_BLUE }}>
@@ -26,92 +75,290 @@ export const ApexHero: React.FC<{
   badge?: React.ReactNode;
   content: string[];
   image?: string;
+  founderName?: React.ReactNode;
+  founderRole?: string;
+  brandQuote?: React.ReactNode;
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
-}> = ({ title, subtitle, badge, content, image, renderBullet }) => {
-  if (image) {
-    return (
-      <div className="relative h-full rounded-2xl overflow-hidden">
-        <PremiumImage src={image} variant="hero" className="absolute inset-0 !min-h-full !rounded-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/20" />
-        <div className="relative z-10 h-full flex flex-col justify-end p-4 sm:p-5 text-center">
-          {badge}
-          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase leading-none mb-2">{title}</div>
-          {subtitle && <p className="text-sm text-white/60 mb-3">{subtitle}</p>}
-          <div className="flex flex-wrap justify-center gap-2">
-            {content.slice(0, 3).map((c, i) => (
-              <span key={i} className="text-[9px] px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-white/85">
-                {renderBullet(c, i, "")}
+  forExport?: boolean;
+  constructorLayout?: SlideConstructorLayout;
+}> = ({
+  title,
+  subtitle,
+  badge,
+  content,
+  image,
+  founderName,
+  founderRole,
+  brandQuote,
+  renderBullet,
+  forExport,
+  constructorLayout,
+}) => {
+  const titleText = typeof title === "string" ? title : "";
+  const firstLetter = (titleText || "P").trim().charAt(0).toUpperCase();
+  const founderText =
+    typeof founderName === "string"
+      ? founderName
+      : content.find((c) => /основатель|ceo|founder|владелец/i.test(c))?.replace(/^[^:]+:\s*/i, "") || "";
+  const quoteText =
+    typeof brandQuote === "string"
+      ? brandQuote
+      : content.find((c) => c.startsWith("«") || c.includes("слоган"))?.replace(/^«|»$/g, "") || "";
+
+  const useConstructor = constructorLayout?.enabled;
+  const logoStyle = getConstructorStyle("logo", constructorLayout);
+  const titleStyle = getConstructorStyle("title", constructorLayout);
+  const subtitleStyle = getConstructorStyle("subtitle", constructorLayout);
+  const founderStyle = getConstructorStyle("founder", constructorLayout);
+  const quoteStyle = getConstructorStyle("quote", constructorLayout);
+
+  const titleSize = forExport ? "text-5xl" : "text-xl sm:text-2xl md:text-3xl";
+  const logoSize = forExport ? "w-20 h-20 text-3xl" : "w-16 h-16 sm:w-20 sm:h-20 text-2xl";
+
+  return (
+    <div className={`h-full relative ${useConstructor ? "" : "flex flex-col md:flex-row gap-4 items-stretch"}`}>
+      {/* Left: brand block */}
+      <div className={`${useConstructor ? "relative h-full w-full" : "flex-1 flex flex-col justify-center text-left min-w-0 z-10"}`}>
+        <div style={logoStyle} className={useConstructor ? "z-20" : "mb-3"}>
+          {image ? (
+            <div className={`${logoSize} rounded-2xl overflow-hidden border border-white/15 shadow-xl shrink-0`}>
+              <PremiumImage src={image} variant="thumb" className="!w-full !h-full !min-h-full !rounded-2xl object-cover" />
+            </div>
+          ) : (
+            <div
+              className={`${logoSize} rounded-2xl flex flex-col items-center justify-center font-bold text-white shrink-0 border border-dashed border-white/20`}
+              style={{
+                background: "linear-gradient(145deg, #1d6bf3, #0040c8)",
+                boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 16px 32px rgba(0,100,255,0.2)",
+              }}
+            >
+              <span className="text-2xl sm:text-3xl">{firstLetter}</span>
+              <span className="text-[6px] text-white/40 uppercase tracking-widest mt-0.5 flex items-center gap-0.5">
+                <ImagePlus className="h-2.5 w-2.5" />
+                лого
               </span>
-            ))}
+            </div>
+          )}
+        </div>
+
+        {badge && !useConstructor && <div className="mb-2">{badge}</div>}
+
+        <div style={titleStyle} className={useConstructor ? "z-20" : ""}>
+          <h1
+            className={`${titleSize} font-extrabold leading-[1.05] uppercase text-white tracking-tight`}
+            style={{ letterSpacing: "-0.03em" }}
+          >
+            {title || "Название проекта"}
+          </h1>
+        </div>
+
+        <div style={subtitleStyle} className={useConstructor ? "z-20" : "mt-2"}>
+          {subtitle ? (
+            <p className="text-[10px] sm:text-xs md:text-sm text-white/55 leading-relaxed max-w-md">
+              {subtitle}
+            </p>
+          ) : (
+            <p className="text-[10px] text-white/30 italic">Подзаголовок / слоган</p>
+          )}
+        </div>
+
+        <div style={founderStyle} className={`${useConstructor ? "z-20" : "mt-4"} flex items-center gap-2.5`}>
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border border-white/15"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            <User className="h-4 w-4 text-white/70" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] sm:text-sm font-semibold text-white truncate">
+              {founderText || "Имя владельца"}
+            </div>
+            <div className="text-[9px] text-white/40 uppercase tracking-wider">
+              {founderRole || "Основатель"}
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
 
-  const letter = String(typeof title === "string" ? title : "A").charAt(0).toUpperCase();
-  return (
-    <div className="h-full flex flex-col items-center justify-center text-center relative">
-      <div
-        className="w-14 h-14 rounded-[22px] flex items-center justify-center text-2xl font-bold text-white mb-4 shadow-2xl"
-        style={{
-          background: "linear-gradient(145deg, #1d6bf3, #0040c8)",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 24px 48px rgba(0,100,255,0.25)",
-        }}
-      >
-        {letter}
-      </div>
-      {badge}
-      <div
-        className="text-2xl sm:text-3xl md:text-4xl font-extrabold leading-none mb-3 uppercase"
-        style={{
-          background: "linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.55) 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          letterSpacing: "-0.04em",
-        }}
-      >
-        {title}
-      </div>
-      {subtitle && <p className="text-sm text-white/45 max-w-md mb-4 leading-relaxed">{subtitle}</p>}
-      <div className="grid grid-cols-3 gap-2 w-full max-w-lg mt-2">
-        {content.slice(0, 3).map((c, i) => (
-          <div key={i} className="rounded-xl p-2 border border-white/[0.06] bg-white/[0.03] text-left">
-            <span className="text-[7px] text-white/30 uppercase tracking-widest block mb-0.5">0{i + 1}</span>
-            <span className="text-[9px] text-white/70 leading-snug">{renderBullet(c, i, "")}</span>
+        {(quoteText || brandQuote) && (
+          <div
+            className={`${useConstructor ? "z-20" : "mt-3"} border-l-2 pl-3`}
+            style={{
+              ...(quoteStyle || {}),
+              borderColor: "rgba(0,113,227,0.5)",
+            }}
+          >
+            <p className="text-[9px] sm:text-[10px] text-white/50 italic leading-relaxed line-clamp-3">
+              {quoteText ? `«${quoteText}»` : brandQuote}
+            </p>
           </div>
-        ))}
+        )}
       </div>
+
+      {/* Right: decorative panel (hidden in constructor mode) */}
+      {!useConstructor && (
+        <div className="hidden md:flex w-[38%] shrink-0 items-center justify-center relative">
+          <div
+            className="w-full aspect-square max-h-[85%] rounded-[28px] border border-white/[0.08] relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #0a1628 0%, #1a1a2e 50%, #0f3460 100%)" }}
+          >
+            <div className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage: "radial-gradient(circle at 30% 40%, rgba(0,113,227,0.4), transparent 50%)",
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div
+                className="text-6xl font-black uppercase opacity-[0.07] text-white select-none"
+                style={{ letterSpacing: "-0.05em" }}
+              >
+                {firstLetter}
+              </div>
+            </div>
+            {image && (
+              <PremiumImage src={image} variant="hero" className="absolute inset-0 !min-h-full !rounded-[28px] opacity-40" />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+export const ApexPainGrid: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  image?: string;
+  cardImages?: string[];
+}> = ({ content, parseBullet, renderBullet, image, cardImages }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-auto">
+    {content.slice(0, 4).map((item, i) => {
+      const parsed = parseBullet(item);
+      const label = parsed.label || `Боль ${i + 1}`;
+      const detail = parsed.detail || item;
+      const Icon = pickPainIcon(`${label} ${detail}`, i);
+      const colors = PAIN_ICON_COLORS[i % PAIN_ICON_COLORS.length];
+      const cardImg = cardImages?.[i];
+      const metric = extractMetricHint(item);
+
+      return (
+        <div
+          key={i}
+          className="rounded-2xl p-2.5 sm:p-3 flex flex-col gap-1.5 border text-left min-h-0"
+          style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.07)" }}
+        >
+          {cardImg ? (
+            <div className="h-12 rounded-xl overflow-hidden shrink-0">
+              <PremiumImage src={cardImg} variant="thumb" className="!min-h-12 !h-12 !rounded-xl" />
+            </div>
+          ) : (
+            <div
+              className="h-12 rounded-xl border border-dashed flex flex-col items-center justify-center gap-0.5 shrink-0"
+              style={{ borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.02)" }}
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: colors.bg, color: colors.fg }}
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </div>
+              <span className="text-[6px] text-white/25 uppercase tracking-wider flex items-center gap-0.5">
+                <ImagePlus className="h-2.5 w-2.5" />
+                фото
+              </span>
+            </div>
+          )}
+          <h3 className="text-[9px] sm:text-[10px] font-semibold text-white leading-tight line-clamp-2">
+            {label}
+          </h3>
+          <p className="text-[8px] sm:text-[9px] text-white/45 leading-snug line-clamp-3 flex-1">
+            {renderBullet(detail, i, "")}
+          </p>
+          {metric ? (
+            <div className="text-[7px] font-medium mt-auto" style={{ color: APEX_GREEN }}>
+              {metric}
+            </div>
+          ) : (
+            <div className="text-[7px] text-white/25 mt-auto line-clamp-1 italic">
+              {shortInsight(detail) || "Ключевая боль"}
+            </div>
+          )}
+        </div>
+      );
+    })}
+    {image && content.length <= 3 && (
+      <div className="col-span-2 sm:col-span-4 rounded-2xl overflow-hidden h-20 sm:h-24 mt-0.5">
+        <PremiumImage src={image} variant="hero" className="!min-h-full !rounded-2xl" />
+      </div>
+    )}
+  </div>
+);
 
 export const ApexStatsGrid: React.FC<{
   content: string[];
   parseBullet: (s: string) => { label: string; detail: string };
   extractNumber: (s: string) => string;
-}> = ({ content, parseBullet, extractNumber }) => (
+}> = ({ content, parseBullet, extractNumber }) => {
+  const hasNumbers = content.slice(0, 4).some((item) => {
+    const parsed = parseBullet(item);
+    return Boolean(extractNumber(item) || parsed.detail.match(/[\d$%]+/));
+  });
+
+  if (!hasNumbers) {
+    return (
+      <ApexPainGrid
+        content={content}
+        parseBullet={parseBullet}
+        renderBullet={(t) => t}
+      />
+    );
+  }
+
+  return (
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-0.5 rounded-2xl overflow-hidden border border-white/[0.06] my-auto">
     {content.slice(0, 4).map((item, i) => {
       const parsed = parseBullet(item);
-      const num = extractNumber(item) || parsed.detail.match(/[\d$%]+/)?.[0] || "—";
+      const num = extractNumber(item) || parsed.detail.match(/[\d$%млнмлрдтыс]+/i)?.[0];
+      const label = parsed.label || parsed.detail;
+      const metric = extractMetricHint(item);
+      const Icon = pickPainIcon(item, i);
+      const colors = PAIN_ICON_COLORS[i % PAIN_ICON_COLORS.length];
+
       return (
         <div
           key={i}
           className="p-3 sm:p-4 flex flex-col gap-1 border-r border-white/[0.06] last:border-r-0 bg-white/[0.04] hover:bg-white/[0.07] transition-colors"
         >
-          <div className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-none">
-            {num}
-          </div>
-          <div className="text-[9px] text-white/45 leading-snug">{parsed.label || parsed.detail}</div>
-          <div className="text-[8px] font-medium mt-0.5" style={{ color: APEX_GREEN }}>
-            ↑ метрика
-          </div>
+          {num ? (
+            <>
+              <div className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-none">
+                {num}
+              </div>
+              <div className="text-[9px] text-white/45 leading-snug line-clamp-2">{label}</div>
+              {metric && (
+                <div className="text-[8px] font-medium mt-0.5" style={{ color: APEX_GREEN }}>
+                  {metric}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center mb-0.5"
+                style={{ background: colors.bg, color: colors.fg }}
+              >
+                <Icon className="h-4 w-4" strokeWidth={2.2} />
+              </div>
+              <div className="text-[9px] font-semibold text-white leading-snug line-clamp-2">{label}</div>
+              <div className="text-[8px] text-white/40 leading-snug line-clamp-2">{parsed.detail}</div>
+            </>
+          )}
         </div>
       );
     })}
   </div>
-);
+  );
+};
 
 export const ApexProductSplit: React.FC<{
   content: string[];
@@ -251,8 +498,124 @@ export const ApexCTA: React.FC<{
   </div>
 );
 
+export const SwissProblemGrid: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  image?: string;
+  cardImages?: string[];
+}> = ({ content, parseBullet, renderBullet, image, cardImages }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-auto">
+    {content.slice(0, 4).map((item, i) => {
+      const p = parseBullet(item);
+      const label = p.label || `Боль ${i + 1}`;
+      const detail = p.detail || item;
+      const Icon = pickPainIcon(`${label} ${detail}`, i);
+      const colors = PAIN_ICON_COLORS[i % PAIN_ICON_COLORS.length];
+      const cardImg = cardImages?.[i];
+      const metric = extractMetricHint(item);
+
+      return (
+        <div
+          key={i}
+          className="rounded-[18px] p-2.5 sm:p-3 border flex flex-col gap-1.5 text-left min-h-0"
+          style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}
+        >
+          {cardImg ? (
+            <div className="h-11 rounded-xl overflow-hidden shrink-0">
+              <PremiumImage src={cardImg} variant="thumb" className="!min-h-11 !h-11 !rounded-xl" />
+            </div>
+          ) : (
+            <div
+              className="h-11 rounded-xl border border-dashed flex flex-col items-center justify-center gap-0.5 shrink-0"
+              style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.02)" }}
+            >
+              <div
+                className="w-7 h-7 rounded-xl flex items-center justify-center"
+                style={{ background: colors.bg, color: colors.fg }}
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </div>
+              <span className="text-[6px] text-white/25 uppercase tracking-wider flex items-center gap-0.5">
+                <ImagePlus className="h-2.5 w-2.5" />
+                фото
+              </span>
+            </div>
+          )}
+          <h3 className="text-[9px] sm:text-[10px] font-semibold text-white leading-tight line-clamp-2">
+            {label}
+          </h3>
+          {detail && (
+            <p className="text-[8px] sm:text-[9px] text-white/45 leading-snug line-clamp-3 flex-1">
+              {renderBullet(detail, i, "")}
+            </p>
+          )}
+          {metric ? (
+            <div className="text-[7px] font-medium mt-auto" style={{ color: "#e24b4a" }}>
+              {metric}
+            </div>
+          ) : (
+            <div className="text-[7px] text-white/25 mt-auto line-clamp-1 italic">
+              {shortInsight(detail) || "Ключевая боль"}
+            </div>
+          )}
+        </div>
+      );
+    })}
+    {image && content.length <= 3 && (
+      <div className="col-span-2 sm:col-span-4 rounded-2xl overflow-hidden h-20 mt-0.5">
+        <PremiumImage src={image} variant="hero" className="!min-h-full !rounded-2xl" />
+      </div>
+    )}
+  </div>
+);
+
+export const SwissSolutionList: React.FC<{
+  content: string[];
+  image?: string;
+  imageCaption?: string;
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+}> = ({ content, image, imageCaption, parseBullet, renderBullet }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-auto items-center">
+    <div className="space-y-2">
+      {content.slice(0, 3).map((item, i) => {
+        const p = parseBullet(item);
+        return (
+          <div key={i} className="flex gap-2 items-start">
+            <div
+              className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm"
+              style={{ background: "rgba(0,113,227,0.12)", color: "#4da3ff" }}
+            >
+              {i + 1}
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-[10px] font-semibold text-white mb-0.5">{p.label || renderBullet(item, i, "")}</h3>
+              {p.detail && <p className="text-[9px] text-white/45 leading-snug line-clamp-2">{p.detail}</p>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    {image ? (
+      <PremiumImage src={image} caption={imageCaption} variant="hero" />
+    ) : (
+      <div
+        className="aspect-[4/3] rounded-3xl border border-dashed flex items-center justify-center text-[9px] text-white/30"
+        style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.18)" }}
+      >
+        Скриншот продукта
+      </div>
+    )}
+  </div>
+);
+
 export function shouldUseApexLayout(slide: Slide): boolean {
   return slide.visualData?.template === "apex" || slide.visualData?.template === "swiss";
+}
+
+export function isSwissTemplate(slide: Slide): boolean {
+  return slide.visualData?.template === "swiss";
 }
 
 export const ApexSlideContent: React.FC<{
@@ -266,6 +629,7 @@ export const ApexSlideContent: React.FC<{
   parseBullet: (s: string) => { label: string; detail: string };
   extractNumber: (s: string) => string;
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  forExport?: boolean;
 }> = ({
   slide,
   index,
@@ -277,12 +641,21 @@ export const ApexSlideContent: React.FC<{
   parseBullet,
   extractNumber,
   renderBullet,
+  forExport,
 }) => {
   const type = slide.type;
   const variant = slide.visualData?.variant || "";
+  const swiss = isSwissTemplate(slide);
+  const slideBg = swiss
+    ? "linear-gradient(to bottom, #050505, #0a0a0a)"
+    : "linear-gradient(to bottom, #000000, #050505)";
 
   return (
-    <div className="h-full flex flex-col py-1 relative">
+    <div
+      className="h-full w-full min-h-0 overflow-hidden rounded-xl"
+      style={{ background: slideBg }}
+    >
+    <div className="h-full flex flex-col py-1 relative min-h-0 overflow-hidden">
       <div
         className="absolute inset-0 pointer-events-none opacity-40"
         style={{
@@ -307,23 +680,56 @@ export const ApexSlideContent: React.FC<{
             badge={badge}
             content={content}
             image={slide.image}
+            founderName={slide.founderName}
+            founderRole={slide.founderRole}
+            brandQuote={slide.brandQuote}
             renderBullet={renderBullet}
+            forExport={forExport}
+            constructorLayout={slide.visualData?.constructorLayout}
           />
         )}
 
-        {(type === "problem" || (type === "market" && variant === "metric-row")) && (
+        {type === "problem" &&
+          (swiss ? (
+            <SwissProblemGrid
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              image={slide.image}
+              cardImages={slide.visualData?.images}
+            />
+          ) : (
+            <ApexPainGrid
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              image={slide.image}
+              cardImages={slide.visualData?.images}
+            />
+          ))}
+
+        {type === "market" && variant === "metric-row" && (
           <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
         )}
 
-        {type === "solution" && (
-          <ApexProductSplit
-            content={content}
-            image={slide.image}
-            imageCaption={slide.imageDescription}
-            parseBullet={parseBullet}
-            renderBullet={renderBullet}
-          />
-        )}
+        {type === "solution" &&
+          (swiss ? (
+            <SwissSolutionList
+              content={content}
+              image={slide.image}
+              imageCaption={slide.imageDescription}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+            />
+          ) : (
+            <ApexProductSplit
+              content={content}
+              image={slide.image}
+              imageCaption={slide.imageDescription}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+            />
+          ))}
 
         {type === "market" && variant !== "metric-row" && slide.visualData?.metrics && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 my-auto">
@@ -355,6 +761,7 @@ export const ApexSlideContent: React.FC<{
             <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
           )}
       </div>
+    </div>
     </div>
   );
 };

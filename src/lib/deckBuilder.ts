@@ -1,4 +1,5 @@
 import { PitchDeck, Slide } from "../types";
+import { resolveCompanyName, type ProjectBranding } from "./projectBranding";
 
 export const SLIDE_TYPES: Slide["type"][] = [
   "title",
@@ -61,7 +62,7 @@ function extractStartupName(idea: string): string {
   }
 
   const label = raw.charAt(0).toUpperCase() + raw.slice(1);
-  return label.length >= 3 ? `${label} AI` : "PitchFlow AI";
+  return label.length >= 3 ? label : "Название проекта";
 }
 
 function hashIdea(idea: string): number {
@@ -84,7 +85,8 @@ function formatMoney(base: number): string {
 
 export function generateLocalDeck(idea: string, mode: string, canvas?: Record<string, any>): PitchDeck {
   const seed = hashIdea(idea);
-  const name = extractStartupName(idea);
+  const branding = canvas?._projectBranding as ProjectBranding | undefined;
+  const name = branding?.companyName?.trim() || resolveCompanyName(branding || { companyName: "", tagline: "", founderName: "", founderRole: "", quote: "" }, idea);
   const tam = pick([2.1, 4.5, 8.2, 12.0, 25.0, 40.0], seed) * 1_000_000_000;
   const sam = tam * pick([0.08, 0.12, 0.15, 0.18], seed);
   const som = sam * pick([0.05, 0.08, 0.1, 0.12], seed);
@@ -117,13 +119,19 @@ export function generateLocalDeck(idea: string, mode: string, canvas?: Record<st
     {
       type: "title",
       title: name,
-      subtitle: `Инновационное решение в области: ${idea}`,
+      subtitle: branding?.tagline?.trim() || idea.slice(0, 100),
+      founderName: branding?.founderName?.trim(),
+      founderRole: branding?.founderRole?.trim() || "Основатель",
+      brandQuote: branding?.quote?.trim(),
+      image: branding?.logoImage,
+      badge: "PITCH DECK",
       content: [
-        "Инвестиционная презентация Seed-раунда",
-        `Сгенерировано в режиме ${mode.toUpperCase()}`,
-        "Готово к демонстрации инвесторам",
-      ],
-      speechScript: `Добрый день! Меня зовут основатель ${name}. Сегодня я представляю проект, который решает острую проблему: ${idea}. Мы создали продукт, который уже показывает сильный product-market fit и готов к масштабированию. Давайте разберём, почему это возможность для инвесторов.`,
+        branding?.founderName ? `${branding.founderRole || "Основатель"}: ${branding.founderName}` : "",
+        branding?.quote ? `«${branding.quote}»` : "",
+      ].filter(Boolean),
+      speechScript: branding?.founderName
+        ? `Добрый день! Меня зовут ${branding.founderName}, я ${branding.founderRole || "основатель"} ${name}. Представляю проект: ${idea}.`
+        : `Добрый день! Представляю проект: ${idea}. Покажу проблему, решение и бизнес-модель.`,
     },
     {
       type: "problem",
@@ -274,11 +282,18 @@ function normalizeSlide(raw: Partial<Slide> | undefined, index: number, idea: st
     type: SLIDE_TYPES.includes(type) ? type : SLIDE_TYPES[index],
     title: raw?.title?.trim() || fallback.title,
     subtitle: raw?.subtitle?.trim() || fallback.subtitle,
-    content: content.length >= 3 ? content : fallback.content,
+    content: index === 0
+      ? (content.length ? content : fallback.content)
+      : content.length >= 3
+        ? content
+        : fallback.content,
     speechScript: raw?.speechScript?.trim() || fallback.speechScript,
     visualData: { ...fallback.visualData, ...raw?.visualData },
     image: raw?.image ?? fallback.image,
     imageDescription: raw?.imageDescription ?? fallback.imageDescription,
+    founderName: raw?.founderName?.trim() || fallback.founderName,
+    founderRole: raw?.founderRole?.trim() || fallback.founderRole,
+    brandQuote: raw?.brandQuote?.trim() || fallback.brandQuote,
     badge: raw?.badge || fallback.badge,
     sectionLabel: raw?.sectionLabel || fallback.sectionLabel,
   };

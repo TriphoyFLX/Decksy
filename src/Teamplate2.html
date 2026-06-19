@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[Project Name] — Presentation Template</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --gray-50: #f9f9f9;
+    --gray-100: #f2f2f2;
+    --gray-200: #e5e5e5;
+    --gray-400: #a3a3a3;
+    --gray-600: #737373;
+    --gray-800: #2a2a2a;
+    --gray-900: #111111;
+    --blue: #0071e3;
+    --green: #30d158;
+    --transition: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    background: var(--black);
+    color: var(--white);
+    overflow: hidden;
+  }
+
+  #slides-wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 56px 60px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.55s var(--transition), transform 0.55s var(--transition);
+    pointer-events: none;
+    overflow-y: auto;
+  }
+
+  .slide.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
+  .slide.exit-left { opacity: 0; transform: translateX(-60px); }
+
+  /* placeholder marker style — visually flags editable text */
+  .ph {
+    outline: 1px dashed rgba(0,113,227,0.35);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  /* Navigation */
+  #nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(30,30,30,0.75);
+    backdrop-filter: blur(24px) saturate(1.8);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 10px 20px;
+  }
+
+  .nav-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: white; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); }
+  .nav-btn:active { transform: scale(0.95); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .nav-dots { display: flex; gap: 5px; align-items: center; max-width: 280px; overflow-x: auto; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transition: all 0.3s; cursor: pointer; flex-shrink: 0;
+  }
+  .dot.active { width: 18px; border-radius: 3px; background: white; }
+
+  .nav-count {
+    font-size: 12px; color: rgba(255,255,255,0.4);
+    min-width: 38px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+
+  /* Common building blocks */
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.45);
+    margin-bottom: 16px;
+  }
+  .section-label {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #0071e3; margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: clamp(28px, 3.6vw, 46px); font-weight: 700;
+    letter-spacing: -0.03em; line-height: 1.12; margin-bottom: 36px; color: white;
+  }
+  .slide-kicker {
+    position: absolute; top: 40px; left: 60px;
+    font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 0.06em;
+  }
+  .slide-page {
+    position: absolute; top: 40px; right: 60px;
+    font-size: 12px; color: rgba(255,255,255,0.25); font-variant-numeric: tabular-nums;
+  }
+
+  .btn-primary {
+    background: #0071e3; color: white; border: none;
+    padding: 14px 28px; border-radius: 980px; font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-primary:hover { background: #0077ed; }
+  .btn-ghost {
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.75); padding: 14px 28px; border-radius: 980px;
+    font-size: 15px; font-weight: 500; cursor: pointer;
+  }
+
+  .placeholder-box {
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.025), rgba(255,255,255,0.025) 10px, rgba(255,255,255,0.045) 10px, rgba(255,255,255,0.045) 20px);
+    border: 1px dashed rgba(255,255,255,0.18);
+    border-radius: 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; color: rgba(255,255,255,0.3);
+  }
+  .placeholder-box .ph-icon { font-size: 28px; opacity: 0.5; }
+  .placeholder-box .ph-text { font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+  .placeholder-box .ph-sub { font-size: 11px; color: rgba(255,255,255,0.18); }
+
+  /* ===== Slide 1: Cover ===== */
+  #slide-1 { background: #000; text-align: center; }
+  .logo-mark {
+    width: 72px; height: 72px; margin: 0 auto 28px;
+    background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.25);
+    border-radius: 22px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600; letter-spacing: 0.04em;
+  }
+  .hero-title {
+    font-size: clamp(44px, 6.4vw, 80px); font-weight: 800; line-height: 0.98;
+    letter-spacing: -0.04em;
+    background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.6) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 20px;
+  }
+  .hero-sub {
+    font-size: 17px; color: rgba(255,255,255,0.5); max-width: 480px;
+    line-height: 1.6; margin: 0 auto 36px;
+  }
+  .hero-meta {
+    display: flex; gap: 24px; justify-content: center; margin-top: 40px;
+    font-size: 12px; color: rgba(255,255,255,0.3);
+  }
+  .glow { position: absolute; border-radius: 50%; filter: blur(100px); pointer-events: none; opacity: 0.22; }
+  .glow-blue { background: #0062c7; }
+  .glow-purple { background: #6c00c7; }
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px; pointer-events: none;
+  }
+
+  /* ===== Slide 2: Agenda ===== */
+  #slide-2 { background: #0a0a0a; }
+  .agenda-list { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 2px; }
+  .agenda-item {
+    display: flex; align-items: center; gap: 24px;
+    padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.2s;
+  }
+  .agenda-item:hover { background: rgba(255,255,255,0.03); }
+  .agenda-num { font-size: 13px; color: rgba(255,255,255,0.25); font-weight: 600; width: 28px; }
+  .agenda-title { font-size: 16px; font-weight: 500; flex: 1; }
+  .agenda-tag { font-size: 12px; color: rgba(255,255,255,0.3); }
+
+  /* ===== Slide 3: Problem ===== */
+  #slide-3 { background: #050505; }
+  .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 900px; }
+  .problem-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 28px 22px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .problem-icon {
+    width: 40px; height: 40px; border-radius: 12px; background: rgba(226,75,74,0.12);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; color: #e24b4a;
+  }
+  .problem-card h3 { font-size: 15px; font-weight: 600; }
+  .problem-card p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.55; }
+
+  /* ===== Slide 4: Solution ===== */
+  #slide-4 { background: #080808; }
+  .solution-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; width: 100%; max-width: 1000px; }
+  .solution-list { display: flex; flex-direction: column; gap: 22px; }
+  .solution-item { display: flex; gap: 16px; align-items: flex-start; }
+  .solution-icon {
+    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(0,113,227,0.12); display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #4da3ff;
+  }
+  .solution-text h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .solution-text p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.55; }
+
+  /* ===== Slide 5: Product / Mockup ===== */
+  #slide-5 { background: #050505; }
+  .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; width: 100%; max-width: 980px; }
+  .product-visual {
+    aspect-ratio: 4/3; border-radius: 24px;
+    background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* ===== Slide 6: Stats ===== */
+  #slide-6 { background: #0a0a0a; }
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; width: 100%; max-width: 900px;
+    border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.04); padding: 32px 26px; display: flex; flex-direction: column; gap: 8px;
+    border-right: 1px solid rgba(255,255,255,0.06); transition: background 0.2s;
+  }
+  .stat-card:last-child { border-right: none; }
+  .stat-card:hover { background: rgba(255,255,255,0.07); }
+  .stat-num { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; color: white; line-height: 1; }
+  .stat-num span { color: #0071e3; }
+  .stat-label { font-size: 12px; color: rgba(255,255,255,0.45); }
+  .stat-delta { font-size: 11px; color: #30d158; font-weight: 500; margin-top: 2px; }
+
+  /* ===== Slide 7: Market chart ===== */
+  #slide-7 { background: #080808; }
+  .chart-layout { width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr 260px; gap: 40px; align-items: start; }
+  .chart-container {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px; padding: 28px;
+  }
+  .legend-list { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .legend-item {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .legend-dot-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { font-size: 12px; color: rgba(255,255,255,0.55); }
+  .legend-val { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .legend-change { font-size: 11px; color: #30d158; }
+
+  /* ===== Slide 8: Second chart (bar/comparison) ===== */
+  #slide-8 { background: #050505; }
+  .bar-chart-container {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px; padding: 28px; width: 100%; max-width: 880px;
+  }
+
+  /* ===== Slide 9: Business model / how it works ===== */
+  #slide-9 { background: #0a0a0a; }
+  .flow-row { display: flex; align-items: center; gap: 0; width: 100%; max-width: 900px; }
+  .flow-step {
+    flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 26px 20px; display: flex; flex-direction: column; gap: 10px; text-align: center;
+  }
+  .flow-step .step-num {
+    width: 32px; height: 32px; border-radius: 50%; background: rgba(0,113,227,0.12); color: #4da3ff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; margin: 0 auto;
+  }
+  .flow-step h3 { font-size: 14px; font-weight: 600; }
+  .flow-step p { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+  .flow-arrow { color: rgba(255,255,255,0.2); font-size: 18px; padding: 0 14px; flex-shrink: 0; }
+
+  /* ===== Slide 10: Team ===== */
+  #slide-10 { background: #030303; }
+  .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; width: 100%; max-width: 900px; }
+  .team-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px; padding: 26px 18px; text-align: center; transition: background 0.2s, transform 0.2s;
+  }
+  .team-card:hover { background: rgba(255,255,255,0.06); transform: translateY(-3px); }
+  .avatar {
+    width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 14px;
+    background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.3);
+  }
+  .team-name { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  .team-role { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+  /* ===== Slide 11: Testimonials ===== */
+  #slide-11 { background: #050505; }
+  .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 900px; }
+  .testi-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 26px 22px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .testi-quote { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+  .testi-person { display: flex; align-items: center; gap: 10px; }
+  .testi-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.06);
+    border: 1px dashed rgba(255,255,255,0.2); flex-shrink: 0;
+  }
+  .testi-name { font-size: 12px; font-weight: 600; }
+  .testi-role { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+  /* ===== Slide 12: Pricing ===== */
+  #slide-12 { background: #080808; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 860px; }
+  .price-card {
+    border-radius: 24px; padding: 32px 26px; display: flex; flex-direction: column;
+    border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03); transition: transform 0.2s;
+  }
+  .price-card:hover { transform: translateY(-3px); }
+  .price-card.featured { background: #0071e3; border-color: transparent; }
+  .price-plan { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px; }
+  .price-card.featured .price-plan { color: rgba(255,255,255,0.7); }
+  .price-amount { font-size: 42px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 5px; }
+  .price-period { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 24px; }
+  .price-card.featured .price-period { color: rgba(255,255,255,0.6); }
+  .price-divider { height: 1px; background: rgba(255,255,255,0.08); margin-bottom: 22px; }
+  .price-card.featured .price-divider { background: rgba(255,255,255,0.2); }
+  .price-features { list-style: none; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+  .price-features li { display: flex; align-items: center; gap: 9px; font-size: 12px; color: rgba(255,255,255,0.6); }
+  .price-card.featured .price-features li { color: rgba(255,255,255,0.85); }
+  .check {
+    width: 17px; height: 17px; border-radius: 50%; background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 9px;
+  }
+  .price-card.featured .check { background: rgba(255,255,255,0.2); }
+  .price-btn {
+    margin-top: 24px; padding: 12px; border-radius: 980px; font-size: 13px; font-weight: 500;
+    text-align: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.15);
+    background: transparent; color: white; transition: background 0.2s;
+  }
+  .price-btn:hover { background: rgba(255,255,255,0.08); }
+  .price-card.featured .price-btn { background: white; color: #0071e3; border-color: transparent; }
+
+  /* ===== Slide 13: Roadmap ===== */
+  #slide-13 { background: #040404; }
+  .roadmap-track { width: 100%; max-width: 860px; display: flex; flex-direction: column; position: relative; }
+  .roadmap-line {
+    position: absolute; left: 119px; top: 20px; bottom: 20px; width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.12) 10%, rgba(255,255,255,0.12) 90%, transparent);
+  }
+  .roadmap-item { display: grid; grid-template-columns: 120px 1fr; gap: 24px; padding: 16px 0; align-items: start; }
+  .roadmap-date { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); text-align: right; padding-top: 12px; letter-spacing: 0.05em; }
+  .roadmap-content {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 16px 20px; position: relative; transition: background 0.2s;
+  }
+  .roadmap-content:hover { background: rgba(255,255,255,0.06); }
+  .roadmap-content::before {
+    content: ''; position: absolute; left: -32px; top: 16px; width: 10px; height: 10px;
+    border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.06);
+  }
+  .roadmap-content.done::before { background: #30d158; border-color: rgba(48,209,88,0.3); }
+  .roadmap-content.current::before { background: #0071e3; border-color: rgba(0,113,227,0.35); }
+  .roadmap-phase { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #0071e3; margin-bottom: 3px; }
+  .roadmap-content.done .roadmap-phase { color: #30d158; }
+  .roadmap-heading { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  .roadmap-desc { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+
+  /* ===== Slide 14: Competitive comparison table ===== */
+  #slide-14 { background: #050505; }
+  .compare-table { width: 100%; max-width: 880px; border-collapse: collapse; }
+  .compare-table th, .compare-table td {
+    padding: 14px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .compare-table th { color: rgba(255,255,255,0.4); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .compare-table td { color: rgba(255,255,255,0.7); }
+  .compare-table th:first-child, .compare-table td:first-child { color: rgba(255,255,255,0.45); }
+  .compare-table .col-us { background: rgba(0,113,227,0.06); }
+  .compare-yes { color: #30d158; }
+  .compare-no { color: rgba(255,255,255,0.2); }
+
+  /* ===== Slide 15: Financials / use of funds ===== */
+  #slide-15 { background: #080808; }
+  .funds-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; width: 100%; max-width: 960px; }
+  .funds-list { display: flex; flex-direction: column; gap: 16px; }
+  .funds-item { display: flex; align-items: center; gap: 14px; }
+  .funds-bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .funds-bar-fill { height: 100%; border-radius: 4px; background: #0071e3; }
+  .funds-label { font-size: 13px; width: 130px; color: rgba(255,255,255,0.6); }
+  .funds-pct { font-size: 13px; font-weight: 600; width: 36px; text-align: right; }
+  .pie-placeholder {
+    aspect-ratio: 1; border-radius: 50%; max-width: 280px; margin: 0 auto;
+    background: conic-gradient(#0071e3 0% 40%, #30d158 40% 65%, #ff9f0a 65% 85%, rgba(255,255,255,0.08) 85% 100%);
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .pie-placeholder::after {
+    content: ''; position: absolute; width: 60%; height: 60%; border-radius: 50%; background: #080808;
+  }
+
+  /* ===== Slide 16: Closing / CTA ===== */
+  #slide-16 { background: #000; text-align: center; }
+  .cta-badge {
+    display: inline-block; background: rgba(0,113,227,0.12); border: 1px solid rgba(0,113,227,0.25);
+    color: #4da3ff; font-size: 11px; font-weight: 600; padding: 6px 16px; border-radius: 100px;
+    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 24px;
+  }
+  .cta-title {
+    font-size: clamp(36px, 5.4vw, 68px); font-weight: 800; line-height: 0.98; letter-spacing: -0.04em;
+    background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.5) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 18px;
+  }
+  .cta-sub { font-size: 16px; color: rgba(255,255,255,0.4); margin-bottom: 40px; max-width: 440px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+  .contact-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .contact-item {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+    padding: 14px 22px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: rgba(255,255,255,0.6);
+  }
+  .contact-icon {
+    width: 32px; height: 32px; border-radius: 10px; background: rgba(0,113,227,0.15);
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+
+  #progress { position: fixed; top: 0; left: 0; height: 2px; background: #0071e3; transition: width 0.4s var(--transition); z-index: 200; }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<div id="slides-wrapper">
+
+  <!-- 1 — COVER -->
+  <div class="slide active" id="slide-1">
+    <div class="glow glow-blue" style="width:600px;height:600px;top:-200px;right:-100px;"></div>
+    <div class="glow glow-purple" style="width:400px;height:400px;bottom:-150px;left:-100px;"></div>
+    <div class="bg-grid"></div>
+    <div style="position:relative;z-index:1;text-align:center;width:100%;max-width:700px;">
+      <div class="logo-mark ph">Logo</div>
+      <p class="eyebrow ph">[Presentation type] · [Date] · [Confidential]</p>
+      <h1 class="hero-title ph">Project<br>Name</h1>
+      <p class="hero-sub ph">[One sentence describing what this is and why it matters — the elevator pitch for the whole deck.]</p>
+      <div style="display:inline-flex;gap:12px;align-items:center;">
+        <button class="btn-primary">[Primary action]</button>
+        <button class="btn-ghost">[Secondary action]</button>
+      </div>
+      <div class="hero-meta ph">
+        <span>[Author / Team name]</span>
+        <span>[Company name]</span>
+        <span>[contact@email.com]</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 — AGENDA -->
+  <div class="slide" id="slide-2">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">02 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:760px;">
+      <p class="section-label">Agenda</p>
+      <h2 class="section-title ph">What we'll cover today</h2>
+      <div class="agenda-list">
+        <div class="agenda-item"><span class="agenda-num">01</span><span class="agenda-title ph">[Agenda item one]</span><span class="agenda-tag ph">[Slide 3]</span></div>
+        <div class="agenda-item"><span class="agenda-num">02</span><span class="agenda-title ph">[Agenda item two]</span><span class="agenda-tag ph">[Slide 4–5]</span></div>
+        <div class="agenda-item"><span class="agenda-num">03</span><span class="agenda-title ph">[Agenda item three]</span><span class="agenda-tag ph">[Slide 6]</span></div>
+        <div class="agenda-item"><span class="agenda-num">04</span><span class="agenda-title ph">[Agenda item four]</span><span class="agenda-tag ph">[Slide 7–8]</span></div>
+        <div class="agenda-item"><span class="agenda-num">05</span><span class="agenda-title ph">[Agenda item five]</span><span class="agenda-tag ph">[Slide 9–10]</span></div>
+        <div class="agenda-item"><span class="agenda-num">06</span><span class="agenda-title ph">[Agenda item six]</span><span class="agenda-tag ph">[Slide 11–16]</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 — PROBLEM -->
+  <div class="slide" id="slide-3">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">03 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">The Problem</p>
+      <h2 class="section-title ph">[The core problem you're solving]</h2>
+      <div class="problem-grid">
+        <div class="problem-card">
+          <div class="problem-icon">!</div>
+          <h3 class="ph">[Pain point one]</h3>
+          <p class="ph">[Short description of this pain point and why it matters to your audience.]</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-icon">!</div>
+          <h3 class="ph">[Pain point two]</h3>
+          <p class="ph">[Short description of this pain point and why it matters to your audience.]</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-icon">!</div>
+          <h3 class="ph">[Pain point three]</h3>
+          <p class="ph">[Short description of this pain point and why it matters to your audience.]</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 — SOLUTION -->
+  <div class="slide" id="slide-4">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">04 / 16</div>
+    <div class="solution-layout" style="position:relative;z-index:1;">
+      <div>
+        <p class="section-label">The Solution</p>
+        <h2 class="section-title ph" style="margin-bottom:28px;">[Your solution, in one line]</h2>
+        <div class="solution-list">
+          <div class="solution-item">
+            <div class="solution-icon">1</div>
+            <div class="solution-text"><h3 class="ph">[Solution pillar one]</h3><p class="ph">[How this solves the problem, in plain terms.]</p></div>
+          </div>
+          <div class="solution-item">
+            <div class="solution-icon">2</div>
+            <div class="solution-text"><h3 class="ph">[Solution pillar two]</h3><p class="ph">[How this solves the problem, in plain terms.]</p></div>
+          </div>
+          <div class="solution-item">
+            <div class="solution-icon">3</div>
+            <div class="solution-text"><h3 class="ph">[Solution pillar three]</h3><p class="ph">[How this solves the problem, in plain terms.]</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="placeholder-box" style="aspect-ratio:4/3;">
+        <div class="ph-icon">▢</div>
+        <div class="ph-text">Graphic / Photo</div>
+        <div class="ph-sub">1200 × 900 recommended</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 — PRODUCT / MOCKUP -->
+  <div class="slide" id="slide-5">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">05 / 16</div>
+    <div class="product-layout" style="position:relative;z-index:1;">
+      <div class="product-visual">
+        <div class="ph-icon">▢</div>
+        <div class="ph-text">Graphic / Photo</div>
+        <div class="ph-sub">Product screenshot or illustration</div>
+      </div>
+      <div>
+        <p class="section-label">How it works</p>
+        <h2 class="section-title ph" style="margin-bottom:24px;">[Product or feature name]</h2>
+        <p class="ph" style="font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;margin-bottom:20px;">[2–3 sentence description of the product, feature, or service shown here — what it does and who it's for.]</p>
+        <ul style="display:flex;flex-direction:column;gap:10px;list-style:none;">
+          <li class="ph" style="font-size:13px;color:rgba(255,255,255,0.5);">— [Key capability one]</li>
+          <li class="ph" style="font-size:13px;color:rgba(255,255,255,0.5);">— [Key capability two]</li>
+          <li class="ph" style="font-size:13px;color:rgba(255,255,255,0.5);">— [Key capability three]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 — STATS -->
+  <div class="slide" id="slide-6">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">06 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">By the numbers</p>
+      <h2 class="section-title ph">[Headline about your traction or scale]</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-num ph">00<span>X</span></div>
+          <div class="stat-label ph">[Metric label one]</div>
+          <div class="stat-delta ph">[+0% change]</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num ph">$0<span>0M</span></div>
+          <div class="stat-label ph">[Metric label two]</div>
+          <div class="stat-delta ph">[+0% change]</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num ph">00<span>%</span></div>
+          <div class="stat-label ph">[Metric label three]</div>
+          <div class="stat-delta ph">[+0pts change]</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num ph">0<span>min</span></div>
+          <div class="stat-label ph">[Metric label four]</div>
+          <div class="stat-delta ph">[change description]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 — LINE CHART -->
+  <div class="slide" id="slide-7">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">07 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">Growth</p>
+      <h2 class="section-title ph" style="margin-bottom:28px;">[Headline describing the trend]</h2>
+      <div class="chart-layout">
+        <div class="chart-container"><canvas id="lineChart" height="220"></canvas></div>
+        <div class="legend-list">
+          <div class="legend-item">
+            <div class="legend-dot-row"><div class="legend-dot" style="background:#0071e3;"></div><span class="legend-name ph">[Series one]</span></div>
+            <div class="legend-val ph">[Value]</div>
+            <div class="legend-change ph">[+0% change]</div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot-row"><div class="legend-dot" style="background:#30d158;"></div><span class="legend-name ph">[Series two]</span></div>
+            <div class="legend-val ph">[Value]</div>
+            <div class="legend-change ph">[+0% change]</div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot-row"><div class="legend-dot" style="background:rgba(255,255,255,0.2);"></div><span class="legend-name ph">[Series three]</span></div>
+            <div class="legend-val ph">[Value]</div>
+            <div class="legend-change ph">[+0% change]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 — BAR CHART -->
+  <div class="slide" id="slide-8">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">08 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">Comparison</p>
+      <h2 class="section-title ph" style="margin-bottom:28px;">[Headline comparing categories]</h2>
+      <div class="bar-chart-container"><canvas id="barChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 9 — HOW IT WORKS / FLOW -->
+  <div class="slide" id="slide-9">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">09 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">Business model</p>
+      <h2 class="section-title ph" style="margin-bottom:32px;">[How the process or model works]</h2>
+      <div class="flow-row">
+        <div class="flow-step"><div class="step-num">1</div><h3 class="ph">[Step one]</h3><p class="ph">[Short description]</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="step-num">2</div><h3 class="ph">[Step two]</h3><p class="ph">[Short description]</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="step-num">3</div><h3 class="ph">[Step three]</h3><p class="ph">[Short description]</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="step-num">4</div><h3 class="ph">[Step four]</h3><p class="ph">[Short description]</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 — TEAM -->
+  <div class="slide" id="slide-10">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">10 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">Team</p>
+      <h2 class="section-title ph" style="margin-bottom:32px;">[Headline about your team]</h2>
+      <div class="team-grid">
+        <div class="team-card"><div class="avatar ph">Photo</div><div class="team-name ph">[Full name]</div><div class="team-role ph">[Role / title]</div></div>
+        <div class="team-card"><div class="avatar ph">Photo</div><div class="team-name ph">[Full name]</div><div class="team-role ph">[Role / title]</div></div>
+        <div class="team-card"><div class="avatar ph">Photo</div><div class="team-name ph">[Full name]</div><div class="team-role ph">[Role / title]</div></div>
+        <div class="team-card"><div class="avatar ph">Photo</div><div class="team-name ph">[Full name]</div><div class="team-role ph">[Role / title]</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 — TESTIMONIALS -->
+  <div class="slide" id="slide-11">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">11 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+      <p class="section-label">What people say</p>
+      <h2 class="section-title ph" style="margin-bottom:28px;">[Headline about social proof]</h2>
+      <div class="testi-grid">
+        <div class="testi-card">
+          <p class="testi-quote ph">"[Short quote from a customer or partner about their experience.]"</p>
+          <div class="testi-person"><div class="testi-avatar ph"></div><div><div class="testi-name ph">[Name]</div><div class="testi-role ph">[Title, Company]</div></div></div>
+        </div>
+        <div class="testi-card">
+          <p class="testi-quote ph">"[Short quote from a customer or partner about their experience.]"</p>
+          <div class="testi-person"><div class="testi-avatar ph"></div><div><div class="testi-name ph">[Name]</div><div class="testi-role ph">[Title, Company]</div></div></div>
+        </div>
+        <div class="testi-card">
+          <p class="testi-quote ph">"[Short quote from a customer or partner about their experience.]"</p>
+          <div class="testi-person"><div class="testi-avatar ph"></div><div><div class="testi-name ph">[Name]</div><div class="testi-role ph">[Title, Company]</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 — PRICING -->
+  <div class="slide" id="slide-12">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">12 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:860px;">
+      <p class="section-label">Pricing</p>
+      <h2 class="section-title ph" style="margin-bottom:32px;">[Headline about pricing]</h2>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-plan ph">[Plan name]</div>
+          <div class="price-amount ph">$00</div>
+          <div class="price-period ph">[billing period]</div>
+          <div class="price-divider"></div>
+          <ul class="price-features">
+            <li><div class="check">✓</div><span class="ph">[Feature one]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature two]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature three]</span></li>
+          </ul>
+          <button class="price-btn">[Action]</button>
+        </div>
+        <div class="price-card featured">
+          <div class="price-plan ph">[Plan name]</div>
+          <div class="price-amount ph">$00</div>
+          <div class="price-period ph">[billing period]</div>
+          <div class="price-divider"></div>
+          <ul class="price-features">
+            <li><div class="check">✓</div><span class="ph">[Feature one]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature two]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature three]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature four]</span></li>
+          </ul>
+          <button class="price-btn">[Most popular]</button>
+        </div>
+        <div class="price-card">
+          <div class="price-plan ph">[Plan name]</div>
+          <div class="price-amount ph">Custom</div>
+          <div class="price-period ph">[billing period]</div>
+          <div class="price-divider"></div>
+          <ul class="price-features">
+            <li><div class="check">✓</div><span class="ph">[Feature one]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature two]</span></li>
+            <li><div class="check">✓</div><span class="ph">[Feature three]</span></li>
+          </ul>
+          <button class="price-btn">[Action]</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 — ROADMAP -->
+  <div class="slide" id="slide-13">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">13 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:860px;">
+      <p class="section-label">Roadmap</p>
+      <h2 class="section-title ph" style="margin-bottom:32px;">[Headline about where you're headed]</h2>
+      <div class="roadmap-track">
+        <div class="roadmap-line"></div>
+        <div class="roadmap-item"><div class="roadmap-date ph">[Q1]</div><div class="roadmap-content done"><div class="roadmap-phase">Completed</div><div class="roadmap-heading ph">[Milestone one]</div><div class="roadmap-desc ph">[Short description of what was delivered.]</div></div></div>
+        <div class="roadmap-item"><div class="roadmap-date ph">[Q2]</div><div class="roadmap-content done"><div class="roadmap-phase">Completed</div><div class="roadmap-heading ph">[Milestone two]</div><div class="roadmap-desc ph">[Short description of what was delivered.]</div></div></div>
+        <div class="roadmap-item"><div class="roadmap-date ph">[Q3]</div><div class="roadmap-content current"><div class="roadmap-phase">In progress</div><div class="roadmap-heading ph">[Milestone three]</div><div class="roadmap-desc ph">[Short description of what's underway.]</div></div></div>
+        <div class="roadmap-item"><div class="roadmap-date ph">[Q4]</div><div class="roadmap-content"><div class="roadmap-phase">Planned</div><div class="roadmap-heading ph">[Milestone four]</div><div class="roadmap-desc ph">[Short description of what's planned.]</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 — COMPARISON TABLE -->
+  <div class="slide" id="slide-14">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">14 / 16</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:880px;">
+      <p class="section-label">Why us</p>
+      <h2 class="section-title ph" style="margin-bottom:28px;">[Headline about your advantage]</h2>
+      <table class="compare-table">
+        <thead><tr><th>Feature</th><th class="col-us">[Your name]</th><th>[Competitor A]</th><th>[Competitor B]</th></tr></thead>
+        <tbody>
+          <tr><td class="ph">[Feature one]</td><td class="col-us compare-yes">✓</td><td class="compare-no">—</td><td class="compare-yes">✓</td></tr>
+          <tr><td class="ph">[Feature two]</td><td class="col-us compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-no">—</td></tr>
+          <tr><td class="ph">[Feature three]</td><td class="col-us compare-yes">✓</td><td class="compare-no">—</td><td class="compare-no">—</td></tr>
+          <tr><td class="ph">[Feature four]</td><td class="col-us compare-yes">✓</td><td class="compare-yes">✓</td><td class="compare-yes">✓</td></tr>
+          <tr><td class="ph">[Feature five]</td><td class="col-us compare-yes">✓</td><td class="compare-no">—</td><td class="compare-yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 15 — USE OF FUNDS / BUDGET -->
+  <div class="slide" id="slide-15">
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">15 / 16</div>
+    <div class="funds-layout" style="position:relative;z-index:1;">
+      <div>
+        <p class="section-label">Use of funds</p>
+        <h2 class="section-title ph" style="margin-bottom:28px;">[Headline about allocation]</h2>
+        <div class="funds-list">
+          <div class="funds-item"><span class="funds-label ph">[Category one]</span><div class="funds-bar-bg"><div class="funds-bar-fill" style="width:40%;background:#0071e3;"></div></div><span class="funds-pct">40%</span></div>
+          <div class="funds-item"><span class="funds-label ph">[Category two]</span><div class="funds-bar-bg"><div class="funds-bar-fill" style="width:25%;background:#30d158;"></div></div><span class="funds-pct">25%</span></div>
+          <div class="funds-item"><span class="funds-label ph">[Category three]</span><div class="funds-bar-bg"><div class="funds-bar-fill" style="width:20%;background:#ff9f0a;"></div></div><span class="funds-pct">20%</span></div>
+          <div class="funds-item"><span class="funds-label ph">[Category four]</span><div class="funds-bar-bg"><div class="funds-bar-fill" style="width:15%;background:rgba(255,255,255,0.25);"></div></div><span class="funds-pct">15%</span></div>
+        </div>
+      </div>
+      <div class="pie-placeholder"></div>
+    </div>
+  </div>
+
+  <!-- 16 — CLOSING / CTA -->
+  <div class="slide" id="slide-16">
+    <div class="glow glow-blue" style="width:500px;height:500px;top:-100px;left:50%;transform:translateX(-50%);"></div>
+    <div class="bg-grid"></div>
+    <div class="slide-kicker">Project Name</div>
+    <div class="slide-page">16 / 16</div>
+    <div style="position:relative;z-index:1;text-align:center;width:100%;max-width:640px;">
+      <div class="cta-badge ph">[Status / call to action tag]</div>
+      <h2 class="cta-title ph">Thank<br>you.</h2>
+      <p class="cta-sub ph">[Closing line — what you want the audience to do next.]</p>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:36px;">
+        <button class="btn-primary" style="font-size:15px;padding:15px 30px;">[Primary action]</button>
+        <button class="btn-ghost" style="font-size:15px;padding:15px 30px;">[Secondary action]</button>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-item"><div class="contact-icon">✉</div><span class="ph">[email@company.com]</span></div>
+        <div class="contact-item"><div class="contact-icon">🌐</div><span class="ph">[website.com]</span></div>
+        <div class="contact-item"><div class="contact-icon">📞</div><span class="ph">[+1 000 000 0000]</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <button class="nav-btn" id="btn-prev" onclick="navigate(-1)" disabled>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next" onclick="navigate(1)">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <span class="nav-count" id="nav-count">1 / 16</span>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+let isAnimating = false;
+
+const dotsContainer = document.getElementById('nav-dots');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+const navCount = document.getElementById('nav-count');
+const progress = document.getElementById('progress');
+
+slides.forEach((_, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'dot' + (i === 0 ? ' active' : '');
+  dot.onclick = () => goTo(i);
+  dotsContainer.appendChild(dot);
+});
+
+function updateUI() {
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  btnPrev.disabled = current === 0;
+  btnNext.disabled = current === total - 1;
+  navCount.textContent = (current + 1) + ' / ' + total;
+  progress.style.width = ((current + 1) / total * 100) + '%';
+}
+
+function goTo(index) {
+  if (isAnimating || index === current) return;
+  isAnimating = true;
+  const dir = index > current ? 1 : -1;
+  const prev = slides[current];
+  const next = slides[index];
+
+  if (dir < 0) { prev.style.transform = 'translateX(60px)'; prev.style.opacity = '0'; }
+  else { prev.classList.add('exit-left'); }
+
+  next.style.transform = dir > 0 ? 'translateX(60px)' : 'translateX(-60px)';
+  next.style.opacity = '0';
+  next.style.transition = 'none';
+  next.classList.add('active');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      next.style.transition = '';
+      next.style.transform = 'translateX(0)';
+      next.style.opacity = '1';
+    });
+  });
+
+  setTimeout(() => {
+    prev.classList.remove('active', 'exit-left');
+    prev.style.transform = '';
+    prev.style.opacity = '';
+    current = index;
+    updateUI();
+    isAnimating = false;
+    if (index === 6) initLineChart();
+    if (index === 7) initBarChart();
+  }, 560);
+}
+
+function navigate(dir) { goTo(current + dir); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigate(-1);
+});
+
+updateUI();
+
+let lineInited = false;
+function initLineChart() {
+  if (lineInited) return;
+  lineInited = true;
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  const labels = ['[P1]','[P2]','[P3]','[P4]','[P5]','[P6]','[P7]','[P8]'];
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: '[Series one]', data: [5,7,9,12,16,21,27,34], borderColor: '#0071e3', backgroundColor: 'rgba(0,113,227,0.08)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: '#0071e3' },
+        { label: '[Series two]', data: [3,5,6,8,11,15,19,24], borderColor: '#30d158', backgroundColor: 'rgba(48,209,88,0.06)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: '#30d158' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true, interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: 'rgba(20,20,20,0.9)', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1, titleColor: 'rgba(255,255,255,0.5)', bodyColor: '#fff', padding: 12, cornerRadius: 10 }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+let barInited = false;
+function initBarChart() {
+  if (barInited) return;
+  barInited = true;
+  const ctx = document.getElementById('barChart').getContext('2d');
+  const labels = ['[Category A]','[Category B]','[Category C]','[Category D]','[Category E]'];
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: '[Metric]', data: [42, 68, 35, 81, 54], backgroundColor: '#0071e3', borderRadius: 8, maxBarThickness: 56 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(20,20,20,0.9)', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1, titleColor: 'rgba(255,255,255,0.5)', bodyColor: '#fff', padding: 12, cornerRadius: 10 } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 11 } } }
+      }
+    }
+  });
+}
+</script>
+
+</body>
+</html>

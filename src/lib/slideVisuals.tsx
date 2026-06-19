@@ -6,6 +6,7 @@ type StyleKey = "cobalt" | "clean-light" | "cosmic-dark";
 interface ThemeSlice {
   isLight: boolean;
   isCobalt: boolean;
+  isDark: boolean;
   accent: string;
   muted: string;
   cardBg: string;
@@ -34,6 +35,7 @@ export function getStyleSlice(selectedStyle: StyleKey): ThemeSlice {
         : "rgba(255,255,255,0.08)",
     titleClass: isLight ? "text-neutral-950" : isCobalt ? "text-slate-950" : "text-white",
     textClass: isLight ? "text-neutral-600" : isCobalt ? "text-slate-600" : "text-slate-300",
+    isDark: selectedStyle === "cosmic-dark",
   };
 }
 
@@ -47,21 +49,21 @@ export const SlideSectionHeader: React.FC<{
   const s = getStyleSlice(selectedStyle);
   return (
     <div
-      className="flex items-start justify-between gap-3 border-b pb-2 mb-2 text-left"
+      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 border-b pb-2 mb-2 text-left shrink-0"
       style={{ borderColor: s.cardBorder }}
     >
-      <div className="space-y-1 min-w-0">
+      <div className="space-y-1 min-w-0 flex-1">
         {sectionLabel && (
-          <div className={`text-[7px] sm:text-[8px] font-mono uppercase tracking-[0.2em] font-bold ${accentClass}`}>
+          <div className={`text-[7px] sm:text-[8px] font-mono uppercase tracking-[0.15em] font-bold leading-tight ${accentClass}`}>
             {sectionLabel}
           </div>
         )}
-        <div className={`text-sm sm:text-base md:text-lg font-display font-black tracking-tight uppercase leading-tight ${s.titleClass}`}>
+        <div className={`text-xs sm:text-sm font-display font-black tracking-tight uppercase leading-tight break-words ${s.titleClass}`}>
           {title}
         </div>
       </div>
       {subtitle && (
-        <div className={`hidden sm:block shrink-0 text-[8px] font-mono py-1 px-2.5 rounded-full uppercase tracking-wider border ${s.isLight ? "bg-neutral-50 text-neutral-600 border-neutral-200" : "bg-white/5 text-slate-400 border-white/10"}`}>
+        <div className={`shrink-0 max-w-[45%] text-[7px] sm:text-[8px] font-mono py-1 px-2 rounded-full uppercase tracking-wider border line-clamp-2 ${s.isLight ? "bg-neutral-50 text-neutral-600 border-neutral-200" : s.isDark ? "bg-white/5 text-slate-300 border-white/10" : "bg-blue-50 text-blue-700 border-blue-100"}`}>
           {subtitle}
         </div>
       )}

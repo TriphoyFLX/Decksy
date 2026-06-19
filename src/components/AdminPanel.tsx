@@ -19,7 +19,8 @@ import {
   CheckCircle,
   ToggleLeft,
   ToggleRight,
-  Globe
+  Globe,
+  Zap,
 } from "lucide-react";
 
 interface UserData {
@@ -66,10 +67,20 @@ interface AdminPanelProps {
   authToken: string | null;
   onBack: () => void;
   onSubscriptionChanged?: () => void;
+  onTestGenerate?: (idea: string, images: { id: string; image: string; description: string }[]) => void;
+  isGenerating?: boolean;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSubscriptionChanged }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({
+  authToken,
+  onBack,
+  onSubscriptionChanged,
+  onTestGenerate,
+  isGenerating = false,
+}) => {
   const [activeTab, setActiveTab] = useState<'users' | 'ads' | 'logs'>('users');
+  const [testIdea, setTestIdea] = useState("Платформа шеринга строительных инструментов по геолокации");
+  const [testImages, setTestImages] = useState<{ id: string; image: string; description: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -371,6 +382,118 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ authToken, onBack, onSub
           </button>
         </div>
       </div>
+
+      {/* Admin: быстрый тест генерации без интервью */}
+      {onTestGenerate && (
+        <div className="rounded-sm border border-violet-500/25 bg-violet-500/5 p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-violet-400" />
+            <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-violet-300">
+              Тест генерации (без интервью)
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Сразу вызывает API <code className="text-violet-300">/api/generate_deck</code> — для проверки слайдов, тем и экспорта. Лимит тарифа для админа не применяется.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={testIdea}
+              onChange={(e) => setTestIdea(e.target.value)}
+              placeholder="Тема стартапа..."
+              className="flex-1 bg-black/40 border border-white/10 rounded-sm px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-400/50"
+            />
+            <button
+              type="button"
+              disabled={isGenerating || !testIdea.trim()}
+              onClick={() => onTestGenerate(testIdea.trim(), testImages)}
+              className="shrink-0 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider rounded-sm cursor-pointer border-none flex items-center justify-center gap-2 transition-colors"
+            >
+              {isGenerating ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Генерация...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3.5 w-3.5" />
+                  Сгенерировать дек
+                </>
+              )}
+            </button>
+          </div>
+          <div className="space-y-2 border-t border-violet-500/15 pt-3">
+            <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Фото для слайдов (опционально)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {["CEO", "Команда", "Продукт", "Лого"].map((label) => (
+                <label key={label} className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white cursor-pointer">
+                  + {label}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (typeof reader.result === "string") {
+                          setTestImages((prev) => [
+                            ...prev,
+                            { id: `test_${Date.now()}`, image: reader.result, description: label },
+                          ]);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              ))}
+              <label className="text-[10px] px-2 py-1 rounded border border-dashed border-white/15 text-slate-500 hover:text-white cursor-pointer">
+                + Файлы
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    Array.from(e.target.files || []).forEach((file, idx) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (typeof reader.result === "string") {
+                          setTestImages((prev) => [
+                            ...prev,
+                            { id: `test_${Date.now()}_${idx}`, image: reader.result, description: "Материал" },
+                          ]);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            {testImages.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {testImages.map((img) => (
+                  <div key={img.id} className="relative w-16 h-16 rounded border border-white/10 overflow-hidden">
+                    <img src={img.image} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setTestImages((prev) => prev.filter((i) => i.id !== img.id))}
+                      className="absolute top-0 right-0 w-4 h-4 bg-black/80 text-red-400 text-[10px] border-none cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Response indicators */}
       <AnimatePresence mode="popLayout">

@@ -11,96 +11,41 @@ import {
   HeroTitleSlide,
 } from "../lib/slideVisuals";
 import { ApexSlideContent, shouldUseApexLayout } from "../lib/apexSlides";
+import { resolveSlideTheme } from "../lib/deckTheme";
+import type { DeckThemeCustom } from "../types";
 
 export const getThemeStyles = (
   slideIndex: number, 
   type: string, 
-  selectedStyle: 'cobalt' | 'clean-light' | 'cosmic-dark'
+  selectedStyle: 'cobalt' | 'clean-light' | 'cosmic-dark',
+  customTheme?: DeckThemeCustom | null
 ) => {
-  const isTitle = slideIndex === 0 || type === 'title';
-  switch (selectedStyle) {
-    case 'clean-light':
-      return {
-        bg: 'linear-gradient(to bottom, #ffffff, #f8fafc)',
-        border: '1px solid #e2e8f0',
-        textColor: 'text-neutral-900',
-        footerTextColor: '#64748b',
-        footerBorder: '1px solid #e2e8f0',
-        dotColor: '#10b981',
-        innerCardBg: 'bg-white border border-neutral-200/80 shadow-sm text-neutral-800',
-        accentColor: '#004de6',
-        badgeBg: 'bg-neutral-100 text-neutral-800 border-neutral-200',
-        titleColor: 'text-neutral-900',
-        bulletTextColor: 'text-neutral-600',
-        subtitleColor: 'text-neutral-500',
-        accentPill: 'bg-neutral-100 text-neutral-850 border-neutral-200',
-        accentText: 'text-neutral-900',
-        textContrast: 'text-neutral-700'
-      };
-    case 'cobalt':
-      if (isTitle) {
-        return {
-          bg: 'linear-gradient(to bottom right, #004de6, #002db3)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          textColor: 'text-white',
-          footerTextColor: '#93c5fd',
-          footerBorder: '1px solid rgba(255, 255, 255, 0.1)',
-          dotColor: '#34d399',
-          innerCardBg: 'bg-white/10 border border-white/20 text-white',
-          accentColor: '#60a5fa',
-          badgeBg: 'bg-white/15 text-white border-white/20',
-          titleColor: 'text-white',
-          bulletTextColor: 'text-blue-100',
-          subtitleColor: 'text-blue-200',
-          accentPill: 'bg-white/10 text-white border-white/25',
-          accentText: 'text-sky-300',
-          textContrast: 'text-blue-100'
-        };
-      } else {
-        return {
-          bg: 'linear-gradient(to bottom, #ffffff, #f5f9ff)',
-          border: '1px solid rgba(0, 77, 230, 0.15)',
-          textColor: 'text-slate-900',
-          footerTextColor: '#475569',
-          footerBorder: '1px solid rgba(0, 77, 230, 0.08)',
-          dotColor: '#004de6',
-          innerCardBg: 'bg-white border border-blue-100/90 hover:border-blue-200 shadow-md shadow-blue-500/5 text-slate-800',
-          accentColor: '#004de6',
-          badgeBg: 'bg-blue-50 text-blue-800 border-blue-100',
-          titleColor: 'text-slate-950',
-          bulletTextColor: 'text-slate-600',
-          subtitleColor: 'text-blue-600 font-bold',
-          accentPill: 'bg-blue-600 text-white border-blue-700',
-          accentText: 'text-blue-600',
-          textContrast: 'text-slate-700'
-        };
-      }
-    case 'cosmic-dark':
-    default:
-      return {
-        bg: 'linear-gradient(to bottom, #111115, #070709)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
-        textColor: 'text-slate-100',
-        footerTextColor: '#475569',
-        footerBorder: '1px solid rgba(255, 255, 255, 0.06)',
-        dotColor: '#10b981',
-        innerCardBg: 'bg-white/[0.02] border border-white/5 text-slate-300',
-        accentColor: '#10b981',
-        badgeBg: 'bg-white/5 border-white/10 text-slate-300',
-        titleColor: 'text-white',
-        bulletTextColor: 'text-slate-300',
-        subtitleColor: 'text-slate-400',
-        accentPill: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-        accentText: 'text-cyan-400',
-        textContrast: 'text-slate-300'
-      };
-  }
+  const rt = resolveSlideTheme(selectedStyle, slideIndex, type, customTheme);
+  return {
+    bg: rt.frameGradient,
+    border: `1px solid ${rt.borderColor}`,
+    textColor: rt.titleClass,
+    footerTextColor: rt.footerTextColor,
+    footerBorder: `1px solid ${rt.borderColor}`,
+    dotColor: rt.dotColor,
+    innerCardBg: rt.innerCardBg,
+    accentColor: rt.primary,
+    badgeBg: rt.cardClass,
+    titleColor: rt.titleColor,
+    bulletTextColor: rt.bulletTextColor,
+    subtitleColor: rt.subtitleColor,
+    accentPill: rt.cardClass,
+    accentText: rt.accentText,
+    textContrast: rt.bodyClass,
+    resolved: rt,
+  };
 };
 
 interface RenderSlideContentProps {
   slide: Slide;
   index: number;
   selectedStyle: 'cobalt' | 'clean-light' | 'cosmic-dark';
+  customTheme?: DeckThemeCustom | null;
   forExport?: boolean;
   onUpdate?: (patch: Partial<Slide>) => void;
 }
@@ -109,6 +54,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
   slide,
   index,
   selectedStyle,
+  customTheme,
   forExport = false,
   onUpdate
 }) => {
@@ -119,7 +65,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
   const content = slide.content || [];
   const type = (slide.type || "") as string;
   const editable = !!onUpdate && !forExport;
-  const theme = getThemeStyles(index, type, selectedStyle);
+  const theme = getThemeStyles(index, type, selectedStyle, customTheme);
+  const rt = theme.resolved;
 
   const T = (
     text: string, 
@@ -220,6 +167,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         parseBullet={parseBullet}
         extractNumber={extractNumber}
         renderBullet={(text, i, className) => B(text, i, className)}
+        forExport={forExport}
       />
     );
   }
@@ -260,32 +208,31 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
 
   // 2. PROBLEM SLIDE (Index 1 or type === 'problem')
   if (index === 1 || type === "problem") {
-    const isLight = selectedStyle === 'clean-light';
-    const isCobalt = selectedStyle === 'cobalt';
     return (
-      <div className="flex flex-col justify-between h-full py-1">
-        <div className="flex items-center justify-between border-b pb-1.5 text-left" style={{ borderColor: isLight ? "rgba(0,0,0,0.06)" : isCobalt ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)" }}>
-          <div className="space-y-0.5">
-            {T(slide.sectionLabel || "🎯 РАЗДЕЛ 02 • АНАЛИЗ ПРОБЛЕМЫ", "sectionLabel", `text-[7px] font-mono uppercase tracking-widest font-bold ${isLight ? 'text-rose-600' : 'text-rose-400'}`)}
-            {T(title, "title", `text-xs sm:text-sm md:text-md lg:text-md font-extrabold tracking-tight uppercase leading-none font-display ${theme.titleColor}`, "h2")}
-          </div>
-          {subtitle && T(
-            subtitle,
-            "subtitle",
-            `hidden sm:inline-block border text-[7px] font-mono py-0.5 px-2 rounded-full uppercase tracking-wider font-semibold ${isLight ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`
-          )}
-        </div>
+      <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
+        <SlideSectionHeader
+          sectionLabel={slide.sectionLabel || "🎯 РАЗДЕЛ 02 • АНАЛИЗ ПРОБЛЕМЫ"}
+          title={T(title, "title", "", "h2")}
+          subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+          accentClass={rt.isDark ? "text-rose-400" : "text-rose-600"}
+          selectedStyle={selectedStyle}
+        />
 
-        {/* iOS block layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-auto">
-          <div className={`rounded-xl p-3 flex flex-col justify-between text-left space-y-2 border ${isLight ? 'bg-rose-50/40 border-rose-200/50 text-neutral-850 shadow-sm' : isCobalt ? 'bg-rose-50/50 border-rose-200/50 text-slate-850' : 'bg-[#ff453a]/5 border border-[#ff453a]/15 text-red-105'}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-auto min-h-0 flex-1">
+          <div
+            className={`rounded-xl p-2.5 flex flex-col justify-between text-left border min-h-0 ${
+              rt.isDark ? "bg-rose-500/10 border-rose-500/20" : "bg-rose-50 border-rose-200/60"
+            }`}
+          >
             <div className="flex items-center space-x-1.5">
-              <div className={`h-5 w-5 rounded-lg flex items-center justify-center border ${isLight ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-[#ff453a]/10 text-[#ff453a] border border-[#ff453a]/25'}`}>
+              <div className={`h-5 w-5 rounded-lg flex items-center justify-center border ${rt.isDark ? "bg-rose-500/15 text-rose-400 border-rose-500/25" : "bg-rose-100 text-rose-600 border-rose-200"}`}>
                 <Flame className="h-3 w-3" />
               </div>
-              <span className={`text-[8px] font-mono uppercase tracking-wider font-extrabold ${isLight ? 'text-rose-850' : 'text-white'}`}>Главный Фактор Боли</span>
+              <span className={`text-[8px] font-mono uppercase tracking-wider font-extrabold ${rt.isDark ? "text-rose-300" : "text-rose-800"}`}>
+                Главный фактор боли
+              </span>
             </div>
-            <p className={`text-[10px] sm:text-[11px] leading-snug font-sans ${isLight ? 'text-neutral-700 font-medium' : isCobalt ? 'text-slate-800 font-medium' : 'text-rose-200/90'}`}>
+            <p className={`text-[9px] sm:text-[10px] leading-snug line-clamp-4 mt-1.5 ${rt.bodyClass}`}>
               {content[0] || "Острая неудовлетворенность текущим пользовательским опытом."}
             </p>
           </div>
@@ -293,15 +240,15 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           {slide.image ? (
             <PremiumImage src={slide.image} alt={slide.imageDescription} caption={slide.imageDescription} variant="hero" forExport={forExport} />
           ) : (
-            <div className="space-y-1.5 flex flex-col justify-center">
+            <div className="space-y-1 flex flex-col justify-center min-h-0 overflow-hidden">
               {content.slice(1, 4).map((item, i) => {
                 const parsed = parseBullet(item);
                 return (
-                  <div key={i} className={`rounded-lg p-2 flex items-start gap-2 text-left border ${isLight ? 'bg-neutral-50/50 border-neutral-200/50 text-neutral-850' : isCobalt ? 'bg-white border-blue-105 text-slate-850 shadow-sm' : 'bg-white/[0.015] border border-white/5 text-slate-350'}`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1 flex-shrink-0"></span>
-                    <p className="text-[9.5px] leading-snug font-sans">
-                      {parsed.label ? <strong className={`font-bold ${isLight ? 'text-neutral-900' : isCobalt ? 'text-slate-900' : 'text-white'}`}>{parsed.label}: </strong> : null}
-                      <span className={`${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-650' : 'text-slate-350'}`}>{parsed.detail}</span>
+                  <div key={i} className={`rounded-lg p-1.5 flex items-start gap-2 text-left border min-h-0 ${theme.innerCardBg}`}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1 flex-shrink-0" />
+                    <p className="text-[8.5px] sm:text-[9px] leading-snug line-clamp-2">
+                      {parsed.label ? <strong className={`font-bold ${rt.titleClass}`}>{parsed.label}: </strong> : null}
+                      <span className={rt.bodyClass}>{parsed.detail}</span>
                     </p>
                   </div>
                 );
@@ -309,10 +256,6 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             </div>
           )}
         </div>
-
-        <p className={`text-[8px] italic text-left ${isLight ? 'text-neutral-400' : 'text-slate-500'} border-t pt-1`} style={{ borderColor: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.03)" }}>
-          * Подтверждено проверенными когортными исследованиями и аналитикой активности пользователей.
-        </p>
       </div>
     );
   }
@@ -348,7 +291,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
                     isLight 
                       ? 'bg-white border-neutral-200 shadow-sm' 
                       : isCobalt 
-                        ? 'bg-white border-blue-105 shadow-sm' 
+                        ? 'bg-white border-blue-100 shadow-sm' 
                         : 'bg-gradient-to-b from-white/[0.04] to-white/[0.02] border border-white/8'
                   }`}>
                     <div className="flex items-center justify-between">
@@ -382,21 +325,15 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
 
   // 4. MARKET SIZE (Index 3 or type === 'market')
   if (index === 3 || type === "market") {
-    const isLight = selectedStyle === 'clean-light';
-    const isCobalt = selectedStyle === 'cobalt';
     return (
-      <div className="flex flex-col justify-between h-full py-1">
-        <div className="flex items-center justify-between border-b pb-1.5 text-left" style={{ borderColor: isLight ? "rgba(0,0,0,0.06)" : isCobalt ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)" }}>
-          <div className="space-y-0.5">
-            {T(slide.sectionLabel || "👥 РАЗДЕЛ 04 • ЦЕЛЕВОЙ РЫНОК", "sectionLabel", `text-[7px] font-mono uppercase tracking-widest font-extrabold ${isLight ? 'text-blue-600' : 'text-[#3b82f6]'}`)}
-            {T(title, "title", `text-xs sm:text-sm md:text-md lg:text-md font-extrabold tracking-tight uppercase leading-none font-display ${theme.titleColor}`, "h2")}
-          </div>
-          {subtitle && T(
-            subtitle,
-            "subtitle",
-            `hidden sm:inline-block border text-[7px] font-mono py-0.5 px-2 rounded-full uppercase tracking-wider font-semibold ${isLight ? 'bg-blue-50 text-blue-700 border-blue-200' : isCobalt ? 'bg-blue-500/10 text-[#004de6] border-blue-200' : 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20'}`
-          )}
-        </div>
+      <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
+        <SlideSectionHeader
+          sectionLabel={slide.sectionLabel || "👥 РАЗДЕЛ 04 • ЦЕЛЕВОЙ РЫНОК"}
+          title={T(title, "title", "", "h2")}
+          subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+          accentClass={rt.isDark ? "text-blue-400" : "text-blue-600"}
+          selectedStyle={selectedStyle}
+        />
 
         {slide.visualData?.metrics && slide.visualData.metrics.length >= 2 ? (
           <SplitContentLayout
@@ -406,47 +343,40 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             left={<MetricBento metrics={slide.visualData.metrics} selectedStyle={selectedStyle} />}
           />
         ) : (
-        <div className="grid grid-cols-3 gap-3 my-auto">
+        <div className="grid grid-cols-3 gap-2 my-auto min-h-0 flex-1">
           {content.slice(0, slide.image ? 2 : 3).map((item, i) => {
             const parsed = parseBullet(item);
             const extractedNum = extractNumber(item);
             const labelText = parsed.label || `Сегмент 0${i + 1}`;
             const descText = parsed.detail || item;
 
-            // Color configuration based on theme and index
-            let cardBg = isLight 
-              ? 'bg-white border-neutral-200 shadow-sm hover:border-neutral-300' 
-              : isCobalt 
-                ? 'bg-white border-blue-105 shadow-sm shadow-blue-500/5 hover:border-blue-200' 
-                : 'bg-gradient-to-b from-white/[0.025] to-white/[0.012] border-white/5 hover:border-white/10';
-            let accentColor = [
-              { pill: isLight ? "bg-blue-50 text-blue-750 border-blue-150" : "bg-blue-500/10 text-blue-400 border-blue-500/20", num: isLight ? "text-blue-700" : isCobalt ? "text-[#004de6]" : "text-blue-400" },
-              { pill: isLight ? "bg-indigo-50 text-indigo-750 border-indigo-150" : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20", num: isLight ? "text-indigo-700" : isCobalt ? "text-indigo-600" : "text-indigo-400" },
-              { pill: isLight ? "bg-sky-50 text-sky-750 border-sky-150" : "bg-sky-500/10 text-sky-450 border-sky-500/20", num: isLight ? "text-sky-700" : isCobalt ? "text-sky-600" : "text-sky-400" }
+            const cardBg = rt.isDark
+              ? "bg-white/[0.04] border-white/8"
+              : "bg-white border-neutral-200 shadow-sm";
+            const accentColor = [
+              { pill: rt.isDark ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-100", num: rt.isDark ? "text-blue-400" : "text-blue-700" },
+              { pill: rt.isDark ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-100", num: rt.isDark ? "text-indigo-400" : "text-indigo-700" },
+              { pill: rt.isDark ? "bg-sky-500/10 text-sky-400 border-sky-500/20" : "bg-sky-50 text-sky-700 border-sky-100", num: rt.isDark ? "text-sky-400" : "text-sky-700" },
             ][i] || { pill: "bg-white/5 text-white/80 border-white/10", num: "text-white" };
 
             return (
-              <div key={i} className={`rounded-xl p-3 text-left flex flex-col justify-between space-y-2 relative overflow-hidden transition-all border ${cardBg}`}>
-                <div className="flex items-center justify-between relative z-10">
-                  <span className={`text-[7.5px] font-mono py-0.5 px-1.5 rounded uppercase tracking-widest font-extrabold border ${accentColor.pill}`}>
+              <div key={i} className={`rounded-xl p-2 text-left flex flex-col justify-between gap-1 relative overflow-hidden border min-h-0 ${cardBg}`}>
+                <div className="flex items-center justify-between relative z-10 gap-1">
+                  <span className={`text-[7px] font-mono py-0.5 px-1 rounded uppercase tracking-widest font-extrabold border truncate ${accentColor.pill}`}>
                     {labelText}
                   </span>
-                  <span className={`text-[7.5px] font-mono ${isLight ? 'text-neutral-450' : 'text-slate-500'}`}>0{i+1}</span>
+                  <span className={`text-[7px] font-mono shrink-0 ${rt.mutedClass}`}>0{i + 1}</span>
                 </div>
-                
-                <div className="space-y-1 relative z-10">
+                <div className="space-y-0.5 relative z-10 min-h-0">
                   {extractedNum ? (
-                    <div className={`text-md sm:text-lg md:text-xl font-display font-black tracking-tighter ${accentColor.num}`}>
+                    <div className={`text-sm sm:text-base font-display font-black tracking-tighter ${accentColor.num}`}>
                       {extractedNum}
                     </div>
                   ) : null}
-                  <p className={`text-[9.5px] leading-snug font-sans line-clamp-3 ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-655' : 'text-slate-350'}`}>
+                  <p className={`text-[8.5px] leading-snug line-clamp-2 ${rt.bodyClass}`}>
                     {extractedNum ? descText.replace(extractedNum, "").replace(/^[:-]\s*/, "").trim() : descText}
                   </p>
                 </div>
-
-                {/* Decorative structural background badge */}
-                <div className="absolute -bottom-4 -right-4 h-8 w-8 rounded-full opacity-[0.03] bg-current pointer-events-none" style={{ color: isLight ? '#004de6' : '#10b981' }}></div>
               </div>
             );
           })}
@@ -457,15 +387,11 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         )}
 
         {content[3] ? (
-          <div className={`text-[9.5px] border-t pt-1.5 flex items-center justify-between ${isLight ? 'border-neutral-200 text-neutral-600' : isCobalt ? 'border-blue-105 text-slate-600' : 'border-white/5 text-slate-400'}`}>
-            <span className={`font-mono text-[7.5px] uppercase tracking-wider font-extrabold ${isLight ? 'text-blue-600' : 'text-indigo-400'}`}>🔥 ТРЕНДЫ РЫНКА:</span>
-            <span className="italic block truncate max-w-lg text-right font-medium">{content[3]}</span>
+          <div className={`text-[8px] border-t pt-1 flex items-center gap-2 shrink-0 ${rt.isDark ? "border-white/5" : "border-neutral-200"}`}>
+            <span className={`font-mono text-[7px] uppercase tracking-wider font-extrabold shrink-0 ${rt.accentText}`}>🔥 Тренды:</span>
+            <span className={`italic line-clamp-1 flex-1 ${rt.bodyClass}`}>{content[3]}</span>
           </div>
-        ) : (
-          <p className={`text-[8px] italic text-left ${isLight ? 'text-neutral-400' : 'text-slate-500'} border-t pt-1.5`} style={{ borderColor: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.03)" }}>
-            * TAM и SAM рассчитываются на основе отраслевой аналитики по нашему цифровому сектору.
-          </p>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -502,12 +428,12 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
                 : 'bg-white border-neutral-200 shadow-sm';
             } else if (isCobalt) {
               cardClass = isHighlight 
-                ? 'bg-blue-50/55 border-blue-400 shadow-md ring-2 ring-blue-500/10 text-slate-850'
-                : 'bg-white border-blue-100 shadow-sm text-slate-850';
+                ? 'bg-blue-50/55 border-blue-400 shadow-md ring-2 ring-blue-500/10 text-slate-900'
+                : 'bg-white border-blue-100 shadow-sm text-slate-900';
             } else {
               cardClass = isHighlight 
                 ? 'bg-amber-500/[0.04] border-amber-500/40 shadow-inner' 
-                : 'bg-white/[0.02] border-white/5 text-slate-350';
+                : 'bg-white/[0.02] border-white/5 text-slate-400';
             }
 
             return (
@@ -555,7 +481,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         </div>
 
         {content[3] ? (
-          <div className={`border p-1.5 rounded-lg flex justify-between items-center text-[8px] ${isLight ? 'bg-neutral-50 border-neutral-200 text-neutral-800' : isCobalt ? 'bg-blue-50/40 border-blue-100 text-slate-800' : 'bg-white/[0.02] border-white/5 text-slate-350'}`}>
+          <div className={`border p-1.5 rounded-lg flex justify-between items-center text-[8px] ${isLight ? 'bg-neutral-50 border-neutral-200 text-neutral-800' : isCobalt ? 'bg-blue-50/40 border-blue-100 text-slate-800' : 'bg-white/[0.02] border-white/5 text-slate-400'}`}>
             <span className={`font-mono uppercase tracking-wider font-extrabold ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>ЭКОНОМИКА UNIT:</span>
             <span className="font-medium">{content[3]}</span>
           </div>
@@ -623,7 +549,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
                     isLight 
                       ? 'bg-white border-neutral-200 shadow-none' 
                       : isCobalt 
-                        ? 'bg-white border-blue-105 shadow-none text-slate-800' 
+                        ? 'bg-white border-blue-100 shadow-none text-slate-800' 
                         : 'bg-white/[0.012] border-white/5'
                   }`}>
                     <span className={`h-2 w-2 rounded-full mt-1.5 flex-shrink-0 ${isLight ? 'bg-purple-600' : 'bg-purple-500'}`}></span>
@@ -631,7 +557,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
                       {parsed.label ? (
                         <h4 className={`text-[8.5px] font-extrabold uppercase font-mono ${isLight ? 'text-purple-700' : isCobalt ? 'text-slate-900' : 'text-slate-300'}`}>{parsed.label}</h4>
                       ) : null}
-                      <p className={`text-[9.5px] leading-snug font-sans ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-655' : 'text-slate-400'}`}>
+                      <p className={`text-[9.5px] leading-snug font-sans ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-600' : 'text-slate-400'}`}>
                         {parsed.detail}
                       </p>
                     </div>
@@ -754,7 +680,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             if (isLight) {
               cardBg = 'bg-gradient-to-b from-white to-slate-50 border-neutral-200 shadow-sm';
             } else if (isCobalt) {
-              cardBg = 'bg-white border-blue-105 shadow-sm shadow-blue-500/5';
+              cardBg = 'bg-white border-blue-100 shadow-sm shadow-blue-500/5';
             } else {
               cardBg = 'bg-white/[0.02] hover:bg-white/[0.03] border-white/5';
             }
@@ -778,7 +704,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
                   {parsed.label ? (
                     <h4 className={`text-[8.5px] font-display font-bold uppercase truncate mb-0.5 ${isLight ? 'text-cyan-800' : isCobalt ? 'text-slate-900' : 'text-white'}`}>{parsed.label}</h4>
                   ) : null}
-                  <p className={`text-[9.5px] leading-snug font-sans line-clamp-3 ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-650' : 'text-slate-400'}`}>
+                  <p className={`text-[9.5px] leading-snug font-sans line-clamp-3 ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-600' : 'text-slate-400'}`}>
                     {parsed.detail}
                   </p>
                 </div>
@@ -833,7 +759,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             if (isLight) {
               cardBg = 'bg-white border-neutral-200 shadow-sm';
             } else if (isCobalt) {
-              cardBg = 'bg-white border-blue-105 shadow-sm shadow-blue-500/5';
+              cardBg = 'bg-white border-blue-100 shadow-sm shadow-blue-500/5';
             } else {
               cardBg = 'bg-white/[0.012] border-white/5';
             }
@@ -849,7 +775,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
                   {parsed.label ? (
                     <h4 className={`text-[9.5px] font-display font-bold uppercase tracking-tight mb-0.5 ${isLight ? 'text-neutral-900' : isCobalt ? 'text-slate-900' : 'text-white'}`}>{parsed.label}</h4>
                   ) : null}
-                  <p className={`text-[9.5px] leading-snug font-sans ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-655' : 'text-slate-400'}`}>
+                  <p className={`text-[9.5px] leading-snug font-sans ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-600' : 'text-slate-400'}`}>
                     {parsed.detail}
                   </p>
                 </div>
@@ -872,7 +798,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         </div>
 
         {content[2] ? (
-          <div className={`border p-2 rounded-lg text-left text-[9px] font-medium ${isLight ? 'bg-amber-50 border-amber-200 text-amber-800' : isCobalt ? 'bg-blue-50/50 border-blue-100 text-slate-850' : 'bg-amber-955/15 border-amber-500/15 text-amber-300'}`}>
+          <div className={`border p-2 rounded-lg text-left text-[9px] font-medium ${isLight ? 'bg-amber-50 border-amber-200 text-amber-800' : isCobalt ? 'bg-blue-50/50 border-blue-100 text-slate-900' : 'bg-amber-955/15 border-amber-500/15 text-amber-300'}`}>
             💡 {content[2]}
           </div>
         ) : (
@@ -925,7 +851,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             isLight 
               ? 'bg-gradient-to-br from-amber-50 to-amber-100/30 border-amber-200 shadow-sm' 
               : isCobalt 
-                ? 'bg-slate-50 border-slate-200 text-slate-850' 
+                ? 'bg-slate-50 border-slate-200 text-slate-900' 
                 : 'bg-white/[0.012] border-white/5'
           }`}>
             <div>

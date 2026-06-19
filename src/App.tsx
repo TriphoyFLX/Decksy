@@ -44,6 +44,8 @@ import { SubscriptionPlans } from "./components/SubscriptionPlans";
 import { SlideRenderer, getThemeStyles as getThemeStylesShared } from "./components/SlideRenderer";
 import { AboutPage } from "./pages/AboutPage";
 import { IntroPage } from "./pages/IntroPage";
+import { OutlinePage } from "./pages/OutlinePage";
+import { TemplatePickerPage } from "./pages/TemplatePickerPage";
 import { GeneratingPage } from "./pages/GeneratingPage";
 import { InterviewPage } from "./pages/InterviewPage";
 import { DeckPage } from "./pages/DeckPage";
@@ -58,12 +60,24 @@ import {
   getExportHtml2canvasOptions,
   EXPORT_SLIDE_WIDTH,
   EXPORT_SLIDE_HEIGHT,
+  EXPORT_BASE_WIDTH,
+  EXPORT_BASE_HEIGHT,
+  EXPORT_FRAME_SCALE,
 } from "./lib/exportUtils";
 import { generatePythonPPTXCode } from "./lib/pythonGenerator";
-import { Mode, Message, PitchCanvas, PitchDeck, Slide } from "./types";
+import { DeckCustomizer } from "./components/DeckCustomizer";
+import { SlideConstructor } from "./components/SlideConstructor";
+import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, type DeckTemplateId } from "./lib/deckTheme";
+import { Mode, Message, PitchCanvas, PitchDeck, Slide, DeckThemeCustom, ProjectBranding } from "./types";
 import { normalizeDeck, generateLocalDeck } from "./lib/deckBuilder";
+import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING } from "./lib/projectBranding";
 import { enrichSlidesWithVisuals } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
+import {
+  generateLocalOutline,
+  type PresentationOutline,
+  type OutlineSlide,
+} from "./lib/outlineBuilder";
 import {
   loadChatSession,
   saveChatSession,
@@ -308,16 +322,24 @@ const EXAMPLE_DECKS = [
 ];
 
 export default function App() {
-  // Screen views: 'intro' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
-  const [screen, setScreen] = useState<'intro' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'>('intro');
+  // Screen views: 'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
+  const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'>('intro');
   const [legalPage, setLegalPage] = useState<LegalPageId | null>(() => getLegalPageFromPath(window.location.pathname));
   
   // Custom design style and selection state
-  const [selectedStyle, setSelectedStyle] = useState<'cobalt' | 'clean-light' | 'cosmic-dark'>('cobalt');
+  const [selectedStyle, setSelectedStyle] = useState<'cobalt' | 'clean-light' | 'cosmic-dark'>('cosmic-dark');
+  const [selectedTemplate, setSelectedTemplate] = useState<DeckTemplateId>('apex');
+  const [deckCustomTheme, setDeckCustomTheme] = useState<DeckThemeCustom>(DEFAULT_CUSTOM_THEMES['cosmic-dark']);
+  const [useCustomBranding, setUseCustomBranding] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
   const [isSelectingStyle, setIsSelectingStyle] = useState(false);
   
   // App states
   const [idea, setIdea] = useState("");
+  const [presentationOutline, setPresentationOutline] = useState<PresentationOutline | null>(null);
+  const [projectBranding, setProjectBranding] = useState<ProjectBranding>(EMPTY_PROJECT_BRANDING);
+  const [constructorMode, setConstructorMode] = useState(false);
   const [mode, setMode] = useState<Mode>("investor");
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -619,7 +641,10 @@ export default function App() {
           mode: deckToSave.mode,
           slides: deckToSave.slides,
           roast: deckToSave.roast,
-          canvas: canvasToSave || canvas
+          canvas: {
+            ...(canvasToSave || canvas),
+            ...(isWatermarkRemoved && useCustomBranding ? { _deckTheme: deckCustomTheme } : {}),
+          },
         })
       });
       if (response.ok) {
@@ -773,6 +798,9 @@ export default function App() {
     setDeck(saved);
     if (saved.canvas) {
       setCanvas(saved.canvas);
+      if (saved.canvas._deckTheme) {
+        setDeckCustomTheme(saved.canvas._deckTheme);
+      }
     }
     setActiveSlideIndex(0);
     setScreen("deck");
@@ -920,8 +948,207 @@ export default function App() {
     return 5;
   };
 
-  // Start interview handler
+  // Shared deck finalization after API response
+  const finalizeDeckFromPayload = async (
+    payload: any,
+    finalIdea: string,
+    deckMode: Mode,
+    deckCanvas: PitchCanvas,
+    images: { id: string; image: string; description: string }[] = []
+  ) => {
+    const compressedImages = await compressSessionImages(images);
+    let deckData = normalizeDeck(payload, finalIdea, deckMode, deckCanvas);
+    deckData = applyBrandingToDeck(deckData, projectBranding);
+    enrichSlidesWithVisuals(deckData.slides, compressedImages);
+    assignDeckVariants(deckData, finalIdea, user?.id, selectedTemplate);
+    if (compressedImages.length > 0 && !deckData.slides.some((s) => s.image || s.visualData?.teamMembers?.length)) {
+      enrichSlidesWithVisuals(deckData.slides, compressedImages);
+    }
+    const tpl = TEMPLATE_CATALOG[selectedTemplate];
+    setSelectedStyle(tpl.selectedStyle);
+    setDeck(deckData);
+    setActiveSlideIndex(0);
+    return deckData;
+  };
+
+  // Start outline flow (main path: intro → outline → templates → generate)
+  const fetchOutline = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/generate_outline", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ idea: idea.trim(), mode, branding: projectBranding }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPresentationOutline(data);
+      } else {
+        setPresentationOutline(generateLocalOutline(idea.trim(), mode, projectBranding));
+      }
+    } catch {
+      setPresentationOutline(generateLocalOutline(idea.trim(), mode, projectBranding));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleStartInterview = async () => {
+    if (!idea.trim() || idea.trim().length < 15) return;
+    if (!authToken || !user) {
+      setAuthError("Войдите или зарегистрируйтесь, чтобы создавать презентации.");
+      setAuthTab("login");
+      setShowAuthModal(true);
+      return;
+    }
+    setPresentationOutline(null);
+    setScreen("outline");
+    await fetchOutline();
+  };
+
+  const handleBrandingChange = (patch: Partial<ProjectBranding>) => {
+    setProjectBranding((prev) => ({ ...prev, ...patch }));
+  };
+
+  const handleLogoUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProjectBranding((prev) => ({ ...prev, logoImage: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRegenerateOutline = () => {
+    if (idea.trim().length < 15) return;
+    fetchOutline();
+  };
+
+  const handleUpdateOutlineSlide = (index: number, patch: Partial<OutlineSlide>) => {
+    setPresentationOutline((prev) => {
+      if (!prev) return prev;
+      const slides = [...prev.slides];
+      slides[index] = { ...slides[index], ...patch };
+      return { ...prev, slides };
+    });
+  };
+
+  const handleAddOutlineSlide = () => {
+    setPresentationOutline((prev) => {
+      if (!prev || prev.slides.length >= 12) return prev;
+      const nextIndex = prev.slides.length;
+      return {
+        ...prev,
+        slides: [
+          ...prev.slides,
+          {
+            id: `outline_${nextIndex + 1}`,
+            type: "traction",
+            title: "Дополнительный слайд",
+            bullets: ["Ключевой пункт"],
+          },
+        ],
+      };
+    });
+  };
+
+  const handleRemoveOutlineSlide = (index: number) => {
+    setPresentationOutline((prev) => {
+      if (!prev || prev.slides.length <= 8) return prev;
+      return { ...prev, slides: prev.slides.filter((_, i) => i !== index) };
+    });
+  };
+
+  const handleOutlineToTemplates = () => {
+    setScreen("templates");
+  };
+
+  const handleGenerateFromOutline = async () => {
+    if (!authToken || !user) {
+      setAuthError("Войдите или зарегистрируйтесь, чтобы создавать презентации.");
+      setAuthTab("login");
+      setShowAuthModal(true);
+      return;
+    }
+    if (user.role !== "admin") {
+      const limit = user.monthlyDeckLimit ?? 1;
+      const count = user.monthlyDeckCount ?? 0;
+      if (count >= limit) {
+        setLimitMessage(`Месячный лимит тарифа «${user.plan || "Free"}» исчерпан: ${count}/${limit} презентаций.`);
+        setShowLimitModal(true);
+        return;
+      }
+    }
+    setIsLoading(true);
+    setScreen("generating");
+
+    try {
+      const initialMessages: Message[] = [
+        {
+          id: "msg_outline",
+          sender: "investor",
+          text: `Генерация по плану: "${idea.trim()}"`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ];
+      setMessages(initialMessages);
+
+      const compressedImages = await compressSessionImages(sessionImages);
+      const response = await fetch("/api/generate_deck", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          idea: idea.trim(),
+          mode,
+          messages: initialMessages,
+          canvas: INITIAL_CANVAS,
+          sessionImages: compressedImages,
+          outline: presentationOutline,
+          templateId: selectedTemplate,
+          branding: projectBranding,
+        }),
+      });
+
+      if (response.status === 429) {
+        const data = await response.json().catch(() => ({}));
+        setLimitMessage(data.error || "Месячный лимит презентаций исчерпан.");
+        setShowLimitModal(true);
+        setScreen("templates");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Генерация питч-дека провалилась.");
+      }
+
+      const payload = await response.json();
+      if (payload.usage) {
+        setUser((prev: any) =>
+          prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev
+        );
+      }
+      const deckData = await finalizeDeckFromPayload(payload, idea.trim(), mode, INITIAL_CANVAS, sessionImages);
+      setScreen("deck");
+      if (authToken) {
+        saveDeckToDatabase(deckData);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setAuthError("Не удалось сгенерировать презентацию. Попробуйте ещё раз.");
+      setScreen("templates");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStartLegacyInterview = async () => {
     if (!idea.trim()) return;
     if (!authToken || !user) {
       setAuthError("Войдите или зарегистрируйтесь, чтобы общаться с ИИ и создавать презентации.");
@@ -930,15 +1157,17 @@ export default function App() {
       return;
     }
     setIsLoading(true);
-    setScreen('interview');
+    setScreen("interview");
     setCanvas(INITIAL_CANVAS);
     setSessionImages([]);
     setCurrentQuestionIndex(1);
     setInvestorSentiment('skeptical');
     setUnderlyingThoughts("Собираю факты для деки — задам несколько коротких вопросов.");
     
-    const initialGreeting = `Привет! Идея: "${idea}". Чтобы быстрее собрать деку — отвечайте коротко, по пунктам (•).
-Первый блок: кто ваш платящий клиент и какую боль решаете?`;
+    const initialGreeting = `Привет! Идея: "${idea}". Сначала брендинг — ответьте по пунктам (•):
+• Точное название компании/проекта
+• Слоган или цитата
+• Ваше имя и роль`;
 
     const welcomeMsg: Message = {
       id: "init-question",
@@ -951,13 +1180,24 @@ export default function App() {
     setIsLoading(false);
   };
 
-  // Fast direct generation of Pitch Deck on any topic without interview
-  const handleFastGenerateDeck = async (targetIdea: string) => {
+  const handleFastGenerateDeck = async (
+    targetIdea: string,
+    images: { id: string; image: string; description: string }[] = sessionImages
+  ) => {
     if (!authToken || !user) {
       setAuthError("Войдите или зарегистрируйтесь, чтобы общаться с ИИ и создавать презентации.");
       setAuthTab("login");
       setShowAuthModal(true);
       return;
+    }
+    if (user.role !== "admin") {
+      const limit = user.monthlyDeckLimit ?? 1;
+      const count = user.monthlyDeckCount ?? 0;
+      if (count >= limit) {
+        setLimitMessage(`Месячный лимит тарифа «${user.plan || "Free"}» исчерпан: ${count}/${limit} презентаций.`);
+        setShowLimitModal(true);
+        return;
+      }
     }
     const finalIdea = targetIdea.trim() || suggestions[1];
     setIdea(finalIdea);
@@ -980,24 +1220,37 @@ export default function App() {
           idea: finalIdea,
           mode,
           messages: initialMessages,
-          canvas: INITIAL_CANVAS,
-          sessionImages: []
+          canvas: { ...INITIAL_CANVAS, _projectBranding: projectBranding },
+          sessionImages: await compressSessionImages(images),
+          branding: projectBranding,
         })
       });
+
+      if (response.status === 429) {
+        const data = await response.json().catch(() => ({}));
+        setLimitMessage(data.error || "Месячный лимит презентаций исчерпан.");
+        setShowLimitModal(true);
+        setScreen("intro");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Генерация питч-дека провалилась.");
       }
 
-      const deckData = normalizeDeck(await response.json(), finalIdea, mode, INITIAL_CANVAS);
-      setDeck(deckData);
-      setActiveSlideIndex(0);
+      const payload = await response.json();
+      if (payload.usage) {
+        setUser((prev: any) => prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev);
+      }
+      const deckData = await finalizeDeckFromPayload(payload, finalIdea, mode, INITIAL_CANVAS, images);
       setScreen('deck');
+      if (authToken) {
+        saveDeckToDatabase(deckData);
+      }
     } catch (err: any) {
       console.error(err);
-      setDeck(generateLocalDeck(finalIdea, mode, INITIAL_CANVAS));
-      setActiveSlideIndex(0);
-      setScreen('deck');
+      setAuthError("Не удалось сгенерировать презентацию. Проверьте подключение и попробуйте снова.");
+      setScreen("intro");
     } finally {
       setIsLoading(false);
     }
@@ -1101,6 +1354,15 @@ export default function App() {
     /достаточно|автоматически соберу|соберу презентацию|интервью заверш|скачать файл pptx|поделиться ссылкой|разнести мой pitch/i.test(text);
 
   const runGenerateDeck = async () => {
+    if (user && user.role !== "admin") {
+      const limit = user.monthlyDeckLimit ?? 1;
+      const count = user.monthlyDeckCount ?? 0;
+      if (count >= limit) {
+        setLimitMessage(`Месячный лимит тарифа «${user.plan || "Free"}» исчерпан: ${count}/${limit} презентаций.`);
+        setShowLimitModal(true);
+        return;
+      }
+    }
     setIsLoading(true);
     setScreen("generating");
 
@@ -1112,27 +1374,35 @@ export default function App() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${authToken}`
         },
-        body: JSON.stringify({ idea, mode, messages, canvas, sessionImages: compressedImages }),
+        body: JSON.stringify({
+          idea,
+          mode,
+          messages,
+          canvas: { ...canvas, _projectBranding: projectBranding },
+          sessionImages: compressedImages,
+          branding: projectBranding,
+        }),
       });
+
+      if (response.status === 429) {
+        const data = await response.json().catch(() => ({}));
+        setLimitMessage(data.error || "Месячный лимит презентаций исчерпан.");
+        setShowLimitModal(true);
+        setScreen("interview");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Генерация питч-дека провалилась.");
       }
 
       const payload = await response.json();
-      let deckData = normalizeDeck(payload, idea, mode, canvas);
-      enrichSlidesWithVisuals(deckData.slides, compressedImages);
-      if (!deckData.slides[0]?.visualData?.template) {
-        assignDeckVariants(deckData, idea, user?.id);
+      if (payload.usage) {
+        setUser((prev: any) => prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev);
       }
-      if (compressedImages.length > 0 && !deckData.slides.some((s) => s.image || s.visualData?.teamMembers?.length)) {
-        console.warn("Images were uploaded but not applied — forcing client-side mapping.");
-        enrichSlidesWithVisuals(deckData.slides, compressedImages);
-      }
-      setDeck(deckData);
-      setActiveSlideIndex(0);
-      if (deckData.slides[0]?.visualData?.template === "apex") {
-        setSelectedStyle("cosmic-dark");
+      let deckData = await finalizeDeckFromPayload(payload, idea, mode, canvas, compressedImages);
+      if (deckData.theme) {
+        setDeckCustomTheme(deckData.theme);
       }
       setScreen("deck");
       clearChatSession();
@@ -1141,13 +1411,8 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      const localDeck = generateLocalDeck(idea, mode, canvas);
-      setDeck(localDeck);
-      setActiveSlideIndex(0);
-      setScreen("deck");
-      if (authToken) {
-        saveDeckToDatabase(localDeck);
-      }
+      setAuthError("Не удалось сгенерировать презентацию. Попробуйте ещё раз.");
+      setScreen("interview");
     } finally {
       setIsLoading(false);
     }
@@ -1266,17 +1531,19 @@ export default function App() {
     
     try {
       for (let i = 0; i < total; i++) {
-        // Step 1: Tell React to render this slide in the high-fidelity container
         setExportSlideIndex(i);
+        setActiveSlideIndex(i);
         setExportState({ type, current: i + 1, total });
         
         // Step 2: Allow React DOM to fully paint (double rAF + short delay)
         await new Promise<void>((resolve) =>
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         );
-        await new Promise((resolve) => setTimeout(resolve, 650));
+        await new Promise((resolve) => setTimeout(resolve, 400));
 
-        const element = document.getElementById("export-active-slide-node");
+        const element =
+          document.getElementById("deck-slide-capture") ||
+          document.getElementById("export-active-slide-node");
         if (!element) {
           throw new Error(`Не удалось найти контейнер экспорта slide-node для слайда ${i + 1}`);
         }
@@ -1436,6 +1703,7 @@ export default function App() {
         slide={slide}
         index={index}
         selectedStyle={selectedStyle}
+        customTheme={isWatermarkRemoved && useCustomBranding ? deckCustomTheme : null}
         forExport={forExport}
         onUpdate={onUpdate}
       />
@@ -2441,22 +2709,24 @@ export default function App() {
         <button
           onClick={() => setScreen('intro')}
           className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all relative cursor-pointer border-none bg-transparent ${
-            screen === 'intro' ? 'text-[#FF5D44]' : 'text-slate-400 hover:text-slate-200'
+            screen === 'intro' || screen === 'outline' || screen === 'templates' ? 'text-[#FF5D44]' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Compass className="h-5 w-5 shrink-0" />
           <span className="text-[9px] font-semibold mt-1 tracking-tight">Prompt</span>
-          {screen === 'intro' && (
+          {(screen === 'intro' || screen === 'outline' || screen === 'templates') && (
             <motion.div layoutId="activeMobileIndicator" className="absolute bottom-0 w-1 h-1 rounded-full bg-[#FF5D44]" />
           )}
         </button>
 
         {/* Tab 2: Чат-Интервью */}
         <button
-          disabled={messages.length === 0 && screen === 'intro'}
+          disabled={messages.length === 0 && (screen === 'intro' || screen === 'outline' || screen === 'templates')}
           onClick={() => {
             if (messages.length > 0 || screen === 'interview' || screen === 'deck' || screen === 'generating') {
               setScreen('interview');
+            } else if (presentationOutline) {
+              setScreen('outline');
             }
           }}
           className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all relative cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed border-none bg-transparent ${
@@ -3441,6 +3711,8 @@ export default function App() {
             authToken={authToken} 
             onBack={() => setScreen('intro')} 
             onSubscriptionChanged={handleSubscriptionChanged}
+            onTestGenerate={user?.role === 'admin' ? (idea, imgs) => handleFastGenerateDeck(idea, imgs) : undefined}
+            isGenerating={isLoading && screen === 'generating'}
           />
         )}
 
@@ -3483,7 +3755,35 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 2: THE VC BOARDROOM INTERVIEW SCREEN */}
+        {!legalPage && screen === 'outline' && (
+          <OutlinePage
+            idea={idea}
+            setIdea={setIdea}
+            branding={projectBranding}
+            onBrandingChange={handleBrandingChange}
+            onLogoUpload={handleLogoUpload}
+            outline={presentationOutline}
+            isLoading={isLoading}
+            onRegenerate={handleRegenerateOutline}
+            onUpdateSlide={handleUpdateOutlineSlide}
+            onAddSlide={handleAddOutlineSlide}
+            onRemoveSlide={handleRemoveOutlineSlide}
+            onContinue={handleOutlineToTemplates}
+            onBack={() => setScreen('intro')}
+          />
+        )}
+
+        {!legalPage && screen === 'templates' && (
+          <TemplatePickerPage
+            selectedTemplate={selectedTemplate}
+            onSelect={setSelectedTemplate}
+            onBack={() => setScreen('outline')}
+            onGenerate={handleGenerateFromOutline}
+            isLoading={isLoading}
+            slideCount={presentationOutline?.slides.length ?? 10}
+          />
+        )}
+
         {/* VIEW 2: THE VC BOARDROOM INTERVIEW SCREEN */}
         {!legalPage && screen === 'interview' && (
           <InterviewPage
@@ -3551,50 +3851,79 @@ export default function App() {
               </div>
             )}
 
-            {/* Dynamic Slogan Title */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-sky-950/20 border border-sky-500/20 rounded-lg px-4 py-2.5 text-[11px] text-sky-300 flex items-center">
-                <span>✎ Нажмите на текст в слайде, чтобы изм. Скачать PDF/PPTX — справа.</span>
+            {/* Шаблоны и рамка */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0D0D0F] border border-white/10 px-3 py-2 rounded-lg">
+                <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold">
+                  Шаблон слайдов:
+                </span>
+                <div className="flex flex-wrap gap-1 bg-white/5 p-0.5 rounded border border-white/5">
+                  {(Object.keys(TEMPLATE_CATALOG) as DeckTemplateId[]).map((tid) => (
+                    <button
+                      key={tid}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTemplate(tid);
+                        setSelectedStyle(TEMPLATE_CATALOG[tid].selectedStyle);
+                        if (deck) {
+                          assignDeckVariants(deck, deck.idea, user?.id, tid);
+                          setDeck({ ...deck, slides: [...deck.slides] });
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded text-[9px] font-mono uppercase tracking-widest cursor-pointer transition-all ${
+                        selectedTemplate === tid
+                          ? "bg-[#0071e3] text-white font-bold"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                      title={TEMPLATE_CATALOG[tid].source}
+                    >
+                      {TEMPLATE_CATALOG[tid].name}
+                    </button>
+                  ))}
+                </div>
               </div>
-              
+              <p className="text-[10px] text-slate-500 px-1">
+                {TEMPLATE_CATALOG[selectedTemplate].description} · {TEMPLATE_CATALOG[selectedTemplate].source}
+              </p>
               <div className="flex items-center justify-between bg-[#0D0D0F] border border-white/10 px-3 py-1.5 rounded-lg">
                 <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest font-extrabold flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3 text-cyan-400 animate-pulse" />
-                  Стиль темы:
+                  <Sparkles className="h-3 w-3 text-cyan-400" />
+                  Рамка слайда:
                 </span>
                 <div className="flex items-center space-x-1 bg-white/5 p-0.5 rounded border border-white/5">
                   <button
+                    type="button"
                     onClick={() => setSelectedStyle('cobalt')}
                     className={`px-2 py-1 rounded text-[9px] font-mono uppercase tracking-widest cursor-pointer transition-all ${
-                      selectedStyle === 'cobalt'
-                        ? 'bg-[#004de6] text-white font-bold shadow-inner'
-                        : 'text-slate-400 hover:text-white'
+                      selectedStyle === 'cobalt' ? 'bg-[#004de6] text-white font-bold' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Кобальт
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSelectedStyle('clean-light')}
                     className={`px-2 py-1 rounded text-[9px] font-mono uppercase tracking-widest cursor-pointer transition-all ${
-                      selectedStyle === 'clean-light'
-                        ? 'bg-white text-black font-bold shadow-inner'
-                        : 'text-slate-400 hover:text-white'
+                      selectedStyle === 'clean-light' ? 'bg-white text-black font-bold' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Светлая
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSelectedStyle('cosmic-dark')}
                     className={`px-2 py-1 rounded text-[9px] font-mono uppercase tracking-widest cursor-pointer transition-all ${
-                      selectedStyle === 'cosmic-dark'
-                        ? 'bg-emerald-600 text-white font-bold shadow-inner'
-                        : 'text-slate-400 hover:text-white'
+                      selectedStyle === 'cosmic-dark' ? 'bg-black text-white font-bold border border-white/20' : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    Темная
+                    Тёмная
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-sky-950/20 border border-sky-500/20 rounded-lg px-4 py-2.5 text-[11px] text-sky-300">
+              ✎ Клик по тексту на слайде — редактирование. Шаблон: <strong>{TEMPLATE_CATALOG[selectedTemplate].name}</strong>
             </div>
 
             <div className="text-center sm:text-left space-y-1">
@@ -3613,8 +3942,10 @@ export default function App() {
                 
                 {/* Visual Slide Frame with standard 16:9 box ratio in styling */}
                 {(() => {
+                  const tplMeta = TEMPLATE_CATALOG[selectedTemplate];
                   const isThemeLight = selectedStyle === 'clean-light';
                   const isThemeCobalt = selectedStyle === 'cobalt';
+                  const useTemplateFrame = selectedStyle === 'cosmic-dark';
                   const activeSlideType = deck.slides[activeSlideIndex]?.type || '';
                   const isTitleSlide = activeSlideIndex === 0 || activeSlideType === 'title';
                   
@@ -3651,15 +3982,17 @@ export default function App() {
                     }
                   } else {
                     frameClass += "border-white/5 hover:border-white/8";
-                    frameStyle = { background: 'linear-gradient(to bottom, #09090b, #040405)' };
+                    frameStyle = useTemplateFrame
+                      ? { background: tplMeta.frameGradient }
+                      : { background: 'linear-gradient(to bottom, #09090b, #040405)' };
                     headerClass += "border-white/5 text-slate-500";
                     footerClass += "border-white/5 text-slate-500";
-                    gridBg = "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)";
+                    gridBg = useTemplateFrame ? tplMeta.gridBg : "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)";
                     gridBgSize = "40px 40px";
                   }
 
                   return (
-                    <div className={frameClass} style={frameStyle}>
+                    <div id="deck-slide-capture" className={frameClass} style={frameStyle}>
                       {/* Decorative grid pattern */}
                       <div 
                         className="absolute inset-0 pointer-events-none"
@@ -3685,12 +4018,27 @@ export default function App() {
 
                       {/* Centered actual layout content inside */}
                       <div className="my-auto relative z-10 h-[74%] flex flex-col justify-stretch">
-                        {renderSlideContent(
-                          deck.slides[activeSlideIndex],
-                          activeSlideIndex,
-                          false,
-                          (patch) => updateSlide(activeSlideIndex, patch)
-                        )}
+                        <SlideConstructor
+                          enabled={constructorMode && activeSlideIndex === 0}
+                          onToggle={setConstructorMode}
+                          isPro={isWatermarkRemoved}
+                          layout={deck.slides[activeSlideIndex]?.visualData?.constructorLayout}
+                          onLayoutChange={(layout) =>
+                            updateSlide(activeSlideIndex, {
+                              visualData: {
+                                ...deck.slides[activeSlideIndex]?.visualData,
+                                constructorLayout: layout,
+                              },
+                            })
+                          }
+                        >
+                          {renderSlideContent(
+                            deck.slides[activeSlideIndex],
+                            activeSlideIndex,
+                            false,
+                            (patch) => updateSlide(activeSlideIndex, patch)
+                          )}
+                        </SlideConstructor>
                       </div>
 
                       {/* Footer bar */}
@@ -3806,6 +4154,36 @@ export default function App() {
                       className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400/40"
                     />
                   </div>
+                  {activeSlideIndex === 0 && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-2">
+                          <label className="text-[9px] text-slate-500 uppercase tracking-wider font-mono">Владелец</label>
+                          <input
+                            value={deck.slides[0]?.founderName || ""}
+                            onChange={(e) => updateSlide(0, { founderName: e.target.value })}
+                            className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400/40"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] text-slate-500 uppercase tracking-wider font-mono">Роль</label>
+                          <input
+                            value={deck.slides[0]?.founderRole || ""}
+                            onChange={(e) => updateSlide(0, { founderRole: e.target.value })}
+                            className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400/40"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] text-slate-500 uppercase tracking-wider font-mono">Цитата бренда</label>
+                        <input
+                          value={deck.slides[0]?.brandQuote || ""}
+                          onChange={(e) => updateSlide(0, { brandQuote: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400/40"
+                        />
+                      </div>
+                    </>
+                  )}
                   <div className="space-y-2">
                     <label className="text-[9px] text-slate-500 uppercase tracking-wider font-mono">Пункты (каждый с новой строки)</label>
                     <textarea
@@ -3965,6 +4343,23 @@ export default function App() {
 
               {/* RIGHT COLUMN: ACTIONS + INTENSE VC ROAST PANELS (4 COLS) */}
               <div className="lg:col-span-4 space-y-6">
+
+                <DeckCustomizer
+                  selectedStyle={selectedStyle}
+                  customTheme={deckCustomTheme}
+                  useCustomBranding={useCustomBranding}
+                  onToggleBranding={setUseCustomBranding}
+                  onChange={(t) => {
+                    setUseCustomBranding(true);
+                    setDeckCustomTheme(t);
+                    if (deck) setDeck({ ...deck, theme: t });
+                  }}
+                  onReset={() => {
+                    setUseCustomBranding(false);
+                    setDeckCustomTheme(DEFAULT_CUSTOM_THEMES[selectedStyle]);
+                  }}
+                  isPro={isWatermarkRemoved}
+                />
                 
                 {/* Action Export card */}
                 <div className="bg-[#0D0D0F] border border-white/10 rounded-md p-5 space-y-4 shadow-xl">
@@ -4232,102 +4627,131 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* HIGH-FIDELITY ACTIVE FRAME VIEWPORT DRAW NODE */}
+      {/* LIMIT MODAL */}
+      <AnimatePresence>
+        {showLimitModal && (
+          <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#161618] border border-amber-500/30 rounded-xl p-6 max-w-md w-full text-center space-y-4"
+            >
+              <AlertTriangle className="h-10 w-10 text-amber-400 mx-auto" />
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider">Лимит презентаций</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{limitMessage}</p>
+              <p className="text-[11px] text-slate-500">
+                Бесплатный тариф: <strong className="text-white">1 презентация в месяц</strong>.
+                {user && (
+                  <> Использовано: <strong className="text-amber-400">{user.monthlyDeckCount ?? 0}</strong> / {user.monthlyDeckLimit ?? 1}</>
+                )}
+              </p>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={() => { setShowLimitModal(false); setScreen("plans"); }}
+                  className="px-4 py-2 bg-white text-black text-xs font-bold uppercase rounded cursor-pointer border-none"
+                >
+                  Выбрать тариф
+                </button>
+                <button
+                  onClick={() => setShowLimitModal(false)}
+                  className="px-4 py-2 border border-white/20 text-slate-300 text-xs rounded cursor-pointer bg-transparent"
+                >
+                  Закрыть
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* HIGH-FIDELITY EXPORT NODE — fallback if preview not in DOM */}
       {exportSlideIndex !== null && deck && (() => {
         const isExpLight = selectedStyle === 'clean-light';
         const isExpCobalt = selectedStyle === 'cobalt';
         const isExpTitle = exportSlideIndex === 0 || (deck.slides[exportSlideIndex]?.type === 'title');
 
-        const isExpApex = deck.slides[exportSlideIndex]?.visualData?.template === "apex" || deck.slides[exportSlideIndex]?.visualData?.template === "swiss";
-
-        let expBackground = isExpApex ? "#000000" : 'linear-gradient(to bottom, #111115, #070709)';
-        let expBorder = '1px solid rgba(255, 255, 255, 0.12)';
-        let expTextColor = '#f8fafc';
-        let expHeaderSpanColor = '#ffffff';
-        let expHeaderBorder = '1px solid rgba(255, 255, 255, 0.06)';
-        let expFooterBorder = '1px solid rgba(255, 255, 255, 0.06)';
-        let expGridColor = 'radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px)';
+        let frameStyle: React.CSSProperties = { background: 'linear-gradient(to bottom, #09090b, #040405)' };
+        let headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-white/5 text-slate-500";
+        let footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-white/5 text-slate-500";
+        let gridBg = "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)";
+        let gridBgSize = "40px 40px";
+        let titleHeaderClass = "text-white uppercase tracking-widest font-bold";
 
         if (isExpLight) {
-          expBackground = 'linear-gradient(to bottom, #ffffff, #f8fafc)';
-          expBorder = '1px solid #e2e8f0';
-          expTextColor = '#171717';
-          expHeaderSpanColor = '#171717';
-          expHeaderBorder = '1px solid #e2e8f0';
-          expFooterBorder = '1px solid #e2e8f0';
-          expGridColor = 'radial-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px)';
+          frameStyle = { background: 'linear-gradient(to bottom, #ffffff, #fafafa)' };
+          headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-neutral-200/60 text-neutral-400";
+          footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-neutral-200/60 text-neutral-400";
+          gridBg = "linear-gradient(rgba(0,0,0,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.015) 1px, transparent 1px)";
+          gridBgSize = "30px 30px";
+          titleHeaderClass = "text-neutral-900 uppercase tracking-widest font-bold";
         } else if (isExpCobalt) {
           if (isExpTitle) {
-            expBackground = 'linear-gradient(to bottom right, #004de6, #002db3)';
-            expBorder = '1px solid rgba(255, 255, 255, 0.15)';
-            expTextColor = '#ffffff';
-            expHeaderSpanColor = '#ffffff';
-            expHeaderBorder = '1px solid rgba(255, 255, 255, 0.1)';
-            expFooterBorder = '1px solid rgba(255, 255, 255, 0.1)';
-            expGridColor = 'radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px)';
+            frameStyle = { background: 'linear-gradient(to bottom right, #0b45cf, #001f7a)' };
+            headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-white/10 text-blue-200/65";
+            footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-white/10 text-blue-200/65";
+            gridBg = "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)";
+            titleHeaderClass = "text-white uppercase tracking-widest font-bold";
           } else {
-            expBackground = 'linear-gradient(to bottom, #ffffff, #f5f9ff)';
-            expBorder = '1px solid rgba(0, 77, 230, 0.15)';
-            expTextColor = '#0f172a';
-            expHeaderSpanColor = '#004de6';
-            expHeaderBorder = '1px solid rgba(0, 77, 230, 0.08)';
-            expFooterBorder = '1px solid rgba(0, 77, 230, 0.08)';
-            expGridColor = 'radial-gradient(rgba(0, 77, 230, 0.015) 1px, transparent 1px)';
+            frameStyle = { background: 'linear-gradient(to bottom, #ffffff, #f7faf5)' };
+            headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-blue-100/50 text-slate-400";
+            footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-blue-100/50 text-slate-400";
+            gridBg = "linear-gradient(rgba(0,77,230,0.008) 1px, transparent 1px), linear-gradient(90deg, rgba(0,77,230,0.008) 1px, transparent 1px)";
+            gridBgSize = "45px 45px";
+            titleHeaderClass = "text-[#004de6] uppercase tracking-widest font-bold";
           }
         }
 
         return (
           <div
             id="export-active-slide-node"
-            className="font-sans antialiased text-slate-100"
+            className="font-sans antialiased"
             style={{
               position: 'fixed',
               top: 0,
-              left: 0,
-              width: `${EXPORT_SLIDE_WIDTH}px`,
-              height: `${EXPORT_SLIDE_HEIGHT}px`,
-              background: expBackground,
-              border: expBorder,
-              padding: '44px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxSizing: 'border-box',
-              color: expTextColor,
+              left: -16000,
+              width: EXPORT_SLIDE_WIDTH,
+              height: EXPORT_SLIDE_HEIGHT,
+              overflow: 'hidden',
+              background: '#000',
               zIndex: 99999,
-              opacity: 1,
               pointerEvents: 'none',
             }}
           >
-            {/* Decorative background grid pattern */}
-            <div 
+            <div
               style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundImage: expGridColor,
-                backgroundSize: '16px 16px',
-                pointerEvents: 'none'
+                width: EXPORT_BASE_WIDTH,
+                height: EXPORT_BASE_HEIGHT,
+                transform: `scale(${EXPORT_FRAME_SCALE})`,
+                transformOrigin: 'top left',
               }}
-            />
+            >
+              <div
+                className="relative overflow-hidden flex flex-col justify-between border border-white/5 rounded-2xl p-7 font-sans"
+                style={{ ...frameStyle, width: EXPORT_BASE_WIDTH, height: EXPORT_BASE_HEIGHT, boxSizing: 'border-box' }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ backgroundImage: gridBg, backgroundSize: gridBgSize }}
+                />
 
-            {/* Head line badge */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: expHeaderBorder, paddingBottom: '12px', fontSize: '13px', fontFamily: 'monospace', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em', position: 'relative', zIndex: 10 }}>
-              <span style={{ color: expHeaderSpanColor, fontWeight: 600 }}>{deck.title}</span>
-              <span>СЛАЙД {exportSlideIndex + 1} ИЗ {deck.slides.length}</span>
-            </div>
+                <div className={headerClass}>
+                  <span className={titleHeaderClass}>{deck.title}</span>
+                  <span>СЛАЙД {exportSlideIndex + 1} ИЗ {deck.slides.length}</span>
+                </div>
 
-            {/* Centered actual layout content inside */}
-            <div className="font-sans" style={{ margin: 'auto 0', position: 'relative', zIndex: 10, height: '74%', display: 'flex', flexDirection: 'column', justifyContent: 'stretch' }}>
-              {renderSlideContent(deck.slides[exportSlideIndex], exportSlideIndex, true)}
-            </div>
+                <div className="my-auto relative z-10 h-[74%] flex flex-col justify-stretch">
+                  {renderSlideContent(deck.slides[exportSlideIndex], exportSlideIndex, true)}
+                </div>
 
-            {/* Bottom footer bar */}
-            <div style={{ borderTop: expFooterBorder, paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontFamily: 'monospace', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', position: 'relative', zIndex: 10 }}>
-              <span>© {deck.title} • Seed Round</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ display: 'inline-block', height: '6px', width: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
-                {isWatermarkRemoved ? `Проект: ${deck.title}` : "Сгенерировано Decksy.ai"}
-              </span>
+                <div className={footerClass}>
+                  <span>© {deck.title} • Seed Round</span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                    {isWatermarkRemoved ? `Проект: ${deck.title}` : "Сгенерировано Decksy.ai"}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         );

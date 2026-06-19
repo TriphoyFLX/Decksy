@@ -23,16 +23,36 @@ export interface PitchCanvas {
   goToMarket: CanvasSection;
   risks: CanvasSection;
   branding: CanvasSection;
+  _deckTheme?: DeckThemeCustom;
+}
+
+export interface ConstructorElementPos {
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+}
+
+export interface SlideConstructorLayout {
+  enabled?: boolean;
+  positions?: {
+    logo?: ConstructorElementPos;
+    title?: ConstructorElementPos;
+    subtitle?: ConstructorElementPos;
+    founder?: ConstructorElementPos;
+    quote?: ConstructorElementPos;
+  };
 }
 
 export interface SlideVisualData {
-  template?: 'apex' | 'classic' | 'swiss';
+  template?: 'apex' | 'swiss';
   variant?: string;
   layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics';
   teamMembers?: { name: string; role: string; image: string }[];
   metrics?: { label: string; value: string; highlight?: boolean }[];
   accentImage?: string;
   images?: string[];
+  constructorLayout?: SlideConstructorLayout;
 }
 
 export interface Slide {
@@ -46,6 +66,18 @@ export interface Slide {
   imageDescription?: string; // Theme or what is depicted in the image
   badge?: string;
   sectionLabel?: string;
+  founderName?: string;
+  founderRole?: string;
+  brandQuote?: string;
+}
+
+export interface ProjectBranding {
+  companyName: string;
+  tagline: string;
+  founderName: string;
+  founderRole: string;
+  quote: string;
+  logoImage?: string;
 }
 
 export interface PitchDeck {
@@ -55,6 +87,7 @@ export interface PitchDeck {
   idea: string;
   mode: Mode;
   slides: Slide[];
+  theme?: DeckThemeCustom;
   roast?: {
     score: number; // 0 to 100
     verdict: string; // e.g., "REJECT", "SEEK CLARITY", "TERM SHEET"
@@ -62,6 +95,17 @@ export interface PitchDeck {
     weakSpots: string[]; // List of specific vulnerabilities
     recommendations: string[]; // How to fix them
   };
+}
+
+export interface DeckThemeCustom {
+  primary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+  textMuted: string;
+  frameGradient?: string;
+  borderColor?: string;
 }
 
 export interface InterviewSession {
