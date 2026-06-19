@@ -154,12 +154,47 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
     }
   }
 
+  // Portrait-like uploads without keywords still go to team on slide 6
+  const portraitLike = sessionImages.filter(
+    (img) => !usedIds.has(img.id) && /ceo|founder|основат|портрет|фото|team|команд/i.test(img.description || "")
+  );
+  if (portraitLike.length >= 1 && !slides[5]?.visualData?.teamMembers?.length) {
+    const teamMembers = portraitLike.map((img) => parseTeamMember(img.description || "Команда", img.image));
+    slides[5].visualData = { ...(slides[5].visualData || {}), layout: "team", teamMembers };
+    slides[5].title = "Команда проекта";
+    slides[5].sectionLabel = "👥 Команда • Founders & Core Team";
+    portraitLike.forEach((img) => usedIds.add(img.id));
+  }
+
   const leftovers = sessionImages.filter((img) => !usedIds.has(img.id));
-  for (const img of leftovers) {
-    const emptyIdx = slides.findIndex((s, i) => i > 0 && !s.image && s.visualData?.layout !== "team");
-    if (emptyIdx === -1) break;
-    assignToSlide(emptyIdx, img.image, img.description);
-    usedIds.add(img.id);
+
+  if (sessionImages.length === 1 && leftovers.length === 1) {
+    assignToSlide(2, leftovers[0].image, leftovers[0].description, { layout: "split" });
+    usedIds.add(leftovers[0].id);
+  }
+
+  const stillLeft = sessionImages.filter((img) => !usedIds.has(img.id));
+  const slotPriority = [2, 3, 0, 6, 4, 7, 8, 9, 1, 5];
+  let slotPtr = 0;
+  for (const img of stillLeft) {
+    while (slotPtr < slotPriority.length) {
+      const idx = slotPriority[slotPtr++];
+      const slide = slides[idx];
+      if (!slide) continue;
+      if (slide.visualData?.layout === "team") continue;
+      if (!slide.image) {
+        slide.image = img.image;
+        slide.imageDescription = img.description;
+        usedIds.add(img.id);
+        break;
+      }
+      if (!slide.visualData?.images) slide.visualData = { ...(slide.visualData || {}), images: [] };
+      if ((slide.visualData!.images!.length || 0) < 2) {
+        slide.visualData!.images!.push(img.image);
+        usedIds.add(img.id);
+        break;
+      }
+    }
   }
 
   for (const s of slides) {

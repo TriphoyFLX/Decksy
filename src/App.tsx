@@ -62,6 +62,17 @@ import {
 import { generatePythonPPTXCode } from "./lib/pythonGenerator";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide } from "./types";
 import { normalizeDeck, generateLocalDeck } from "./lib/deckBuilder";
+import { enrichSlidesWithVisuals } from "./lib/slideImageUtils";
+import { assignDeckVariants } from "./lib/deckVariants";
+import {
+  loadChatSession,
+  saveChatSession,
+  clearChatSession,
+  loadSessionImages,
+  saveSessionImages,
+  clearSessionImages,
+  compressSessionImages,
+} from "./lib/sessionPersistence";
 import { EditableText } from "./components/EditableText";
 import decksyLogo from "./images/logo.png";
 
@@ -320,7 +331,7 @@ export default function App() {
   
   const [isWatermarkRemoved, setIsWatermarkRemoved] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [sessionImages, setSessionImages] = useState<{ id: string; image: string; description: string }[]>([]);
+  const [sessionImages, setSessionImages] = useState<{ id: string; image: string; description: string }[]>(() => loadSessionImages());
   const [showImagePromptModal, setShowImagePromptModal] = useState(false);
   const [isRewritingSlide, setIsRewritingSlide] = useState(false);
   const [rewriteError, setRewriteError] = useState("");
@@ -840,6 +851,43 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Restore chat session after page refresh
+  useEffect(() => {
+    const saved = loadChatSession();
+    if (!saved?.messages?.length) return;
+    setIdea(saved.idea || "");
+    setMode(saved.mode || "investor");
+    setMessages(saved.messages);
+    setCanvas(saved.canvas || INITIAL_CANVAS);
+    setCurrentQuestionIndex(saved.currentQuestionIndex || 1);
+    setInvestorSentiment((saved.investorSentiment as typeof investorSentiment) || "skeptical");
+    setUnderlyingThoughts(saved.underlyingThoughts || "");
+    if (saved.screen && saved.screen !== "generating" && saved.screen !== "deck") {
+      setScreen(saved.screen);
+    } else if (saved.messages.length > 1) {
+      setScreen("interview");
+    }
+  }, []);
+
+  // Persist chat while interviewing
+  useEffect(() => {
+    if (!messages.length) return;
+    saveChatSession({
+      idea,
+      mode,
+      messages,
+      canvas,
+      screen: screen === "generating" ? "interview" : screen,
+      currentQuestionIndex,
+      investorSentiment,
+      underlyingThoughts,
+    });
+  }, [idea, mode, messages, canvas, screen, currentQuestionIndex, investorSentiment, underlyingThoughts]);
+
+  useEffect(() => {
+    saveSessionImages(sessionImages);
+  }, [sessionImages]);
+
   // Loading process visualizer helper
   useEffect(() => {
     if (screen !== 'generating') {
@@ -1057,23 +1105,37 @@ export default function App() {
     setScreen("generating");
 
     try {
+      const compressedImages = await compressSessionImages(sessionImages);
       const response = await fetch("/api/generate_deck", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${authToken}`
         },
-        body: JSON.stringify({ idea, mode, messages, canvas, sessionImages }),
+        body: JSON.stringify({ idea, mode, messages, canvas, sessionImages: compressedImages }),
       });
 
       if (!response.ok) {
         throw new Error("Генерация питч-дека провалилась.");
       }
 
-      const deckData = normalizeDeck(await response.json(), idea, mode, canvas);
+      const payload = await response.json();
+      let deckData = normalizeDeck(payload, idea, mode, canvas);
+      enrichSlidesWithVisuals(deckData.slides, compressedImages);
+      if (!deckData.slides[0]?.visualData?.template) {
+        assignDeckVariants(deckData, idea, user?.id);
+      }
+      if (compressedImages.length > 0 && !deckData.slides.some((s) => s.image || s.visualData?.teamMembers?.length)) {
+        console.warn("Images were uploaded but not applied — forcing client-side mapping.");
+        enrichSlidesWithVisuals(deckData.slides, compressedImages);
+      }
       setDeck(deckData);
       setActiveSlideIndex(0);
+      if (deckData.slides[0]?.visualData?.template === "apex") {
+        setSelectedStyle("cosmic-dark");
+      }
       setScreen("deck");
+      clearChatSession();
       if (authToken) {
         saveDeckToDatabase(deckData);
       }
@@ -1212,12 +1274,25 @@ export default function App() {
         await new Promise<void>((resolve) =>
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         );
-        await new Promise((resolve) => setTimeout(resolve, 450));
+        await new Promise((resolve) => setTimeout(resolve, 650));
 
         const element = document.getElementById("export-active-slide-node");
         if (!element) {
           throw new Error(`Не удалось найти контейнер экспорта slide-node для слайда ${i + 1}`);
         }
+
+        await Promise.all(
+          Array.from(element.querySelectorAll("img")).map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if (img.complete) resolve();
+                else {
+                  img.onload = () => resolve();
+                  img.onerror = () => resolve();
+                }
+              })
+          )
+        );
 
         const canvas = await html2canvas(element, getExportHtml2canvasOptions(element));
         const imgDataUrl = canvas.toDataURL("image/png");
@@ -1260,8 +1335,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Failed to export PPTX:", err);
-      // Fallback to text exporter if something fails
-      exportToPPTX(deck, { removeWatermark: isWatermarkRemoved });
+      alert("Не удалось экспортировать PPTX в визуальном качестве. Попробуйте PDF или ZIP.");
     } finally {
       setExportState(null);
       setExportSlideIndex(null);
@@ -1322,6 +1396,8 @@ export default function App() {
     setMessages([]);
     setCanvas(INITIAL_CANVAS);
     setSessionImages([]);
+    clearChatSession();
+    clearSessionImages();
     setDeck(null);
     setRoastActive(false);
     setRoasted(false);
@@ -4162,7 +4238,9 @@ export default function App() {
         const isExpCobalt = selectedStyle === 'cobalt';
         const isExpTitle = exportSlideIndex === 0 || (deck.slides[exportSlideIndex]?.type === 'title');
 
-        let expBackground = 'linear-gradient(to bottom, #111115, #070709)';
+        const isExpApex = deck.slides[exportSlideIndex]?.visualData?.template === "apex" || deck.slides[exportSlideIndex]?.visualData?.template === "swiss";
+
+        let expBackground = isExpApex ? "#000000" : 'linear-gradient(to bottom, #111115, #070709)';
         let expBorder = '1px solid rgba(255, 255, 255, 0.12)';
         let expTextColor = '#f8fafc';
         let expHeaderSpanColor = '#ffffff';
@@ -4216,8 +4294,9 @@ export default function App() {
               justifyContent: 'space-between',
               boxSizing: 'border-box',
               color: expTextColor,
-              zIndex: 40,
-              pointerEvents: 'none'
+              zIndex: 99999,
+              opacity: 1,
+              pointerEvents: 'none',
             }}
           >
             {/* Decorative background grid pattern */}

@@ -10,6 +10,7 @@ import {
   SplitContentLayout,
   HeroTitleSlide,
 } from "../lib/slideVisuals";
+import { ApexSlideContent, shouldUseApexLayout } from "../lib/apexSlides";
 
 export const getThemeStyles = (
   slideIndex: number, 
@@ -202,6 +203,24 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           </div>
         )}
       </div>
+    );
+  }
+
+  // APEX / SWISS template — Apple-style layouts from Teamplate.html
+  if (shouldUseApexLayout(slide)) {
+    return (
+      <ApexSlideContent
+        slide={slide}
+        index={index}
+        title={T(title, "title", "", "span")}
+        subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+        badge={slide.badge ? T(slide.badge, "badge", "", "span") : undefined}
+        sectionLabel={slide.sectionLabel ? T(slide.sectionLabel, "sectionLabel", "", "span") : undefined}
+        content={content}
+        parseBullet={parseBullet}
+        extractNumber={extractNumber}
+        renderBullet={(text, i, className) => B(text, i, className)}
+      />
     );
   }
 

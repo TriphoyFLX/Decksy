@@ -276,9 +276,9 @@ function normalizeSlide(raw: Partial<Slide> | undefined, index: number, idea: st
     subtitle: raw?.subtitle?.trim() || fallback.subtitle,
     content: content.length >= 3 ? content : fallback.content,
     speechScript: raw?.speechScript?.trim() || fallback.speechScript,
-    visualData: raw?.visualData,
-    image: raw?.image || fallback.image,
-    imageDescription: raw?.imageDescription || fallback.imageDescription,
+    visualData: { ...fallback.visualData, ...raw?.visualData },
+    image: raw?.image ?? fallback.image,
+    imageDescription: raw?.imageDescription ?? fallback.imageDescription,
     badge: raw?.badge || fallback.badge,
     sectionLabel: raw?.sectionLabel || fallback.sectionLabel,
   };

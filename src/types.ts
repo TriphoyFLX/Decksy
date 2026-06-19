@@ -26,6 +26,8 @@ export interface PitchCanvas {
 }
 
 export interface SlideVisualData {
+  template?: 'apex' | 'classic' | 'swiss';
+  variant?: string;
   layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics';
   teamMembers?: { name: string; role: string; image: string }[];
   metrics?: { label: string; value: string; highlight?: boolean }[];

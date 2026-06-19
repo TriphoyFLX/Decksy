@@ -1007,7 +1007,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                           <div className="flex items-center justify-center space-x-2 text-xs">
                             <span className="h-2 w-2 rounded-full bg-emerald-500" />
                             <span className="text-[11px] font-medium font-mono text-slate-300">
-                              Магазин #{yookassaShopId || "1386669"}
+                              Магазин #{yookassaShopId || "—"}
                             </span>
                           </div>
                           <p className="text-[9.5px] text-slate-400 leading-normal font-sans">

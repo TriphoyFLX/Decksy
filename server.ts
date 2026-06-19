@@ -14,6 +14,7 @@ import {
   SLIDE_TYPES,
 } from "./src/lib/deckBuilder";
 import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
+import { assignDeckVariants } from "./src/lib/deckVariants";
 import { GoogleGenAI, Type } from "@google/genai";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -651,8 +652,8 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiClient;
 }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -863,6 +864,9 @@ Rules:
 - Each slide MUST have 4-5 specific bullets with numbers, $ amounts, percentages
 - Use format "Label: Value" for market/pricing bullets (e.g. "TAM: $4.2 млрд")
 - speechScript required for every slide
+- Vary slide titles and structures — avoid generic repeated phrasing across decks
+- Use distinct sectionLabel and badge text per slide
+- Assign unique angles: stats-heavy problem slide, product-demo solution, roadmap launch, etc.
 - СТРОГОЕ ПРАВИЛО: НЕ выдумывайте новые функции, фичи, интеграции или продукты, о которых не писал пользователь! Опирайтесь ТОЛЬКО на реальное описание идеи пользователя и его ответы в интервью/канвасе. Не фантазируйте лишнено во благо "обогащения" — пишите строго по делу!`,
       `${baseContext}\nGenerate the complete 10-slide pitch deck.`,
       8000
@@ -2236,11 +2240,14 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
 
   // Map session images systematically
   enrichSlidesWithVisuals(deck.slides, sessionImages);
+  assignDeckVariants(deck, idea, (req as any).user?.userId);
 
   const updatedUser = await recordDeckGeneration((req as any).user.userId);
 
   res.json({
     ...deck,
+    imageCount: sessionImages.length,
+    imagesApplied: deck.slides.filter((s) => s.image || s.visualData?.teamMembers?.length).length,
     usage: {
       plan: updatedUser.plan,
       monthlyDeckCount: updatedUser.monthlyDeckCount,
