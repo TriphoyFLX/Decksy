@@ -1,4 +1,5 @@
 import type { Slide, SlideVisualData } from "../types";
+import { findSlideIndexByType } from "./deckBuilder";
 
 export type ImageCategory = "logo" | "product" | "market" | "team" | "competitor" | "contact" | "other";
 
@@ -76,8 +77,41 @@ export function parseTeamMember(description: string, image: string): { name: str
   return { name, role, image };
 }
 
+function firstSlideIndex(slides: Slide[], types: Slide["type"][]): number {
+  for (const t of types) {
+    const idx = findSlideIndexByType(slides, t);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+export function fixMisplacedTeamLayout(slides: Slide[]): void {
+  const sauceIdx = findSlideIndexByType(slides, "sauce");
+  if (sauceIdx < 0) return;
+
+  for (let i = 0; i < slides.length; i++) {
+    if (i === sauceIdx) continue;
+    const slide = slides[i];
+    if (slide.visualData?.layout === "team" && slide.visualData.teamMembers?.length) {
+      slides[sauceIdx].visualData = {
+        ...(slides[sauceIdx].visualData || {}),
+        layout: "team",
+        teamMembers: slide.visualData.teamMembers,
+      };
+      if (!slides[sauceIdx].title || slides[sauceIdx].title.includes("Moat")) {
+        slides[sauceIdx].title = "Команда проекта";
+      }
+      slides[sauceIdx].sectionLabel = "👥 Команда • Founders & Core Team";
+      slide.visualData = { ...slide.visualData, layout: undefined, teamMembers: undefined };
+      slide.image = slide.image;
+    }
+  }
+}
+
 export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionImage[]): void {
-  if (!sessionImages?.length || !Array.isArray(slides)) return;
+  if (!Array.isArray(slides)) return;
+  fixMisplacedTeamLayout(slides);
+  if (!sessionImages?.length) return;
 
   const byCategory = new Map<ImageCategory, SessionImage[]>();
   for (const img of sessionImages) {
@@ -101,8 +135,8 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
     const teamMembers = teamImages.map((img) =>
       parseTeamMember(img.description || "", img.image)
     );
-    const teamIdx = 5;
-    if (slides[teamIdx]) {
+    const teamIdx = firstSlideIndex(slides, ["sauce", "tech"]);
+    if (teamIdx >= 0 && slides[teamIdx]) {
       slides[teamIdx].visualData = {
         ...(slides[teamIdx].visualData || {}),
         layout: "team",
@@ -119,27 +153,27 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
 
   const logo = byCategory.get("logo")?.[0];
   if (logo) {
-    assignToSlide(0, logo.image, logo.description, { layout: "hero", accentImage: logo.image });
+    assignToSlide(firstSlideIndex(slides, ["title"]), logo.image, logo.description, { layout: "hero", accentImage: logo.image });
   }
 
   const product = byCategory.get("product")?.[0];
   if (product) {
-    assignToSlide(2, product.image, product.description, { layout: "split" });
+    assignToSlide(firstSlideIndex(slides, ["product", "solution"]), product.image, product.description, { layout: "split" });
   }
 
   const market = byCategory.get("market")?.[0];
   if (market) {
-    assignToSlide(3, market.image, market.description, { layout: "hero" });
+    assignToSlide(firstSlideIndex(slides, ["market"]), market.image, market.description, { layout: "hero" });
   }
 
   const competitor = byCategory.get("competitor")?.[0];
   if (competitor) {
-    assignToSlide(6, competitor.image, competitor.description, { layout: "hero" });
+    assignToSlide(firstSlideIndex(slides, ["competition"]), competitor.image, competitor.description, { layout: "hero" });
   }
 
   const contact = byCategory.get("contact")?.[0];
   if (contact) {
-    assignToSlide(9, contact.image, contact.description);
+    assignToSlide(firstSlideIndex(slides, ["ask", "cta"]), contact.image, contact.description);
   }
 
   const usedIds = new Set<string>();
@@ -154,27 +188,40 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
     }
   }
 
-  // Portrait-like uploads without keywords still go to team on slide 6
+  const sauceIdx = firstSlideIndex(slides, ["sauce", "tech"]);
   const portraitLike = sessionImages.filter(
     (img) => !usedIds.has(img.id) && /ceo|founder|основат|портрет|фото|team|команд/i.test(img.description || "")
   );
-  if (portraitLike.length >= 1 && !slides[5]?.visualData?.teamMembers?.length) {
+  if (portraitLike.length >= 1 && sauceIdx >= 0 && !slides[sauceIdx]?.visualData?.teamMembers?.length) {
     const teamMembers = portraitLike.map((img) => parseTeamMember(img.description || "Команда", img.image));
-    slides[5].visualData = { ...(slides[5].visualData || {}), layout: "team", teamMembers };
-    slides[5].title = "Команда проекта";
-    slides[5].sectionLabel = "👥 Команда • Founders & Core Team";
+    slides[sauceIdx].visualData = { ...(slides[sauceIdx].visualData || {}), layout: "team", teamMembers };
+    slides[sauceIdx].title = "Команда проекта";
+    slides[sauceIdx].sectionLabel = "👥 Команда • Founders & Core Team";
     portraitLike.forEach((img) => usedIds.add(img.id));
   }
 
   const leftovers = sessionImages.filter((img) => !usedIds.has(img.id));
 
   if (sessionImages.length === 1 && leftovers.length === 1) {
-    assignToSlide(2, leftovers[0].image, leftovers[0].description, { layout: "split" });
+    assignToSlide(firstSlideIndex(slides, ["product", "solution"]), leftovers[0].image, leftovers[0].description, { layout: "split" });
     usedIds.add(leftovers[0].id);
   }
 
   const stillLeft = sessionImages.filter((img) => !usedIds.has(img.id));
-  const slotPriority = [2, 3, 0, 6, 4, 7, 8, 9, 1, 5];
+  const slotPriority = [
+    firstSlideIndex(slides, ["product"]),
+    firstSlideIndex(slides, ["solution"]),
+    firstSlideIndex(slides, ["market"]),
+    firstSlideIndex(slides, ["title"]),
+    firstSlideIndex(slides, ["competition"]),
+    firstSlideIndex(slides, ["pricing"]),
+    firstSlideIndex(slides, ["launch"]),
+    firstSlideIndex(slides, ["traction"]),
+    firstSlideIndex(slides, ["ask"]),
+    firstSlideIndex(slides, ["problem"]),
+    sauceIdx,
+  ].filter((i) => i >= 0);
+
   let slotPtr = 0;
   for (const img of stillLeft) {
     while (slotPtr < slotPriority.length) {
@@ -214,9 +261,17 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
       .map((line) => {
         const m = line.match(/^([^:—\-]+)[:—\-]\s*(.+)$/);
         if (!m) return null;
-        const value = m[2].trim();
-        if (/\$|%|\d/.test(value)) {
-          return { label: m[1].trim(), value, highlight: /tam|sam|som|mrr|arr|cac|ltv/i.test(m[1]) };
+        const label = m[1].trim();
+        const rawValue = m[2].trim();
+        const numMatch = rawValue.match(/([\d][\d\s,.]*\s*(?:млрд|млн|тыс|%|B|M|K|к\b|руб\.?|₽)?)/i);
+        const value = numMatch ? numMatch[1].trim() : rawValue.slice(0, 48);
+        const detail = numMatch ? rawValue.replace(numMatch[0], "").replace(/^[\s—\-]+/, "").trim() : "";
+        if (/\$|%|\d|млрд|млн|тыс|руб/i.test(rawValue)) {
+          return {
+            label,
+            value: detail ? `${value} — ${detail}`.slice(0, 80) : value,
+            highlight: /tam|sam|som|mrr|arr|cac|ltv/i.test(label),
+          };
         }
         return null;
       })

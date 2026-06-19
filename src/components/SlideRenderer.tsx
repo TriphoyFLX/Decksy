@@ -10,6 +10,7 @@ import {
   SplitContentLayout,
   HeroTitleSlide,
 } from "../lib/slideVisuals";
+import { resolveSlideType } from "../lib/deckBuilder";
 import { ApexSlideContent, shouldUseApexLayout } from "../lib/apexSlides";
 import { resolveSlideTheme } from "../lib/deckTheme";
 import type { DeckThemeCustom } from "../types";
@@ -64,6 +65,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
   const subtitle = slide.subtitle;
   const content = slide.content || [];
   const type = (slide.type || "") as string;
+  const slideType = resolveSlideType(slide, index);
   const editable = !!onUpdate && !forExport;
   const theme = getThemeStyles(index, type, selectedStyle, customTheme);
   const rt = theme.resolved;
@@ -121,10 +123,14 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     return match ? match[1] : "";
   };
 
-  // TEAM SLIDE — founder photos from user uploads
-  if (slide.visualData?.layout === "team" && slide.visualData.teamMembers?.length) {
+  // TEAM SLIDE — founder photos (sauce slide only)
+  if (
+    (slideType === "sauce" || slideType === "tech") &&
+    slide.visualData?.layout === "team" &&
+    slide.visualData.teamMembers?.length
+  ) {
     return (
-      <div className="flex flex-col h-full py-1 justify-between">
+      <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
         <SlideSectionHeader
           sectionLabel={slide.sectionLabel || "👥 Команда • Founders & Core Team"}
           title={T(title, "title", "", "span")}
@@ -136,13 +142,21 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
           members={slide.visualData.teamMembers}
           selectedStyle={selectedStyle}
           forExport={forExport}
+          editable={editable}
+          onMemberImageChange={(memberIndex, image) => {
+            const members = [...(slide.visualData?.teamMembers || [])];
+            members[memberIndex] = { ...members[memberIndex], image };
+            onUpdate?.({
+              visualData: { ...slide.visualData, layout: "team", teamMembers: members },
+            });
+          }}
         />
         {content.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1.5 shrink-0">
             {content.slice(0, 2).map((item, i) => (
               <div
                 key={i}
-                className={`rounded-xl p-2 text-[9px] border text-left ${theme.innerCardBg}`}
+                className={`rounded-lg p-1.5 text-[8px] border text-left line-clamp-2 ${theme.innerCardBg}`}
               >
                 {B(item, i, theme.bulletTextColor)}
               </div>
@@ -172,8 +186,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 1. TITLE SLIDE (Index 0 or type === 'title')
-  if (index === 0 || type === "title") {
+  // 1. TITLE SLIDE
+  if (slideType === "title") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
 
@@ -206,8 +220,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 2. PROBLEM SLIDE (Index 1 or type === 'problem')
-  if (index === 1 || type === "problem") {
+  // 2. PROBLEM SLIDE
+  if (slideType === "problem") {
     return (
       <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
         <SlideSectionHeader
@@ -261,7 +275,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
   }
 
   // 3. SOLUTION SLIDE (Index 2 or type === 'solution')
-  if (index === 2 || type === "solution") {
+  // 3. SOLUTION / PRODUCT
+  if (slideType === "solution" || slideType === "product") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (
@@ -323,8 +338,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 4. MARKET SIZE (Index 3 or type === 'market')
-  if (index === 3 || type === "market") {
+  // 4. MARKET SIZE
+  if (slideType === "market") {
     return (
       <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
         <SlideSectionHeader
@@ -343,7 +358,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             left={<MetricBento metrics={slide.visualData.metrics} selectedStyle={selectedStyle} />}
           />
         ) : (
-        <div className="grid grid-cols-3 gap-2 my-auto min-h-0 flex-1">
+        <div className="grid grid-cols-3 gap-1.5 my-auto min-h-0 flex-1">
           {content.slice(0, slide.image ? 2 : 3).map((item, i) => {
             const parsed = parseBullet(item);
             const extractedNum = extractNumber(item);
@@ -360,20 +375,19 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
             ][i] || { pill: "bg-white/5 text-white/80 border-white/10", num: "text-white" };
 
             return (
-              <div key={i} className={`rounded-xl p-2 text-left flex flex-col justify-between gap-1 relative overflow-hidden border min-h-0 ${cardBg}`}>
-                <div className="flex items-center justify-between relative z-10 gap-1">
-                  <span className={`text-[7px] font-mono py-0.5 px-1 rounded uppercase tracking-widest font-extrabold border truncate ${accentColor.pill}`}>
+              <div key={i} className={`rounded-xl p-2 text-left flex flex-col gap-1 relative overflow-hidden border min-h-0 ${cardBg}`}>
+                <div className="flex items-center justify-between relative z-10 gap-1 shrink-0">
+                  <span className={`text-[6.5px] font-mono py-0.5 px-1 rounded uppercase tracking-widest font-extrabold border truncate max-w-[85%] ${accentColor.pill}`}>
                     {labelText}
                   </span>
-                  <span className={`text-[7px] font-mono shrink-0 ${rt.mutedClass}`}>0{i + 1}</span>
                 </div>
-                <div className="space-y-0.5 relative z-10 min-h-0">
+                <div className="space-y-0.5 relative z-10 min-h-0 flex-1 overflow-hidden">
                   {extractedNum ? (
-                    <div className={`text-sm sm:text-base font-display font-black tracking-tighter ${accentColor.num}`}>
+                    <div className={`text-xs sm:text-sm font-display font-black tracking-tight leading-none ${accentColor.num}`}>
                       {extractedNum}
                     </div>
                   ) : null}
-                  <p className={`text-[8.5px] leading-snug line-clamp-2 ${rt.bodyClass}`}>
+                  <p className={`text-[7.5px] sm:text-[8px] leading-snug line-clamp-4 ${rt.bodyClass}`}>
                     {extractedNum ? descText.replace(extractedNum, "").replace(/^[:-]\s*/, "").trim() : descText}
                   </p>
                 </div>
@@ -396,8 +410,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 5. BUSINESS MODEL / REVENUE (Index 4 or type === 'pricing' || type === 'revenue')
-  if (index === 4 || type === "pricing" || type === "revenue") {
+  // 5. BUSINESS MODEL / REVENUE
+  if (slideType === "pricing" || type === "revenue") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (
@@ -492,8 +506,71 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 6. SECRET SAUCE / TECH (Index 5 or type === 'sauce' || type === 'tech')
-  if (index === 5 || type === "sauce" || type === "tech") {
+  // 6. COMPETITORS (before sauce — correct 12-slide order)
+  if (slideType === "competition") {
+    const isLight = selectedStyle === 'clean-light';
+    const isCobalt = selectedStyle === 'cobalt';
+    return (
+      <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
+        <SlideSectionHeader
+          sectionLabel={slide.sectionLabel || "🥊 Конкурентный анализ"}
+          title={T(title, "title", "", "h2")}
+          subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+          accentClass={isLight ? "text-rose-600" : "text-[#f43f5e]"}
+          selectedStyle={selectedStyle}
+        />
+        <div className={`grid gap-2 my-auto min-h-0 flex-1 ${slide.image ? "grid-cols-3" : "grid-cols-2"}`}>
+          <div className={`rounded-xl p-2.5 space-y-1 text-left border min-h-0 overflow-hidden ${isLight ? "bg-rose-50/30 border-rose-100" : "bg-white/[0.03] border-white/8"}`}>
+            <span className={`text-[7px] font-mono uppercase tracking-widest font-extrabold ${isLight ? "text-rose-700" : "text-[#f43f5e]"}`}>Конкуренты</span>
+            <ul className="space-y-1">
+              {content.slice(0, 2).map((item, i) => (
+                <li key={i} className={`text-[8px] leading-snug line-clamp-2 ${rt.bodyClass}`}>• {B(item, i, "")}</li>
+              ))}
+            </ul>
+          </div>
+          <div className={`rounded-xl p-2.5 space-y-1 text-left border min-h-0 overflow-hidden ${isLight ? "bg-emerald-50/40 border-emerald-200" : "bg-emerald-500/[0.06] border-emerald-500/20"}`}>
+            <span className={`text-[7px] font-mono uppercase tracking-widest font-extrabold text-emerald-500`}>Наше отличие</span>
+            <ul className="space-y-1">
+              {(content.slice(2, 4).length ? content.slice(2, 4) : content.slice(0, 2)).map((item, i) => (
+                <li key={i} className={`text-[8px] leading-snug line-clamp-2 ${rt.bodyClass}`}>✓ {B(item, i + 2, "")}</li>
+              ))}
+            </ul>
+          </div>
+          {slide.image && (
+            <PremiumImage src={slide.image} alt={slide.imageDescription} variant="thumb" forExport={forExport} className="min-h-0 h-full" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 7. TRACTION
+  if (slideType === "traction") {
+    return (
+      <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
+        <SlideSectionHeader
+          sectionLabel={slide.sectionLabel || "🚀 Traction"}
+          title={T(title, "title", "", "h2")}
+          subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+          accentClass="text-cyan-400"
+          selectedStyle={selectedStyle}
+        />
+        <MetricBento
+          metrics={
+            slide.visualData?.metrics ||
+            content.slice(0, 3).map((item, i) => {
+              const p = parseBullet(item);
+              return { label: p.label || `Метрика ${i + 1}`, value: p.detail || item };
+            })
+          }
+          selectedStyle={selectedStyle}
+        />
+      </div>
+    );
+  }
+
+  // 8. SECRET SAUCE / TECH (non-team)
+  if (slideType === "sauce" || slideType === "tech") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (
@@ -575,87 +652,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 7. COMPETITORS SLIDE (Index 6 or type === 'competition')
-  if (index === 6 || type === "competition") {
-    const isLight = selectedStyle === 'clean-light';
-    const isCobalt = selectedStyle === 'cobalt';
-    return (
-      <div className="flex flex-col justify-around h-full py-1">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            {T(slide.sectionLabel || "🥊 Раздел 07 • Конкурентный анализ", "sectionLabel", `text-[7px] font-mono uppercase tracking-widest font-extrabold ${isLight ? 'text-rose-600' : 'text-[#f43f5e]'}`)}
-            {T(title, "title", `text-xs sm:text-sm md:text-md lg:text-lg font-display font-black tracking-tight uppercase leading-tight ${isLight ? 'text-neutral-900' : isCobalt ? 'text-slate-900' : 'text-white'}`, "h2")}
-          </div>
-          {subtitle && T(
-            subtitle,
-            "subtitle",
-            `hidden sm:inline-block border text-[8px] font-mono py-0.5 px-2 rounded-full uppercase tracking-wider font-semibold ${isLight ? 'bg-rose-50 text-rose-700 border-rose-200' : isCobalt ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-[#f43f5e]/10 text-[#f43f5e] border border-[#f43f5e]/20'}`
-          )}
-        </div>
-
-        {/* Clean 2-block side-by-side positioning layout */}
-        <div className={`grid grid-cols-1 ${slide.image ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5 my-auto`}>
-          <div className={`rounded-xl p-3 space-y-1.5 text-left border ${
-            isLight 
-              ? 'bg-rose-50/30 border-rose-100 shadow-sm' 
-              : isCobalt 
-                ? 'bg-rose-100/10 border-rose-250 shadow-sm text-slate-800' 
-                : 'bg-white/[0.012] border-white/5'
-          }`}>
-            <span className={`text-[7.5px] font-mono uppercase tracking-widest font-extrabold ${isLight ? 'text-rose-700' : 'text-[#f43f5e]'}`}>Другие Игроки (Слабости)</span>
-            <ul className="space-y-1">
-              {content.slice(0, 2).map((item, i) => (
-                <li key={i} className={`flex items-start text-[9.5px] font-sans leading-tight ${isLight ? 'text-neutral-600' : isCobalt ? 'text-slate-700' : 'text-slate-400'}`}>
-                  <span className="text-[#f43f5e] mr-2 mt-1">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className={`rounded-xl p-3 space-y-1.5 text-left relative overflow-hidden border ${
-            isLight 
-              ? 'bg-emerald-50/50 border-emerald-200' 
-              : isCobalt 
-                ? 'bg-emerald-5 border border-emerald-200 text-slate-800 shadow-sm shadow-emerald-100' 
-                : 'bg-emerald-505/[0.012] border-emerald-500/20'
-          }`}>
-            <div className="absolute top-0 right-0 h-12 w-12 bg-emerald-500/5 rounded-full blur-xl"></div>
-            <span className={`text-[7.5px] font-mono uppercase tracking-widest font-extrabold ${isLight ? 'text-emerald-700' : 'text-emerald-650'}`}>Наш Продукт (Преимущество)</span>
-            <ul className="space-y-1">
-              {content.slice(2, 4).map((item, i) => (
-                <li key={i} className={`flex items-start text-[9.5px] font-sans leading-tight ${isLight ? 'text-neutral-700 font-medium' : isCobalt ? 'text-slate-800 font-medium' : 'text-emerald-300'}`}>
-                  <span className="text-[#10b981] mr-1.5 mt-0.5">✔</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {slide.image && (
-            <div 
-              className="rounded-xl overflow-hidden border border-white/10 relative flex flex-col justify-between bg-black/20"
-              style={{ minHeight: '80px', height: '100%' }}
-            >
-              <img src={slide.image} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={slide.imageDescription || "Competition Illustration"} />
-              {slide.imageDescription && (
-                <div className="absolute bottom-1 left-1 right-1 bg-black/75 backdrop-blur-sm p-1 rounded text-[7px] text-white truncate text-center leading-none">
-                  {slide.imageDescription}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <p className={`text-[8px] italic text-left ${isLight ? 'text-neutral-400' : 'text-slate-500'}`}>
-          * Фокус на узкой автоматизации позволяет сократить CAC и повысить удержание пользователей.
-        </p>
-      </div>
-    );
-  }
-
-  // 8. GO-TO-MARKET / LAUNCH (Index 7 or type === 'launch' || type === 'gtm')
-  if (index === 7 || type === "launch" || type === "gtm") {
+  // 9. GO-TO-MARKET / LAUNCH
+  if (slideType === "launch" || type === "gtm") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (
@@ -734,7 +732,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
   }
 
   // 9. CRITICAL RISKS (Index 8 or type === 'risks')
-  if (index === 8 || type === "risks") {
+  if (slideType === "risks") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (
@@ -811,7 +809,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
   }
 
   // 10. THE ASK / FUNDING (Index 9 or type === 'ask' || type === 'cta')
-  if (index === 9 || type === "ask" || type === "cta") {
+  if (slideType === "ask" || slideType === "cta") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (
@@ -877,5 +875,26 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
   
+  if (slideType === "vision") {
+    return (
+      <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden justify-center text-center">
+        <SlideSectionHeader
+          sectionLabel={slide.sectionLabel || "🔭 Vision"}
+          title={T(title, "title", "", "h2")}
+          subtitle={subtitle ? T(subtitle, "subtitle", "", "span") : undefined}
+          accentClass="text-violet-400"
+          selectedStyle={selectedStyle}
+        />
+        <div className="space-y-2 my-auto px-2">
+          {content.slice(0, 3).map((item, i) => (
+            <p key={i} className={`text-[9px] sm:text-[10px] leading-relaxed ${rt.bodyClass}`}>
+              {B(item, i, "")}
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };

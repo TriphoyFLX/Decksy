@@ -14,7 +14,7 @@ import {
   Target,
   User,
 } from "lucide-react";
-import type { Slide } from "../types";
+import type { Slide, SlideVisualData } from "../types";
 import { PremiumImage } from "./slideVisuals";
 import { getConstructorStyle } from "../components/SlideConstructor";
 import type { SlideConstructorLayout } from "../types";
@@ -302,6 +302,95 @@ export const ApexPainGrid: React.FC<{
     {image && content.length <= 3 && (
       <div className="col-span-2 sm:col-span-4 rounded-2xl overflow-hidden h-20 sm:h-24 mt-0.5">
         <PremiumImage src={image} variant="hero" className="!min-h-full !rounded-2xl" />
+      </div>
+    )}
+  </div>
+);
+
+export const ApexMarketPanel: React.FC<{
+  content: string[];
+  metrics?: SlideVisualData["metrics"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+}> = ({ content, metrics, parseBullet, extractNumber }) => {
+  const items =
+    metrics && metrics.length >= 2
+      ? metrics.slice(0, 3).map((m) => ({ label: m.label, value: m.value, detail: "" }))
+      : content.slice(0, 3).map((item) => {
+          const parsed = parseBullet(item);
+          const num = extractNumber(item);
+          return {
+            label: parsed.label || `Сегмент`,
+            value: num || parsed.detail.slice(0, 40),
+            detail: num ? parsed.detail.replace(num, "").replace(/^[\s—\-:]+/, "").trim() : parsed.detail,
+          };
+        });
+
+  const accents = ["#0071e3", "#5e5ce6", "#30d158"];
+
+  return (
+    <div className="flex flex-col gap-2 my-auto min-h-0 flex-1">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 min-h-0 flex-1">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className="rounded-xl p-2 sm:p-2.5 flex flex-col gap-1 border border-white/[0.08] bg-white/[0.04] min-h-0 overflow-hidden"
+          >
+            <span
+              className="text-[6.5px] sm:text-[7px] font-mono uppercase tracking-widest font-bold truncate px-1.5 py-0.5 rounded-full w-fit max-w-full"
+              style={{ color: accents[i], background: `${accents[i]}18` }}
+            >
+              {item.label}
+            </span>
+            <div className="text-[11px] sm:text-xs font-bold text-white leading-tight line-clamp-2">{item.value}</div>
+            {item.detail && (
+              <p className="text-[7px] sm:text-[8px] text-white/45 leading-snug line-clamp-3 flex-1">{item.detail}</p>
+            )}
+          </div>
+        ))}
+      </div>
+      {content[3] && (
+        <div className="shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 flex items-center gap-1.5">
+          <span className="text-[6px] font-mono uppercase text-emerald-400 font-bold shrink-0">Тренд</span>
+          <span className="text-[7px] text-white/55 line-clamp-1">{content[3]}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const ApexCompetitionPanel: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  image?: string;
+}> = ({ content, parseBullet, renderBullet, image }) => (
+  <div className={`grid gap-2 my-auto min-h-0 flex-1 ${image ? "grid-cols-3" : "grid-cols-2"}`}>
+    <div className="rounded-xl p-2.5 border border-rose-500/20 bg-rose-500/[0.06] flex flex-col gap-1 min-h-0 overflow-hidden">
+      <span className="text-[7px] font-mono uppercase tracking-widest text-rose-400 font-bold">Конкуренты</span>
+      <ul className="space-y-1 flex-1 min-h-0 overflow-hidden">
+        {content.slice(0, 2).map((item, i) => (
+          <li key={i} className="text-[8px] text-white/55 leading-snug flex gap-1">
+            <span className="text-rose-400 shrink-0">•</span>
+            <span className="line-clamp-2">{renderBullet(parseBullet(item).detail || item, i, "")}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div className="rounded-xl p-2.5 border border-emerald-500/25 bg-emerald-500/[0.06] flex flex-col gap-1 min-h-0 overflow-hidden">
+      <span className="text-[7px] font-mono uppercase tracking-widest text-emerald-400 font-bold">Наше отличие</span>
+      <ul className="space-y-1 flex-1 min-h-0 overflow-hidden">
+        {(content.slice(2, 4).length ? content.slice(2, 4) : content.slice(0, 2)).map((item, i) => (
+          <li key={i} className="text-[8px] text-emerald-200/80 leading-snug flex gap-1">
+            <span className="text-emerald-400 shrink-0">✓</span>
+            <span className="line-clamp-2">{renderBullet(parseBullet(item).detail || item, i + 2, "")}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+    {image && (
+      <div className="rounded-xl overflow-hidden min-h-0 border border-white/10">
+        <PremiumImage src={image} variant="thumb" className="!min-h-full h-full" />
       </div>
     )}
   </div>
@@ -721,8 +810,13 @@ export const ApexSlideContent: React.FC<{
             />
           ))}
 
-        {type === "market" && variant === "metric-row" && (
-          <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
+        {type === "market" && (
+          <ApexMarketPanel
+            content={content}
+            metrics={slide.visualData?.metrics}
+            parseBullet={parseBullet}
+            extractNumber={extractNumber}
+          />
         )}
 
         {(type === "solution" || type === "product") &&
@@ -748,19 +842,13 @@ export const ApexSlideContent: React.FC<{
           <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} />
         )}
 
-        {type === "market" && variant !== "metric-row" && slide.visualData?.metrics && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 my-auto">
-            {slide.visualData.metrics.map((m, i) => (
-              <div key={i} className="rounded-xl p-3 bg-white/[0.04] border border-white/[0.06]">
-                <div className="text-[8px] text-white/40 uppercase tracking-widest">{m.label}</div>
-                <div className="text-lg font-bold text-white">{m.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {type === "competition" && (
-          <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} />
+          <ApexCompetitionPanel
+            content={content}
+            parseBullet={parseBullet}
+            renderBullet={renderBullet}
+            image={slide.image}
+          />
         )}
 
         {type === "pricing" && <ApexPricingCards content={content} parseBullet={parseBullet} extractNumber={extractNumber} />}
@@ -777,7 +865,11 @@ export const ApexSlideContent: React.FC<{
           />
         )}
 
-        {!["title", "problem", "solution", "product", "market", "pricing", "traction", "launch", "ask", "cta", "vision", "competition"].includes(type) &&
+        {type === "sauce" && !slide.visualData?.teamMembers?.length && (
+          <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} image={slide.image} />
+        )}
+
+        {!["title", "problem", "solution", "product", "market", "pricing", "traction", "launch", "ask", "cta", "vision", "competition", "sauce"].includes(type) &&
           index !== 0 && (
             <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
           )}

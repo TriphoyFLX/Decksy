@@ -1,6 +1,7 @@
 import type { PitchDeck, Slide } from "../types";
+import { type DeckTemplateId, resolveLayoutEngine } from "./deckTheme";
 
-export type DeckTemplate = "apex" | "swiss";
+export type DeckTemplate = DeckTemplateId;
 
 const SLIDE_VARIANTS: Record<string, string[]> = {
   title: ["hero-centered", "hero-bold", "hero-minimal"],
@@ -30,11 +31,12 @@ export function assignDeckVariants(
   deck: PitchDeck,
   idea: string,
   userId?: number,
-  forceTemplate?: DeckTemplate
-): DeckTemplate {
+  forceTemplate?: DeckTemplateId
+): DeckTemplateId {
   const seed = hashSeed(idea, userId ?? 0, deck.title ?? "");
-  const templates: DeckTemplate[] = ["apex", "swiss"];
-  const template = forceTemplate ?? pick(templates, seed, 3);
+  const templates: DeckTemplateId[] = ["apex", "titanium", "ember", "midnight", "swiss"];
+  const templateId = forceTemplate ?? pick(templates, seed, 3);
+  const layoutEngine = resolveLayoutEngine(templateId);
 
   deck.slides.forEach((slide, index) => {
     const type = slide.type || "title";
@@ -42,12 +44,13 @@ export function assignDeckVariants(
     const variant = pick(variants, seed, index * 7 + 1);
     slide.visualData = {
       ...(slide.visualData || {}),
-      template,
+      template: layoutEngine,
+      deckTemplate: templateId,
       variant,
     };
   });
 
-  return template;
+  return templateId;
 }
 
 export function getSlideVariant(slide: Slide): string {

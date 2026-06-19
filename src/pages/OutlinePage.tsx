@@ -220,14 +220,14 @@ export const OutlinePage: React.FC<OutlinePageProps> = ({
         ))}
       </div>
 
-      {outline && isPro && outline.slides.length < 14 && (
+      {outline && outline.slides.length < 14 && (
         <button
           type="button"
           onClick={onAddSlide}
           className="text-sm text-slate-400 hover:text-white flex items-center gap-1.5 cursor-pointer bg-transparent border-none"
         >
           <Plus className="h-4 w-4" />
-          Add slide
+          {isPro ? "Add slide" : "Add slide (Pro)"}
         </button>
       )}
 

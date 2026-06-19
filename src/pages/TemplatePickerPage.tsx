@@ -14,6 +14,31 @@ interface TemplatePickerPageProps {
 
 function TemplatePreview({ id }: { id: DeckTemplateId }) {
   const t = TEMPLATE_CATALOG[id];
+
+  if (t.backgroundImage) {
+    return (
+      <div
+        className="h-full w-full relative overflow-hidden"
+        style={{
+          backgroundImage: `url(${t.backgroundImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{ background: t.isLightBackground ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.2)" }}
+        />
+        <div className="relative z-10 h-full flex flex-col justify-end p-3">
+          <div
+            className={`h-1.5 w-14 rounded mb-1 ${t.isLightBackground ? "bg-neutral-800/70" : "bg-white/80"}`}
+          />
+          <div className={`h-1 w-10 rounded ${t.isLightBackground ? "bg-neutral-600/40" : "bg-white/30"}`} />
+        </div>
+      </div>
+    );
+  }
+
   if (id === "apex") {
     return (
       <div className="h-full w-full rounded-lg overflow-hidden flex flex-col items-center justify-center p-3" style={{ background: t.frameGradient }}>
@@ -28,6 +53,7 @@ function TemplatePreview({ id }: { id: DeckTemplateId }) {
       </div>
     );
   }
+
   return (
     <div className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2" style={{ background: t.frameGradient }}>
       <div className="h-2 w-14 bg-white/70 rounded" />
@@ -52,6 +78,7 @@ export const TemplatePickerPage: React.FC<TemplatePickerPageProps> = ({
   slideCount,
 }) => {
   const templates = Object.values(TEMPLATE_CATALOG);
+  const activeAccent = TEMPLATE_CATALOG[selectedTemplate].accent;
 
   return (
     <motion.div
@@ -84,7 +111,7 @@ export const TemplatePickerPage: React.FC<TemplatePickerPageProps> = ({
           </div>
 
           <p className="text-sm text-slate-500">
-            +10 уникальных layout-слайдов в бизнес-формате pitch deck
+            12 слайдов investor pitch · фон из PresentationBack
           </p>
         </div>
 
@@ -100,9 +127,14 @@ export const TemplatePickerPage: React.FC<TemplatePickerPageProps> = ({
                   onClick={() => onSelect(tpl.id)}
                   className={`w-full text-left rounded-xl border p-2 transition-all cursor-pointer ${
                     active
-                      ? "border-[#0071e3] ring-2 ring-[#0071e3]/30 bg-[#0071e3]/5"
+                      ? "ring-2 bg-white/[0.04]"
                       : "border-white/10 bg-white/[0.02] hover:border-white/20"
                   }`}
+                  style={
+                    active
+                      ? { borderColor: tpl.accent, boxShadow: `0 0 0 1px ${tpl.accent}33` }
+                      : undefined
+                  }
                 >
                   <div className="aspect-video rounded-lg overflow-hidden mb-2 h-24">
                     <TemplatePreview id={tpl.id} />
@@ -112,7 +144,7 @@ export const TemplatePickerPage: React.FC<TemplatePickerPageProps> = ({
                       <p className="text-sm font-medium text-white">{tpl.name}</p>
                       <p className="text-[10px] text-slate-500">{tpl.description}</p>
                     </div>
-                    {active && <Check className="h-4 w-4 text-[#0071e3]" />}
+                    {active && <Check className="h-4 w-4" style={{ color: activeAccent }} />}
                   </div>
                 </button>
               );

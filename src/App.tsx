@@ -67,11 +67,11 @@ import {
 import { generatePythonPPTXCode } from "./lib/pythonGenerator";
 import { DeckCustomizer } from "./components/DeckCustomizer";
 import { SlideConstructor } from "./components/SlideConstructor";
-import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, type DeckTemplateId } from "./lib/deckTheme";
+import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, getTemplateFrameAppearance, type DeckTemplateId } from "./lib/deckTheme";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide, DeckThemeCustom, ProjectBranding } from "./types";
 import { normalizeDeck, generateLocalDeck, SLIDE_TYPES } from "./lib/deckBuilder";
 import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, mergeBrandingFromInterview } from "./lib/projectBranding";
-import { enrichSlidesWithVisuals } from "./lib/slideImageUtils";
+import { enrichSlidesWithVisuals, fixMisplacedTeamLayout } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
 import {
   generateLocalOutline,
@@ -795,7 +795,9 @@ export default function App() {
   const loadSavedDeck = (saved: any) => {
     setIdea(saved.idea);
     setMode(saved.mode as Mode);
-    setDeck(saved);
+    const deckCopy = saved.slides ? { ...saved, slides: saved.slides.map((s: Slide) => ({ ...s })) } : saved;
+    if (deckCopy.slides) fixMisplacedTeamLayout(deckCopy.slides);
+    setDeck(deckCopy);
     if (saved.canvas) {
       setCanvas(saved.canvas);
       if (saved.canvas._deckTheme) {
@@ -958,6 +960,7 @@ export default function App() {
   ) => {
     const compressedImages = await compressSessionImages(images);
     let deckData = normalizeDeck(payload, finalIdea, deckMode, deckCanvas);
+    fixMisplacedTeamLayout(deckData.slides);
     deckData = applyBrandingToDeck(deckData, projectBranding);
     enrichSlidesWithVisuals(deckData.slides, compressedImages);
     assignDeckVariants(deckData, finalIdea, user?.id, selectedTemplate);
@@ -1080,17 +1083,24 @@ export default function App() {
   };
 
   const handleAddOutlineSlide = () => {
-    if (!isWatermarkRemoved) return;
+    if (!isWatermarkRemoved && user?.role !== "admin") {
+      setLimitMessage("Добавление слайдов доступно на тарифе Pro.");
+      setShowLimitModal(true);
+      return;
+    }
     setPresentationOutline((prev) => {
-      if (!prev || prev.slides.length >= SLIDE_TYPES.length) return prev;
+      if (!prev) return prev;
+      if (prev.slides.length >= 14) return prev;
       const nextIndex = prev.slides.length;
+      const usedTypes = new Set(prev.slides.map((s) => s.type));
+      const nextType = SLIDE_TYPES.find((t) => !usedTypes.has(t)) || "traction";
       return {
         ...prev,
         slides: [
           ...prev.slides,
           {
             id: `outline_${nextIndex + 1}`,
-            type: "traction",
+            type: nextType,
             title: "Дополнительный слайд",
             bullets: ["Ключевой пункт"],
           },
@@ -3798,7 +3808,10 @@ export default function App() {
         {!legalPage && screen === 'templates' && (
           <TemplatePickerPage
             selectedTemplate={selectedTemplate}
-            onSelect={setSelectedTemplate}
+            onSelect={(tid) => {
+              setSelectedTemplate(tid);
+              setSelectedStyle(TEMPLATE_CATALOG[tid].selectedStyle);
+            }}
             onBack={() => setScreen('outline')}
             onGenerate={handleGenerateFromOutline}
             isLoading={isLoading}
@@ -3980,79 +3993,39 @@ export default function App() {
                 {/* Visual Slide Frame with standard 16:9 box ratio in styling */}
                 {(() => {
                   const tplMeta = TEMPLATE_CATALOG[selectedTemplate];
-                  const isThemeLight = selectedStyle === 'clean-light';
-                  const isThemeCobalt = selectedStyle === 'cobalt';
-                  const useTemplateFrame = selectedStyle === 'cosmic-dark';
                   const activeSlideType = deck.slides[activeSlideIndex]?.type || '';
                   const isTitleSlide = activeSlideIndex === 0 || activeSlideType === 'title';
-                  
-                  // Visual frames style mapping
-                  let frameClass = "aspect-video w-full rounded-2xl p-5 sm:p-7 md:p-8 relative overflow-hidden flex flex-col justify-between shadow-2xl transition-all border ";
-                  let frameStyle: React.CSSProperties = {};
-                  let headerClass = "flex items-center justify-between text-[8px] sm:text-[9px] font-mono pb-2 relative z-10 border-b ";
-                  let footerClass = "pt-2 flex items-center justify-between text-[7px] sm:text-[8px] font-mono uppercase tracking-widest relative z-10 border-t ";
-                  let gridBg = "";
-                  let gridBgSize = "40px 40px";
-                  
-                  if (isThemeLight) {
-                    frameClass += "border-neutral-200/95";
-                    frameStyle = { background: 'linear-gradient(to bottom, #ffffff, #fafafa)' };
-                    headerClass += "border-neutral-200/60 text-neutral-400";
-                    footerClass += "border-neutral-200/60 text-neutral-400";
-                    gridBg = "linear-gradient(rgba(0,0,0,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.015) 1px, transparent 1px)";
-                    gridBgSize = "30px 30px";
-                  } else if (isThemeCobalt) {
-                    if (isTitleSlide) {
-                      frameClass += "border-white/10";
-                      frameStyle = { background: 'linear-gradient(to bottom right, #0b45cf, #001f7a)' };
-                      headerClass += "border-white/10 text-blue-200/65";
-                      footerClass += "border-white/10 text-blue-200/65";
-                      gridBg = "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)";
-                      gridBgSize = "35px 35px";
-                    } else {
-                      frameClass += "border-blue-100/50";
-                      frameStyle = { background: 'linear-gradient(to bottom, #ffffff, #f7faf5)' };
-                      headerClass += "border-blue-100/50 text-slate-400";
-                      footerClass += "border-blue-100/50 text-slate-400";
-                      gridBg = "linear-gradient(rgba(0,77,230,0.008) 1px, transparent 1px), linear-gradient(90deg, rgba(0,77,230,0.008) 1px, transparent 1px)";
-                      gridBgSize = "45px 45px";
-                    }
-                  } else {
-                    frameClass += "border-white/5 hover:border-white/8";
-                    frameStyle = useTemplateFrame
-                      ? { background: tplMeta.frameGradient }
-                      : { background: 'linear-gradient(to bottom, #09090b, #040405)' };
-                    headerClass += "border-white/5 text-slate-500";
-                    footerClass += "border-white/5 text-slate-500";
-                    gridBg = useTemplateFrame ? tplMeta.gridBg : "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)";
-                    gridBgSize = "40px 40px";
-                  }
+                  const frame = getTemplateFrameAppearance(selectedTemplate, selectedStyle, isTitleSlide);
+
+                  const frameClass = `aspect-video w-full rounded-2xl p-5 sm:p-7 md:p-8 relative overflow-hidden flex flex-col justify-between shadow-2xl transition-all border ${frame.frameBorderClass}`;
 
                   return (
-                    <div id="deck-slide-capture" className={frameClass} style={frameStyle}>
-                      {/* Decorative grid pattern */}
-                      <div 
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          backgroundImage: gridBg,
-                          backgroundSize: gridBgSize
-                        }}
-                      />
-                      
-                      {!exportState && !isThemeLight && !isThemeCobalt && (
+                    <div id="deck-slide-capture" className={frameClass} style={frame.frameStyle}>
+                      {frame.overlayStyle && (
+                        <div className="absolute inset-0 pointer-events-none z-[1]" style={frame.overlayStyle} />
+                      )}
+                      {frame.gridBg && (
+                        <div
+                          className="absolute inset-0 pointer-events-none z-[2]"
+                          style={{
+                            backgroundImage: frame.gridBg,
+                            backgroundSize: frame.gridBgSize,
+                          }}
+                        />
+                      )}
+
+                      {frame.showGlowBlobs && !exportState && (
                         <>
-                          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px] pointer-events-none" />
-                          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/8 blur-[80px] pointer-events-none" />
+                          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px] pointer-events-none z-[2]" />
+                          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/8 blur-[80px] pointer-events-none z-[2]" />
                         </>
                       )}
 
-                      {/* Header bar */}
-                      <div className={headerClass}>
-                        <span className={`${isThemeLight ? "text-neutral-900 font-bold" : isThemeCobalt && isTitleSlide ? "text-white font-bold" : isThemeCobalt ? "text-[#004de6] font-bold" : "text-white"} uppercase tracking-widest font-bold`}>{deck.title}</span>
+                      <div className={frame.headerClass}>
+                        <span className={frame.titleHeaderClass}>{deck.title}</span>
                         <span>СЛАЙД {activeSlideIndex + 1} ИЗ {deck.slides.length}</span>
                       </div>
 
-                      {/* Centered actual layout content inside */}
                       <div className="my-auto relative z-10 h-[74%] flex flex-col justify-stretch">
                         <SlideConstructor
                           enabled={constructorMode}
@@ -4080,7 +4053,7 @@ export default function App() {
                       </div>
 
                       {/* Footer bar */}
-                      <div className={footerClass}>
+                      <div className={frame.footerClass}>
                         <span>© {deck.title} • Seed Round</span>
                         <span className="flex items-center gap-1">
                           <span className="h-1 w-1 rounded-full bg-emerald-500"></span>

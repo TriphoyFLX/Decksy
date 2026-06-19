@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import { Camera } from "lucide-react";
 import type { SlideVisualData } from "../types";
 
 type StyleKey = "cobalt" | "clean-light" | "cosmic-dark";
@@ -113,19 +114,32 @@ export const TeamPlateGrid: React.FC<{
   members: NonNullable<SlideVisualData["teamMembers"]>;
   selectedStyle: StyleKey;
   forExport?: boolean;
-}> = ({ members, selectedStyle, forExport }) => {
+  editable?: boolean;
+  onMemberImageChange?: (index: number, imageDataUrl: string) => void;
+}> = ({ members, selectedStyle, forExport, editable, onMemberImageChange }) => {
   const s = getStyleSlice(selectedStyle);
-  const cols = members.length <= 2 ? 2 : members.length <= 4 ? 2 : 3;
+  const cols = members.length <= 2 ? members.length : members.length === 3 ? 3 : 2;
+  const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleFile = (index: number, file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        onMemberImageChange?.(index, reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div
-      className={`grid gap-2.5 sm:gap-3 my-auto`}
+      className="grid gap-2 sm:gap-2.5 my-auto min-h-0 flex-1"
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
-      {members.map((m, i) => (
+      {members.slice(0, 4).map((m, i) => (
         <div
           key={i}
-          className="relative rounded-2xl p-3 sm:p-4 flex flex-col items-center text-center gap-2.5 border backdrop-blur-sm transition-transform"
+          className="relative rounded-2xl p-2.5 sm:p-3 flex flex-col items-center text-center gap-2 border backdrop-blur-sm min-h-0"
           style={{
             background: s.isLight
               ? "linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)"
@@ -133,22 +147,47 @@ export const TeamPlateGrid: React.FC<{
                 ? "linear-gradient(145deg, #ffffff 0%, #f0f6ff 100%)"
                 : "linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
             borderColor: s.cardBorder,
-            boxShadow: s.isLight ? "0 8px 30px rgba(0,0,0,0.06)" : "0 8px 32px rgba(0,0,0,0.35)",
+            boxShadow: s.isLight ? "0 6px 24px rgba(0,0,0,0.05)" : "0 6px 28px rgba(0,0,0,0.3)",
           }}
         >
-          <div className="relative">
-            <PremiumImage src={m.image} alt={m.name} variant="avatar" forExport={forExport} />
-            <div
-              className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-black text-white"
-              style={{ background: s.accent }}
-            >
-              {i + 1}
-            </div>
-          </div>
+          <button
+            type="button"
+            disabled={!editable || forExport}
+            onClick={() => editable && fileRefs.current[i]?.click()}
+            className={`relative group rounded-2xl ${editable && !forExport ? "cursor-pointer" : ""}`}
+            aria-label={`Загрузить фото: ${m.name}`}
+          >
+            {m.image ? (
+              <PremiumImage src={m.image} alt={m.name} variant="avatar" forExport={forExport} className="!h-14 !w-14 sm:!h-16 sm:!w-16" />
+            ) : (
+              <div
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center border border-dashed"
+                style={{ borderColor: s.cardBorder, background: s.cardBg }}
+              >
+                <Camera className="h-5 w-5 opacity-40" style={{ color: s.muted }} />
+              </div>
+            )}
+            {editable && !forExport && (
+              <div className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Camera className="h-4 w-4 text-white" />
+              </div>
+            )}
+            <input
+              ref={(el) => { fileRefs.current[i] = el; }}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(i, f);
+                e.target.value = "";
+              }}
+            />
+          </button>
           <div className="space-y-0.5 min-w-0 w-full">
-            <p className={`text-[11px] sm:text-xs font-bold truncate ${s.titleClass}`}>{m.name}</p>
+            <p className={`text-[10px] sm:text-[11px] font-bold truncate leading-tight ${s.titleClass}`}>{m.name}</p>
             <p
-              className="text-[8px] sm:text-[9px] font-mono uppercase tracking-widest font-semibold truncate"
+              className="text-[7px] sm:text-[8px] font-mono uppercase tracking-widest font-semibold truncate leading-tight"
               style={{ color: s.accent }}
             >
               {m.role}
@@ -165,23 +204,25 @@ export const MetricBento: React.FC<{
   selectedStyle: StyleKey;
 }> = ({ metrics, selectedStyle }) => {
   const s = getStyleSlice(selectedStyle);
+  const items = metrics.slice(0, 3);
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 my-auto">
-      {metrics.slice(0, 6).map((m, i) => (
+    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 my-auto min-h-0 flex-1">
+      {items.map((m, i) => (
         <div
           key={i}
-          className={`rounded-xl p-2.5 sm:p-3 border text-left ${m.highlight ? "col-span-2 sm:col-span-1" : ""}`}
+          className={`rounded-xl p-2 sm:p-2.5 border text-left flex flex-col min-h-0 overflow-hidden ${m.highlight ? "ring-1" : ""}`}
           style={{
             background: m.highlight
-              ? `linear-gradient(135deg, ${s.accent}18 0%, transparent 100%)`
+              ? `linear-gradient(135deg, ${s.accent}14 0%, transparent 100%)`
               : s.cardBg,
             borderColor: m.highlight ? `${s.accent}44` : s.cardBorder,
+            ringColor: m.highlight ? `${s.accent}33` : undefined,
           }}
         >
-          <span className="text-[7px] font-mono uppercase tracking-widest font-bold block mb-1" style={{ color: s.muted }}>
+          <span className="text-[6.5px] sm:text-[7px] font-mono uppercase tracking-widest font-bold block mb-1 truncate" style={{ color: s.muted }}>
             {m.label}
           </span>
-          <span className={`text-base sm:text-lg font-display font-black tracking-tight ${s.titleClass}`}>
+          <span className={`text-[11px] sm:text-sm font-display font-black tracking-tight leading-tight line-clamp-3 ${s.titleClass}`}>
             {m.value}
           </span>
         </div>

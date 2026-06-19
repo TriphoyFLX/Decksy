@@ -1,6 +1,15 @@
 import { PitchDeck, Slide } from "../types";
 import { resolveCompanyName, type ProjectBranding } from "./projectBranding";
 
+export function resolveSlideType(slide: Slide, index: number): Slide["type"] {
+  if (slide.type && SLIDE_TYPES.includes(slide.type)) return slide.type;
+  return SLIDE_TYPES[index] || "title";
+}
+
+export function findSlideIndexByType(slides: Slide[], type: Slide["type"]): number {
+  return slides.findIndex((s) => s.type === type);
+}
+
 export const SLIDE_TYPES: Slide["type"][] = [
   "title",
   "problem",
