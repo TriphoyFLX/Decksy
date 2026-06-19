@@ -5,27 +5,33 @@ export const SLIDE_TYPES: Slide["type"][] = [
   "title",
   "problem",
   "solution",
+  "product",
   "market",
-  "pricing",
-  "sauce",
   "competition",
+  "pricing",
+  "traction",
   "launch",
-  "risks",
+  "sauce",
   "ask",
+  "vision",
 ];
 
-const SLIDE_TITLES = [
-  "Титульный слайд",
-  "Проблема: Острая боль рынка",
-  "Решение: Продукт и ценность",
-  "Рынок и Целевая Аудитория",
-  "Бизнес-Модель: Юнит-Экономика",
-  "Secret Sauce: Технологический Moat",
-  "Конкурентное преимущество",
-  "Стратегия Выхода на Рынок (GTM)",
-  "Анализ Рисков и Безопасность",
-  "Финансовый Раунд и Цели",
-];
+const SLIDE_TITLES: Record<Slide["type"], string> = {
+  title: "Титульный слайд",
+  problem: "💥 Хук: боль рынка",
+  solution: "⚡ Решение",
+  product: "🧠 Продукт",
+  market: "📊 Рынок",
+  competition: "🧨 Конкуренты",
+  pricing: "💸 Бизнес-модель",
+  traction: "🚀 Traction",
+  launch: "🛠 Go-To-Market",
+  sauce: "👥 Команда",
+  ask: "💰 Финансы и запрос",
+  vision: "🧾 Vision",
+  risks: "Риски",
+  tech: "Технология",
+};
 
 function extractStartupName(idea: string): string {
   const stopWords = new Set([
@@ -115,127 +121,170 @@ export function generateLocalDeck(idea: string, mode: string, canvas?: Record<st
         "Интеграции с популярными экосистемами (Telegram, Slack, Notion, CRM)",
       ];
 
-  const slides: Slide[] = [
-    {
-      type: "title",
-      title: name,
-      subtitle: branding?.tagline?.trim() || idea.slice(0, 100),
-      founderName: branding?.founderName?.trim(),
-      founderRole: branding?.founderRole?.trim() || "Основатель",
-      brandQuote: branding?.quote?.trim(),
-      image: branding?.logoImage,
-      badge: "PITCH DECK",
-      content: [
-        branding?.founderName ? `${branding.founderRole || "Основатель"}: ${branding.founderName}` : "",
-        branding?.quote ? `«${branding.quote}»` : "",
-      ].filter(Boolean),
-      speechScript: branding?.founderName
-        ? `Добрый день! Меня зовут ${branding.founderName}, я ${branding.founderRole || "основатель"} ${name}. Представляю проект: ${idea}.`
-        : `Добрый день! Представляю проект: ${idea}. Покажу проблему, решение и бизнес-модель.`,
-    },
-    {
-      type: "problem",
-      title: SLIDE_TITLES[1],
-      subtitle: canvas?.problem?.summary || "Friction in the target market",
-      content: problemBullets,
-      speechScript: `Ключевая проблема рынка: миллионы пользователей сталкиваются с неэффективными решениями в сфере «${idea}». Текущие инструменты слишком сложны и дороги. Наши исследования показали, что ${pick([65, 72, 78, 83], seed)}% целевой аудитории готовы перейти на современную альтернативу прямо сейчас.`,
-    },
-    {
-      type: "solution",
-      title: SLIDE_TITLES[2],
-      subtitle: canvas?.solution?.summary || "Automated smart platform",
-      content: solutionBullets,
-      speechScript: `Наше решение — ${name}: платформа, которая закрывает боль за счёт автоматизации и ИИ. Пользователь получает результат за минуты, а не недели. Мы сокращаем time-to-value в 10 раз и делаем сложные процессы доступными каждому.`,
-    },
-    {
-      type: "market",
-      title: SLIDE_TITLES[3],
-      subtitle: canvas?.market?.summary || "TAM / SAM / SOM",
-      content: [
-        `TAM (Общий объём рынка): ${formatMoney(tam)} на глобальном уровне`,
-        `SAM (Доступный объём): ${formatMoney(sam)} в целевых регионах СНГ и Европы`,
-        `SOM (Цель на 3 года): ${formatMoney(som)} при ${users.toLocaleString("ru-RU")} активных пользователей`,
-        `Рынок растёт на ${growth}% в год благодаря цифровизации и спросу на ИИ-решения`,
-      ],
-      speechScript: `Мы работаем на рынке объёмом ${formatMoney(tam)}. Наш реалистичный SOM — ${formatMoney(som)} за три года. Сегмент растёт на ${growth}% ежегодно, и ${name} попадает в идеальное окно возможностей.`,
-    },
-    {
-      type: "pricing",
-      title: SLIDE_TITLES[4],
-      subtitle: canvas?.moneyModel?.summary || "SaaS + usage-based",
-      content: [
-        `Тариф Starter: $${pick([9, 12, 15, 19], seed)}/мес — для индивидуальных пользователей`,
-        `Тариф Pro: $${pick([29, 39, 49, 59], seed)}/мес — для команд до 10 человек`,
-        `Тариф Enterprise: от $${pick([99, 149, 199], seed)}/мес — кастомизация и SLA`,
-        `LTV: $${ltv} при CAC $${cac} — соотношение LTV/CAC = ${Math.round(ltv / cac)}:1`,
-      ],
-      speechScript: `Бизнес-модель — гибридная SaaS-подписка с usage-based компонентом. При CAC в $${cac} и LTV $${ltv} юнит-экономика устойчива. Средний чек растёт на 15% каждые 6 месяцев за счёт апсейлов.`,
-    },
-    {
-      type: "sauce",
-      title: SLIDE_TITLES[5],
-      subtitle: "Проприетарные алгоритмы и data moat",
-      content: [
-        `Собственная ML-модель, обученная на ${pick([50, 80, 120, 200], seed)}K+ размеченных данных ниши`,
-        "Уникальный feedback loop: каждый новый пользователь улучшает точность на 0.3%",
-        `Патентуемая архитектура pipeline — время отклика < ${pick([80, 120, 200], seed)} мс`,
-        "Vendor lock-in через накопленные пользовательские данные и персонализацию",
-      ],
-      speechScript: `Наш технологический барьер — проприетарные алгоритмы и data flywheel. Чем больше пользователей, тем точнее продукт. Это создаёт защитный ров, который невозможно скопировать за пару недель.`,
-    },
-    {
-      type: "competition",
-      title: SLIDE_TITLES[6],
-      subtitle: canvas?.competitors?.summary || "Почему мы выигрываем",
-      content: [
-        "Крупные универсальные платформы — слишком сложны и нефокусированы",
-        "Ручной труд и агентства — в 20–30 раз дороже при сопоставимом качестве",
-        `Наш Moat: узкая специализация на «${idea.slice(0, 40)}» + скорость внедрения`,
-        `Снижение churn на ${pick([35, 42, 50], seed)}% за счёт персонализации и community`,
-      ],
-      speechScript: `Конкуренты либо слишком универсальны, либо слишком дороги. Мы занимаем sweet spot: узкий фокус, мгновенный запуск, ИИ-автоматизация. Это даёт нам преимущество в скорости и удержании.`,
-    },
-    {
-      type: "launch",
-      title: SLIDE_TITLES[7],
-      subtitle: canvas?.goToMarket?.summary || "Viral GTM loops",
-      content: canvas?.goToMarket?.bullets?.length
-        ? canvas.goToMarket.bullets
-        : [
-            "Product-led growth: бесплатный tier с вирусным шерингом результатов",
-            `Реферальная программа: приведи друга — ${pick([1, 2, 3], seed)} месяца Pro бесплатно`,
-            "Партнёрства с 15+ инфлюенсерами и профильными комьюнити",
-            `План: ${pick([500, 1000, 2000], seed)} платящих клиентов за первые 6 месяцев`,
+  const slides: Slide[] = SLIDE_TYPES.map((type) => {
+    switch (type) {
+      case "title":
+        return {
+          type: "title",
+          title: name,
+          subtitle: branding?.tagline?.trim() || idea.slice(0, 100),
+          founderName: branding?.founderName?.trim(),
+          founderRole: branding?.founderRole?.trim() || "Основатель",
+          brandQuote: branding?.quote?.trim(),
+          image: branding?.logoImage,
+          badge: "PITCH DECK",
+          content: [
+            branding?.founderName ? `${branding.founderRole || "Основатель"}: ${branding.founderName}` : "",
+            branding?.quote ? `«${branding.quote}»` : "",
+          ].filter(Boolean),
+          speechScript: branding?.founderName
+            ? `Добрый день! Меня зовут ${branding.founderName}, я ${branding.founderRole || "основатель"} ${name}.`
+            : `Представляю проект: ${idea}.`,
+        };
+      case "problem":
+        return {
+          type: "problem",
+          title: SLIDE_TITLES.problem,
+          subtitle: canvas?.problem?.summary || "Боль ЦА",
+          content: problemBullets,
+          speechScript: `Ключевая боль: ${idea}. Кто страдает, как часто, сколько это стоит — разберём на этом слайде.`,
+        };
+      case "solution":
+        return {
+          type: "solution",
+          title: SLIDE_TITLES.solution,
+          subtitle: canvas?.solution?.summary || "Что делаем",
+          content: solutionBullets,
+          speechScript: `${name} решает боль за счёт конкретного механизма, а не абстрактной «инновации».`,
+        };
+      case "product":
+        return {
+          type: "product",
+          title: SLIDE_TITLES.product,
+          subtitle: "Фичи и user flow",
+          content: [
+            "Ключевые фичи: 3–4 конкретных возможности продукта",
+            "User flow: что делает пользователь за 60 секунд",
+            "Статус: MVP / пилот / прототип — указать честно",
+            "Демо: скриншот или ссылка на прототип",
           ],
-      speechScript: `Go-to-market строится на product-led growth и виральности. Мы не сжигаем бюджет на рекламу — продукт сам себя продаёт. Первые ${pick([500, 1000, 2000], seed)} клиентов — через комьюнити, рефералы и контент-маркетинг.`,
-    },
-    {
-      type: "risks",
-      title: SLIDE_TITLES[8],
-      subtitle: canvas?.risks?.summary || "Risk map & mitigation",
-      content: canvas?.risks?.bullets?.length
-        ? canvas.risks.bullets
-        : [
-            "Риск: Копирование гигантами — Митигация: скорость итераций в 10x + узкая ниша",
-            "Риск: Высокий churn — Митигация: геймификация, onboarding и customer success",
-            "Риск: Зависимость от API — Митигация: гибридная on-premise + cloud архитектура",
+          speechScript: "Показываю, что внутри продукта и как пользователь проходит путь от входа до ценности.",
+        };
+      case "market":
+        return {
+          type: "market",
+          title: SLIDE_TITLES.market,
+          subtitle: canvas?.market?.summary || "TAM / SAM / SOM",
+          content: [
+            `TAM: ${formatMoney(tam)} — требует уточнения по нише`,
+            `SAM: ${formatMoney(sam)}`,
+            `SOM: ${formatMoney(som)} за 3 года`,
+            `Рост рынка: ~${growth}% в год`,
           ],
-      speechScript: `Мы честно оцениваем риски. Главный — копирование крупными игроками, но наш фокус и скорость дают фору в 12–18 месяцев. Для каждого риска есть конкретный план митигации.`,
-    },
-    {
-      type: "ask",
-      title: SLIDE_TITLES[9],
-      subtitle: "Инвестиции для кратного роста",
-      content: [
-        `Ищем: $${ask.toLocaleString("en-US")} за ${pick([8, 10, 12, 15], seed)}% доли (Pre-seed)`,
-        "50% — Разработка продукта и R&D (ИИ, мобильные клиенты)",
-        "30% — Маркетинг, GTM и привлечение первых 2000 клиентов",
-        "20% — Операционные расходы, юридика, compliance",
-        `Цель: $${mrr}K MRR за 12 месяцев, break-even на 18-м месяце`,
-      ],
-      speechScript: `Мы привлекаем $${ask.toLocaleString("en-US")} на Pre-seed. За 12 месяцев выходим на $${mrr}K MRR. Эти средства — топливо для захвата рынка, пока окно возможностей открыто. Буду рад ответить на ваши вопросы!`,
-    },
-  ];
+          speechScript: `Рынок ${formatMoney(tam)}. Фокус на сегменте, который платит сейчас.`,
+        };
+      case "competition":
+        return {
+          type: "competition",
+          title: SLIDE_TITLES.competition,
+          subtitle: canvas?.competitors?.summary || "Позиционирование",
+          content: [
+            "Прямые конкуренты: 2–3 игрока",
+            "Почему текущие решения не закрывают боль",
+            `Наше отличие: фокус на «${idea.slice(0, 40)}»`,
+            "Дырка на рынке: конкретный механизм",
+          ],
+          speechScript: "Конкуренты есть, но есть чёткая дырка, которую мы закрываем.",
+        };
+      case "pricing":
+        return {
+          type: "pricing",
+          title: SLIDE_TITLES.pricing,
+          subtitle: canvas?.moneyModel?.summary || "Монетизация",
+          content: [
+            "Модель: подписка / комиссия / транзакция",
+            `CAC: $${cac} — требует валидации`,
+            `LTV: $${ltv} — требует валидации`,
+            `LTV/CAC: ${Math.round(ltv / cac)}:1 при подтверждённых цифрах`,
+          ],
+          speechScript: "Юнит-экономика прозрачна: где цифры подтверждены, где ещё валидируем.",
+        };
+      case "traction":
+        return {
+          type: "traction",
+          title: SLIDE_TITLES.traction,
+          subtitle: "Early stage",
+          content: [
+            "Стадия: pre-revenue / early traction — указать честно",
+            "Сигналы спроса: интервью, waitlist, пилоты",
+            "Метрики: пользователи / MRR — только если есть",
+            "Следующий milestone за 90 дней",
+          ],
+          speechScript: "Мы на ранней стадии, но есть сигналы, которые валидируем сейчас.",
+        };
+      case "launch":
+        return {
+          type: "launch",
+          title: SLIDE_TITLES.launch,
+          subtitle: canvas?.goToMarket?.summary || "GTM",
+          content: canvas?.goToMarket?.bullets?.length
+            ? canvas.goToMarket.bullets
+            : [
+                "Канал #1: один основной канал привлечения",
+                "Первые 1000 пользователей: конкретный план",
+                "Партнёрства / контент / B2B — по нише",
+                "Метрика успеха GTM за 90 дней",
+              ],
+          speechScript: "GTM реалистичен: один район, один канал, измеримый результат.",
+        };
+      case "sauce":
+        return {
+          type: "sauce",
+          title: SLIDE_TITLES.sauce,
+          subtitle: "Команда",
+          content: [
+            "Основатель: роль и релевантный опыт",
+            "Ключевые роли: dev / sales / ops",
+            "Почему эта команда потянет проект",
+            "Пробелы в команде и как закрываем",
+          ],
+          speechScript: "Команда собрана под конкретную операционную задачу.",
+        };
+      case "ask":
+        return {
+          type: "ask",
+          title: SLIDE_TITLES.ask,
+          subtitle: "Запрос к инвесторам",
+          content: [
+            `Раунд: $${ask.toLocaleString("en-US")} Pre-seed`,
+            "40% — продукт и разработка",
+            "35% — GTM и первые клиенты",
+            "25% — операционка и runway 12–18 мес",
+          ],
+          speechScript: `Запрашиваем $${ask.toLocaleString("en-US")} на 12–18 месяцев runway.`,
+        };
+      case "vision":
+        return {
+          type: "vision",
+          title: SLIDE_TITLES.vision,
+          subtitle: "3–5 лет",
+          content: [
+            "Видение: куда вырастет продукт за 3–5 лет",
+            "Почему рынок позволяет стать крупным игроком",
+            "Стратегический выход или масштаб — без фантазий",
+            "Миссия: одна фраза",
+          ],
+          speechScript: "Это может стать большим, если мы правы про боль и GTM.",
+        };
+      default:
+        return {
+          type,
+          title: SLIDE_TITLES[type] || type,
+          content: ["Пункт 1", "Пункт 2", "Пункт 3"],
+          speechScript: "",
+        };
+    }
+  });
 
   return {
     id: `deck_${Date.now()}`,
@@ -338,9 +387,9 @@ export function normalizeDeck(
 
 export function isDeckComplete(raw: Partial<PitchDeck> | null | undefined): boolean {
   if (!raw?.slides || !Array.isArray(raw.slides)) return false;
-  if (raw.slides.length < 10) return false;
+  if (raw.slides.length < 12) return false;
   const filled = raw.slides.filter(
-    (s) => s && coerceStringArray(s.content).length >= 3 && s.title?.trim()
+    (s) => s && coerceStringArray(s.content).length >= 2 && s.title?.trim()
   );
   return filled.length >= 10;
 }

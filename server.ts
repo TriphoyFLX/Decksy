@@ -15,6 +15,7 @@ import {
 } from "./src/lib/deckBuilder";
 import { generateLocalOutline, outlineToDeckContext } from "./src/lib/outlineBuilder";
 import { brandingContextForAI, parseBrandingFromCanvas } from "./src/lib/projectBranding";
+import { businessPromptForAI } from "./src/lib/businessSlides";
 import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
 import { assignDeckVariants } from "./src/lib/deckVariants";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -819,17 +820,18 @@ async function generateOutlineWithAI(idea: string, mode: string, branding: any =
   ]
 }
 
-Generate exactly 10 slides. Types in strict order:
+Generate exactly 12 slides. Types in strict order:
 ${slideTypeList}
 
-Rules:
+Each slide MUST follow investor business format:
+${businessPromptForAI()}
 - ALL text in Russian (company name can be English if user provided)
 - NEVER invent a brand/company name — use only user-provided name or "Название проекта"
 - Title slide bullets: founder name, quote, tagline from branding
 - Business pitch format for investors
 - Each non-title slide: 3-4 concise bullets (metrics only if user provided)
 - No buzzwords: moat, viral loops, patented AI`,
-      `Startup idea: ${idea}\nMode: ${mode}${brandingCtx}\nGenerate the 10-slide business outline.`,
+      `Startup idea: ${idea}\nMode: ${mode}${brandingCtx}\nGenerate the 12-slide investor business outline.`,
       3500
     );
     if (result?.slides?.length >= 8) {
@@ -837,7 +839,7 @@ Rules:
       return {
         title: companyName,
         subtitle: branding?.tagline?.trim() || result.subtitle || idea.slice(0, 120),
-        slides: result.slides.slice(0, 10).map((s: any, i: number) => ({
+        slides: result.slides.slice(0, 12).map((s: any, i: number) => ({
           id: s.id || `outline_${i + 1}`,
           type: s.type || SLIDE_TYPES[i],
           title: i === 0 ? companyName : (s.title || ""),
@@ -903,9 +905,12 @@ ${imageContext}
   // Strategy 1: full deck in one call (when credits allow)
   try {
     const full = await callLLM(
-      `You are Pitch Deck AI Synthesizer. Return JSON with exactly 10 slides in order.
+      `You are Pitch Deck AI Synthesizer. Return JSON with exactly 12 slides in order.
 Slide types by index:
 ${slideTypeList}
+
+BUSINESS FORMAT — each slide must cover:
+${businessPromptForAI()}
 
 Schema:
 {
@@ -914,7 +919,7 @@ Schema:
   "subtitle": "Tagline in Russian",
   "idea": "${idea}",
   "mode": "${mode}",
-  "slides": [ ${DECK_SLIDE_SCHEMA} x10 ],
+  "slides": [ ${DECK_SLIDE_SCHEMA} x12 ],
   "roast": { "score": 75, "verdict": "...", "roastText": "...", "weakSpots": [], "recommendations": [] }
 }
 
@@ -933,8 +938,8 @@ Rules:
 - Для marketplace/P2P: обязательно описать операционку — escrow/депозит, страхование/порча, верификация, споры, юридическое оформление (если пользователь упоминал)
 - Юнит-экономика: CAC/LTV/комиссия только из фактов интервью; если данных нет — пиши "требует валидации", не выдумывай цифры
 - Конкуренты: почему пользователь уйдёт с Avito/аналогов — конкретный механизм, не "нет доверия"
-- GTM: один реалистичный сценарий запуска (район, первые 100 пользователей), без "15 инфлюенсеров за 6 месяцев"
-- Риски: реальные операционные риски модели (кража, мошенничество, страховые кейсы), не "API dependency"
+- traction slide: if no metrics — say "Early stage", list validation signals, do NOT invent revenue
+- vision slide: 3-5 year horizon, why it can be big — realistic not fantasy
 - Пиши что делает пользователь за 10 секунд, а не абстрактные "инновации"`,
       `${baseContext}\nGenerate the complete 10-slide pitch deck.`,
       8000
@@ -946,8 +951,8 @@ Rules:
 
   // Strategy 2: two batches of 5 slides (fits low credit limits)
   const batches = [
-    { from: 0, to: 5, label: "slides 1-5 (title through pricing)" },
-    { from: 5, to: 10, label: "slides 6-10 (tech through ask)" },
+    { from: 0, to: 6, label: "slides 1-6 (title through market)" },
+    { from: 6, to: 12, label: "slides 7-12 (competition through vision)" },
   ];
 
   const mergedSlides: any[] = [];
@@ -959,11 +964,11 @@ Rules:
         .join("\n");
 
       const batchResult = await callLLM(
-        `Return JSON: { "slides": [ ${DECK_SLIDE_SCHEMA} x5 ] }
-Generate exactly 5 slides for a pitch deck. Types in order:
+        `Return JSON: { "slides": [ ${DECK_SLIDE_SCHEMA} x6 ] }
+Generate exactly 6 slides for a pitch deck. Types in order:
 ${typesForBatch}
-All text in Russian. 4-5 bullets per slide with specific metrics ONLY from user facts.
-СТРОГОЕ ПРАВИЛО: НЕ выдумывайте фичи и цифры. Без moat/pipeline/viral/патентов. Операционка, риски, GTM — реалистично.`,
+All text in Russian. Follow BUSINESS FORMAT per slide type.
+СТРОГОЕ ПРАВИЛО: НЕ выдумывайте фичи, бренды, имена, цифры. Traction — early stage если нет данных.`,
         `${baseContext}\nGenerate ${batch.label}.`,
         1200
       );
@@ -980,7 +985,7 @@ All text in Russian. 4-5 bullets per slide with specific metrics ONLY from user 
     const local = generateLocalDeck(idea, mode, canvas);
     return {
       ...local,
-      slides: mergedSlides.slice(0, 10),
+      slides: mergedSlides.slice(0, 12),
     };
   }
 

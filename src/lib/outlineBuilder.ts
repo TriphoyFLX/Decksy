@@ -1,4 +1,5 @@
 import { SLIDE_TYPES } from "./deckBuilder";
+import { BUSINESS_SLIDE_SPECS } from "./businessSlides";
 import type { Slide, ProjectBranding } from "../types";
 import { resolveCompanyName, EMPTY_PROJECT_BRANDING } from "./projectBranding";
 
@@ -60,23 +61,27 @@ function getDefaultOutlineTitle(
     case "title":
       return name;
     case "problem":
-      return "Проблема рынка";
+      return BUSINESS_SLIDE_SPECS.problem.title;
     case "solution":
-      return "Наше решение";
+      return BUSINESS_SLIDE_SPECS.solution.title;
+    case "product":
+      return BUSINESS_SLIDE_SPECS.product.title;
     case "market":
-      return "Рынок и целевая аудитория";
-    case "pricing":
-      return "Бизнес-модель";
-    case "sauce":
-      return "Команда и продукт";
+      return BUSINESS_SLIDE_SPECS.market.title;
     case "competition":
-      return "Конкуренты и отличие";
+      return BUSINESS_SLIDE_SPECS.competition.title;
+    case "pricing":
+      return BUSINESS_SLIDE_SPECS.pricing.title;
+    case "traction":
+      return BUSINESS_SLIDE_SPECS.traction.title;
     case "launch":
-      return "Выход на рынок (GTM)";
-    case "risks":
-      return "Риски и митигация";
+      return BUSINESS_SLIDE_SPECS.launch.title;
+    case "sauce":
+      return BUSINESS_SLIDE_SPECS.sauce.title;
     case "ask":
-      return "Запрос к инвесторам";
+      return BUSINESS_SLIDE_SPECS.ask.title;
+    case "vision":
+      return BUSINESS_SLIDE_SPECS.vision.title;
     default:
       return BUSINESS_SLIDE_HINTS[type] || idea.slice(0, 50);
   }
@@ -105,9 +110,15 @@ function getDefaultBullets(
       ];
     case "solution":
       return [
-        "Продукт: что делает пользователь за 10 секунд",
-        "Ценность: экономия времени/денег",
-        "Отличие: конкретный механизм, не «инновация»",
+        "Что делает продукт: 1–2 предложения",
+        "Почему это работает",
+        "Механизм ценности",
+      ];
+    case "product":
+      return [
+        "Фичи: 3 ключевые возможности",
+        "User flow: путь пользователя",
+        "MVP / демо / прототип",
       ];
     case "market":
       return [
@@ -118,14 +129,20 @@ function getDefaultBullets(
     case "pricing":
       return [
         "Модель: подписка / комиссия / транзакция",
-        "Средний чек: из фактов проекта",
-        "Юнит-экономика: CAC и LTV — валидация",
+        "Цена / средний чек",
+        "CAC и LTV — валидация",
+      ];
+    case "traction":
+      return [
+        "Стадия: early stage / есть метрики",
+        "Пользователи / выручка — только факты",
+        "Пилоты / сигналы спроса",
       ];
     case "sauce":
       return [
-        "Команда: ключевые роли",
-        "Операционка: как реально работает сервис",
-        "Технология: только подтверждённое",
+        "Команда: кто и роли",
+        "Почему потянут проект",
+        "Пробелы и как закрываем",
       ];
     case "competition":
       return [
@@ -135,21 +152,21 @@ function getDefaultBullets(
       ];
     case "launch":
       return [
-        "Первые 100 пользователей: один канал",
-        "География: один район/город для старта",
-        "Метрика успеха за 90 дней",
-      ];
-    case "risks":
-      return [
-        "Операционный риск #1",
-        "Юридический/регуляторный риск",
-        "План снижения: конкретные шаги",
+        "Каналы привлечения",
+        "Первые 1000 пользователей",
+        "Метрика GTM за 90 дней",
       ];
     case "ask":
       return [
-        "Раунд: Seed / Pre-seed",
-        "Сумма и runway",
+        "Сумма раунда",
         "На что пойдут средства",
+        "Runway и для инвестора",
+      ];
+    case "vision":
+      return [
+        "Куда через 3–5 лет",
+        "Почему может стать большим",
+        "Миссия в одной фразе",
       ];
     default:
       return [base];

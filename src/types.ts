@@ -59,7 +59,7 @@ export interface Slide {
   title: string;
   subtitle?: string;
   content: string[];
-  type: 'title' | 'problem' | 'solution' | 'market' | 'pricing' | 'competition' | 'launch' | 'risks' | 'traction' | 'ask' | 'sauce' | 'tech';
+  type: 'title' | 'problem' | 'solution' | 'product' | 'market' | 'pricing' | 'competition' | 'launch' | 'risks' | 'traction' | 'ask' | 'sauce' | 'tech' | 'vision';
   visualData?: SlideVisualData;
   speechScript: string; // The speech script for this slide
   image?: string; // Base64 data-URL or image URL

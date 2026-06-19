@@ -105,7 +105,7 @@ export const ApexHero: React.FC<{
       ? brandQuote
       : content.find((c) => c.startsWith("«") || c.includes("слоган"))?.replace(/^«|»$/g, "") || "";
 
-  const useConstructor = constructorLayout?.enabled;
+  const useConstructor = constructorLayout?.enabled && !forExport;
   const logoStyle = getConstructorStyle("logo", constructorLayout);
   const titleStyle = getConstructorStyle("title", constructorLayout);
   const subtitleStyle = getConstructorStyle("subtitle", constructorLayout);
@@ -134,8 +134,12 @@ export const ApexHero: React.FC<{
             >
               <span className="text-2xl sm:text-3xl">{firstLetter}</span>
               <span className="text-[6px] text-white/40 uppercase tracking-widest mt-0.5 flex items-center gap-0.5">
-                <ImagePlus className="h-2.5 w-2.5" />
-                лого
+                {!forExport && (
+                  <>
+                    <ImagePlus className="h-2.5 w-2.5" />
+                    лого
+                  </>
+                )}
               </span>
             </div>
           )}
@@ -199,23 +203,32 @@ export const ApexHero: React.FC<{
         <div className="hidden md:flex w-[38%] shrink-0 items-center justify-center relative">
           <div
             className="w-full aspect-square max-h-[85%] rounded-[28px] border border-white/[0.08] relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #0a1628 0%, #1a1a2e 50%, #0f3460 100%)" }}
+            style={{
+              background: forExport
+                ? "linear-gradient(135deg, #0a1628 0%, #1a1a2e 100%)"
+                : "linear-gradient(135deg, #0a1628 0%, #1a1a2e 50%, #0f3460 100%)",
+            }}
           >
-            <div className="absolute inset-0 opacity-30"
-              style={{
-                backgroundImage: "radial-gradient(circle at 30% 40%, rgba(0,113,227,0.4), transparent 50%)",
-              }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
+            {!forExport && (
               <div
-                className="text-6xl font-black uppercase opacity-[0.07] text-white select-none"
-                style={{ letterSpacing: "-0.05em" }}
-              >
-                {firstLetter}
+                className="absolute inset-0 opacity-30"
+                style={{
+                  backgroundImage: "radial-gradient(circle at 30% 40%, rgba(0,113,227,0.4), transparent 50%)",
+                }}
+              />
+            )}
+            {!forExport && !image && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div
+                  className="text-6xl font-black uppercase opacity-[0.07] text-white select-none"
+                  style={{ letterSpacing: "-0.05em" }}
+                >
+                  {firstLetter}
+                </div>
               </div>
-            </div>
+            )}
             {image && (
-              <PremiumImage src={image} variant="hero" className="absolute inset-0 !min-h-full !rounded-[28px] opacity-40" />
+              <PremiumImage src={image} variant="hero" className={`absolute inset-0 !min-h-full !rounded-[28px] ${forExport ? "opacity-60" : "opacity-40"}`} />
             )}
           </div>
         </div>
@@ -712,7 +725,7 @@ export const ApexSlideContent: React.FC<{
           <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
         )}
 
-        {type === "solution" &&
+        {(type === "solution" || type === "product") &&
           (swiss ? (
             <SwissSolutionList
               content={content}
@@ -731,6 +744,10 @@ export const ApexSlideContent: React.FC<{
             />
           ))}
 
+        {type === "traction" && (
+          <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} />
+        )}
+
         {type === "market" && variant !== "metric-row" && slide.visualData?.metrics && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 my-auto">
             {slide.visualData.metrics.map((m, i) => (
@@ -742,11 +759,15 @@ export const ApexSlideContent: React.FC<{
           </div>
         )}
 
+        {type === "competition" && (
+          <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} />
+        )}
+
         {type === "pricing" && <ApexPricingCards content={content} parseBullet={parseBullet} extractNumber={extractNumber} />}
 
         {type === "launch" && <ApexRoadmap content={content} parseBullet={parseBullet} />}
 
-        {(type === "ask" || type === "cta") && (
+        {(type === "ask" || type === "cta" || type === "vision") && (
           <ApexCTA
             title={title}
             subtitle={subtitle}
@@ -756,7 +777,7 @@ export const ApexSlideContent: React.FC<{
           />
         )}
 
-        {!["title", "problem", "solution", "market", "pricing", "launch", "ask", "cta"].includes(type) &&
+        {!["title", "problem", "solution", "product", "market", "pricing", "traction", "launch", "ask", "cta", "vision", "competition"].includes(type) &&
           index !== 0 && (
             <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
           )}

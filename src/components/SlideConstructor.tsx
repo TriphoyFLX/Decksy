@@ -19,6 +19,8 @@ interface SlideConstructorProps {
   onLayoutChange: (layout: SlideConstructorLayout) => void;
   children: React.ReactNode;
   isPro: boolean;
+  exportMode?: boolean;
+  showToggle?: boolean;
 }
 
 export const SlideConstructor: React.FC<SlideConstructorProps> = ({
@@ -28,12 +30,15 @@ export const SlideConstructor: React.FC<SlideConstructorProps> = ({
   onLayoutChange,
   children,
   isPro,
+  exportMode = false,
+  showToggle = true,
 }) => {
-  if (!isPro) return <>{children}</>;
+  if (!isPro || exportMode) return <>{children}</>;
 
   return (
     <div className="relative h-full w-full">
-      <div className="absolute top-0 right-0 z-30 flex gap-1">
+      {showToggle && (
+        <div className="constructor-chrome absolute -top-8 right-0 z-30 flex gap-1">
         <button
           type="button"
           onClick={() => onToggle(!enabled)}
@@ -46,7 +51,8 @@ export const SlideConstructor: React.FC<SlideConstructorProps> = ({
           <LayoutGrid className="h-3 w-3" />
           {enabled ? "Конструктор вкл" : "Конструктор"}
         </button>
-      </div>
+        </div>
+      )}
       {enabled ? (
         <ConstructorOverlay layout={layout} onLayoutChange={onLayoutChange}>
           {children}
@@ -116,7 +122,8 @@ const ConstructorOverlay: React.FC<{
 
   return (
     <div ref={containerRef} className="relative h-full w-full">
-      <div className="absolute inset-0 pointer-events-none opacity-[0.15] z-20"
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.15] z-20 constructor-chrome"
         style={{
           backgroundImage:
             "linear-gradient(rgba(139,92,246,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.4) 1px, transparent 1px)",
@@ -128,7 +135,7 @@ const ConstructorOverlay: React.FC<{
         return (
           <div
             key={id}
-            className={`absolute z-25 border-2 border-dashed rounded-lg flex items-start gap-1 px-1 py-0.5 cursor-move select-none ${
+            className={`absolute z-25 border-2 border-dashed rounded-lg flex items-start gap-1 px-1 py-0.5 cursor-move select-none constructor-chrome ${
               dragging === id ? "border-violet-400 bg-violet-500/15" : "border-violet-400/50 bg-violet-500/5"
             }`}
             style={{

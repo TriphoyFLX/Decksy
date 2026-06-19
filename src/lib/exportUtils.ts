@@ -145,6 +145,14 @@ export function patchComputedStyle(): () => void {
 
 /** Fix CSS features that html2canvas renders incorrectly (gradient text, blur, animations). */
 export function applyExportSafeStyles(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>(".constructor-chrome").forEach((el) => {
+    el.remove();
+  });
+
+  root.querySelectorAll<HTMLElement>('[class*="blur"]').forEach((el) => {
+    el.style.display = "none";
+  });
+
   root.querySelectorAll<HTMLElement>('[style*="blur"]').forEach((el) => {
     el.style.display = "none";
   });

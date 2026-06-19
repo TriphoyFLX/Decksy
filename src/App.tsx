@@ -69,7 +69,7 @@ import { DeckCustomizer } from "./components/DeckCustomizer";
 import { SlideConstructor } from "./components/SlideConstructor";
 import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, type DeckTemplateId } from "./lib/deckTheme";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide, DeckThemeCustom, ProjectBranding } from "./types";
-import { normalizeDeck, generateLocalDeck } from "./lib/deckBuilder";
+import { normalizeDeck, generateLocalDeck, SLIDE_TYPES } from "./lib/deckBuilder";
 import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING } from "./lib/projectBranding";
 import { enrichSlidesWithVisuals } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
@@ -1038,8 +1038,9 @@ export default function App() {
   };
 
   const handleAddOutlineSlide = () => {
+    if (!isWatermarkRemoved) return;
     setPresentationOutline((prev) => {
-      if (!prev || prev.slides.length >= 12) return prev;
+      if (!prev || prev.slides.length >= SLIDE_TYPES.length) return prev;
       const nextIndex = prev.slides.length;
       return {
         ...prev,
@@ -3770,6 +3771,7 @@ export default function App() {
             onRemoveSlide={handleRemoveOutlineSlide}
             onContinue={handleOutlineToTemplates}
             onBack={() => setScreen('intro')}
+            isPro={isWatermarkRemoved}
           />
         )}
 
@@ -3780,7 +3782,7 @@ export default function App() {
             onBack={() => setScreen('outline')}
             onGenerate={handleGenerateFromOutline}
             isLoading={isLoading}
-            slideCount={presentationOutline?.slides.length ?? 10}
+            slideCount={presentationOutline?.slides.length ?? SLIDE_TYPES.length}
           />
         )}
 
@@ -3939,7 +3941,22 @@ export default function App() {
               
               {/* LEFT COLUMN: THE ACTIVE SLIDE ASPECT (16:9 VIEW) + SPEAK PLAYS (7 COLS) */}
               <div className="lg:col-span-8 space-y-4">
-                
+                {isWatermarkRemoved && !exportState && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setConstructorMode((v) => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-wider border cursor-pointer ${
+                        constructorMode
+                          ? "bg-violet-500/20 border-violet-400/40 text-violet-200"
+                          : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {constructorMode ? "Конструктор вкл" : "Конструктор слайда"}
+                    </button>
+                  </div>
+                )}
+
                 {/* Visual Slide Frame with standard 16:9 box ratio in styling */}
                 {(() => {
                   const tplMeta = TEMPLATE_CATALOG[selectedTemplate];
@@ -4002,11 +4019,10 @@ export default function App() {
                         }}
                       />
                       
-                      {!isThemeLight && !isThemeCobalt && (
+                      {!exportState && !isThemeLight && !isThemeCobalt && (
                         <>
-                          {/* Premium glow blobs matching the provided Apex template */}
-                          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px] pointer-events-none"></div>
-                          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/8 blur-[80px] pointer-events-none"></div>
+                          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px] pointer-events-none" />
+                          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/8 blur-[80px] pointer-events-none" />
                         </>
                       )}
 
@@ -4019,9 +4035,11 @@ export default function App() {
                       {/* Centered actual layout content inside */}
                       <div className="my-auto relative z-10 h-[74%] flex flex-col justify-stretch">
                         <SlideConstructor
-                          enabled={constructorMode && activeSlideIndex === 0}
+                          enabled={constructorMode}
                           onToggle={setConstructorMode}
                           isPro={isWatermarkRemoved}
+                          exportMode={exportState !== null}
+                          showToggle={false}
                           layout={deck.slides[activeSlideIndex]?.visualData?.constructorLayout}
                           onLayoutChange={(layout) =>
                             updateSlide(activeSlideIndex, {
@@ -4035,7 +4053,7 @@ export default function App() {
                           {renderSlideContent(
                             deck.slides[activeSlideIndex],
                             activeSlideIndex,
-                            false,
+                            exportState !== null,
                             (patch) => updateSlide(activeSlideIndex, patch)
                           )}
                         </SlideConstructor>

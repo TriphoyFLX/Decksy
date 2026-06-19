@@ -19,6 +19,7 @@ interface OutlinePageProps {
   onRemoveSlide: (index: number) => void;
   onContinue: () => void;
   onBack: () => void;
+  isPro?: boolean;
 }
 
 export const OutlinePage: React.FC<OutlinePageProps> = ({
@@ -35,6 +36,7 @@ export const OutlinePage: React.FC<OutlinePageProps> = ({
   onRemoveSlide,
   onContinue,
   onBack,
+  isPro = false,
 }) => {
   return (
     <motion.div
@@ -60,7 +62,7 @@ export const OutlinePage: React.FC<OutlinePageProps> = ({
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-white tracking-tight">Presentation outline</h1>
         <p className="text-sm text-slate-400">
-          Бизнес-структура pitch deck: 10 слайдов. Сначала заполните брендинг — ИИ не будет выдумывать название.
+          Investor pitch: 12 слайдов (title + 11 бизнес-блоков). Заполните брендинг — ИИ не выдумает название.
         </p>
       </div>
 
@@ -208,7 +210,7 @@ export const OutlinePage: React.FC<OutlinePageProps> = ({
         ))}
       </div>
 
-      {outline && outline.slides.length < 12 && (
+      {outline && isPro && outline.slides.length < 14 && (
         <button
           type="button"
           onClick={onAddSlide}
