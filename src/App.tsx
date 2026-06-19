@@ -2604,7 +2604,7 @@ export default function App() {
           <div className="flex items-center space-x-2.5">
             <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
             <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
-              {screen === 'intro' ? "Decksy Agent ждёт задачу" : screen === 'interview' ? "Agent уточняет контекст" : screen === 'generating' ? "Agent собирает pitch deck..." : "Agent output workspace"}
+              {screen === 'intro' ? "Новый проект" : screen === 'interview' ? "Уточняем детали" : screen === 'generating' ? "Собираем pitch deck..." : "Презентация"}
             </span>
           </div>
 
@@ -3399,13 +3399,10 @@ export default function App() {
           <IntroPage
             idea={idea}
             setIdea={setIdea}
-            mode={mode}
-            setMode={setMode}
             suggestions={suggestions}
             isLoading={isLoading}
             handleStartInterview={handleStartInterview}
-            setSelectedStyle={setSelectedStyle}
-            handleFastGenerateDeck={handleFastGenerateDeck}
+            userName={user?.name || user?.email?.split("@")[0]}
             activeAds={activeAds}
           />
         )}
