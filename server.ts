@@ -2369,7 +2369,9 @@ function generateLocalWordDocument(rawText: string, style: string, titleHint?: s
 
   return {
     title,
-    subtitle: subtitles[style] || subtitles.business,
+    subtitle: ["school_project", "referat", "essay", "homework"].includes(style)
+      ? undefined
+      : subtitles[style] || subtitles.business,
     summary: trimmed.slice(0, 320) + (trimmed.length > 320 ? "…" : ""),
     meta: meta || undefined,
     sections,
@@ -2436,9 +2438,14 @@ ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split
   );
 
   if (result?.title && Array.isArray(result.sections) && result.sections.length >= 1) {
+    const schoolStyles = ["school_project", "referat", "essay", "homework"];
     return {
       title: String(result.title).trim(),
-      subtitle: result.subtitle ? String(result.subtitle).trim() : undefined,
+      subtitle: schoolStyles.includes(style)
+        ? undefined
+        : result.subtitle
+          ? String(result.subtitle).trim()
+          : undefined,
       author: result.author ? String(result.author).trim() : undefined,
       summary: result.summary ? String(result.summary).trim() : undefined,
       meta: meta || undefined,

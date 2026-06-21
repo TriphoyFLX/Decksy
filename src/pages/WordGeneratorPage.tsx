@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import {
+  inferSchoolDocStyle,
   WORD_DESIGN_PRESETS,
   WORD_FONT_CATALOG,
   buildLocalWordDocument,
@@ -28,14 +29,18 @@ import {
   type WordFontId,
 } from "../lib/docxExport";
 
-type StyleCategory = "school" | "other";
+const SCHOOL_TYPE_LABELS: Record<WordDocStyle, string> = {
+  school_project: "Школьный проект",
+  referat: "Реферат",
+  essay: "Сочинение",
+  homework: "Домашнее задание",
+  business: "",
+  article: "",
+  proposal: "",
+  report: "",
+};
 
-const SCHOOL_STYLES: { id: WordDocStyle; label: string; hint: string }[] = [
-  { id: "school_project", label: "Школьный проект", hint: "Исследование, цель, задачи, выводы" },
-  { id: "referat", label: "Реферат", hint: "По предмету с источниками" },
-  { id: "essay", label: "Сочинение", hint: "ЕГЭ, ОГЭ, литература" },
-  { id: "homework", label: "Домашка / ДЗ", hint: "Ответы на задания, контрольная" },
-];
+type StyleCategory = "school" | "other";
 
 const OTHER_STYLES: { id: WordDocStyle; label: string; hint: string }[] = [
   { id: "business", label: "Деловой", hint: "Отчёты, письма, memo" },
@@ -146,11 +151,13 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
   const [error, setError] = useState("");
   const [result, setResult] = useState<WordDocumentData | null>(null);
 
-  const activeStyles = category === "school" ? SCHOOL_STYLES : OTHER_STYLES;
+  const activeStyles = OTHER_STYLES;
+  const detectedSchoolType = rawText.trim().length >= 10 ? inferSchoolDocStyle(rawText) : "referat";
+  const effectiveStyle = category === "school" ? detectedSchoolType : docStyle;
 
   const exportOptions: WordExportOptions = useMemo(
-    () => clampExportOptionsForPro(docStyle, { fontId, design }, isPro),
-    [docStyle, fontId, design, isPro]
+    () => clampExportOptionsForPro(effectiveStyle, { fontId, design }, isPro),
+    [effectiveStyle, fontId, design, isPro]
   );
 
   const handleCategoryChange = (next: StyleCategory) => {
@@ -197,6 +204,9 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
     setError("");
     setResult(null);
 
+    const styleToUse = category === "school" ? inferSchoolDocStyle(rawText) : docStyle;
+    if (category === "school") setDocStyle(styleToUse);
+
     const cleanMeta = Object.fromEntries(
       Object.entries(meta).filter(([, v]) => String(v || "").trim())
     ) as WordDocumentMeta;
@@ -210,7 +220,7 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
         },
         body: JSON.stringify({
           text: rawText.trim(),
-          style: docStyle,
+          style: styleToUse,
           title: docTitle.trim() || undefined,
           meta: Object.keys(cleanMeta).length ? cleanMeta : undefined,
         }),
@@ -224,7 +234,7 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
       setResult(data.document as WordDocumentData);
     } catch (err: any) {
       setError(err.message || "Ошибка генерации. Попробуйте ещё раз.");
-      const local = buildLocalWordDocument(rawText, docStyle);
+      const local = buildLocalWordDocument(rawText, styleToUse);
       if (Object.keys(cleanMeta).length) local.meta = cleanMeta;
       setResult(local);
     } finally {
@@ -236,7 +246,7 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
     if (!result) return;
     setIsDownloading(true);
     try {
-      await downloadWordDocument(result, docStyle, result.title, exportOptions);
+      await downloadWordDocument(result, effectiveStyle, result.title, exportOptions);
     } finally {
       setIsDownloading(false);
     }
@@ -395,30 +405,40 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
               </div>
             )}
 
-            <div>
-              <label className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2 block">
-                Тип документа
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {activeStyles.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => handleStyleChange(s.id)}
-                    className={`text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${
-                      docStyle === s.id
-                        ? category === "school"
-                          ? "border-violet-500/40 bg-violet-500/10 text-white"
-                          : "border-blue-500/40 bg-blue-500/10 text-white"
-                        : "border-white/10 bg-[#0A0A0C] text-slate-400 hover:border-white/20 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="text-xs font-semibold">{s.label}</div>
-                    <div className="text-[10px] mt-0.5 opacity-70">{s.hint}</div>
-                  </button>
-                ))}
+            {category === "school" ? (
+              <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-violet-400 mb-1">
+                  Автоопределение
+                </p>
+                <p className="text-xs text-slate-300">
+                  Тип: <span className="text-white font-semibold">{SCHOOL_TYPE_LABELS[detectedSchoolType]}</span>
+                  {rawText.trim().length < 10 && " — начните вводить текст"}
+                </p>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2 block">
+                  Тип документа
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeStyles.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => handleStyleChange(s.id)}
+                      className={`text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${
+                        docStyle === s.id
+                          ? "border-blue-500/40 bg-blue-500/10 text-white"
+                          : "border-white/10 bg-[#0A0A0C] text-slate-400 hover:border-white/20 hover:text-slate-200"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{s.label}</div>
+                      <div className="text-[10px] mt-0.5 opacity-70">{s.hint}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* PRO: Design & Fonts */}
             <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-3 space-y-3">
@@ -572,7 +592,7 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
               <p className="text-sm text-slate-400">
-                {isSchoolDocStyle(docStyle) ? "Оформляем школьный документ..." : "Структурируем и улучшаем текст..."}
+                {isSchoolDocStyle(effectiveStyle) ? "Оформляем школьный документ..." : "Структурируем и улучшаем текст..."}
               </p>
             </div>
           )}
@@ -580,7 +600,7 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
           {result && !isGenerating && (
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
               <div className="rounded-xl border border-white/10 bg-[#0A0A0C] p-4">
-                {isSchoolDocStyle(docStyle) && (
+                {isSchoolDocStyle(effectiveStyle) && (
                   <p className="text-[9px] uppercase tracking-widest text-violet-400 mb-2 font-mono">
                     Титульный лист
                   </p>

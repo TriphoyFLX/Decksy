@@ -1,20 +1,13 @@
 import {
   AlignmentType,
-  BorderStyle,
   Document,
   Footer,
-  HeadingLevel,
   Packer,
   PageNumber,
   PageBreak,
   Paragraph,
   ShadingType,
-  Table,
-  TableCell,
-  TableRow,
   TextRun,
-  WidthType,
-  UnderlineType,
 } from "docx";
 
 export type WordDocStyle =
@@ -107,9 +100,24 @@ const STYLE_ACCENTS: Record<WordDocStyle, { primary: string; secondary: string; 
 
 export const SCHOOL_DOC_STYLES: WordDocStyle[] = ["school_project", "referat", "essay", "homework"];
 
+export function inferSchoolDocStyle(text: string): WordDocStyle {
+  const t = text.toLowerCase();
+  if (/задание\s*\d|домашн|контрольн|\bдз\b|упражнени|решите|вычислите/.test(t)) return "homework";
+  if (/сочинен|рассужден|эссе|мнение автора|герой|мораль|дружб/.test(t)) return "essay";
+  if (/цель:|задачи:|гипотез|эксперимент|опыт|лаборатор|исследован|проект|материал/.test(t)) {
+    return "school_project";
+  }
+  return "referat";
+}
+
 export function isSchoolDocStyle(style: WordDocStyle): boolean {
   return SCHOOL_DOC_STYLES.includes(style);
 }
+
+const BODY_STYLE = "Normal";
+const BODY_COLOR = "000000";
+const BODY_SIZE = 24;
+const HEADING_SIZE = 28;
 
 export function resolveWordFont(style: WordDocStyle, options?: WordExportOptions): string {
   const requested = options?.fontId
@@ -201,38 +209,30 @@ function richParagraph(
   opts?: { school?: boolean; spacingAfter?: number; design?: WordDesignPreset }
 ) {
   const design = opts?.design || "standard";
-  const useRich = design === "expressive" || design === "modern";
+  const useRich = !opts?.school && (design === "expressive" || design === "modern");
+  const textColor = opts?.school ? BODY_COLOR : "1F2937";
   return new Paragraph({
+    style: BODY_STYLE,
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: opts?.spacingAfter ?? (design === "academic" ? 240 : 200), line: design === "academic" ? 360 : 276 },
+    spacing: { after: opts?.spacingAfter ?? 200, line: opts?.school || design === "academic" ? 360 : 276 },
     indent: opts?.school || design === "academic" ? { firstLine: 720 } : undefined,
     children: useRich
-      ? parseRichTextRuns(text, font, { accentColor: colors.primary, highlightFill: colors.highlight })
-      : [new TextRun({ text, font, size: 24, color: "1F2937" })],
+      ? parseRichTextRuns(text, font, { baseColor: textColor, accentColor: colors.primary, highlightFill: colors.highlight })
+      : [new TextRun({ text, font, size: BODY_SIZE, color: textColor })],
   });
 }
 
-function sectionHeadingParagraph(
-  text: string,
-  font: string,
-  color: string,
-  design: WordDesignPreset
-) {
-  const bordered = design === "modern" || design === "expressive";
+function sectionHeadingParagraph(text: string, font: string, school: boolean) {
   return new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: design === "modern" ? 360 : 320, after: bordered ? 80 : 160 },
-    border: bordered
-      ? { bottom: { color, size: 6, style: BorderStyle.SINGLE, space: 6 } }
-      : undefined,
+    style: BODY_STYLE,
+    spacing: { before: 280, after: 120 },
     children: [
       new TextRun({
         text,
         bold: true,
-        color,
-        size: design === "expressive" ? 30 : 28,
+        color: BODY_COLOR,
+        size: HEADING_SIZE,
         font,
-        underline: design === "expressive" ? { type: UnderlineType.SINGLE, color } : undefined,
       }),
     ],
   });
@@ -243,48 +243,23 @@ function calloutBlock(
   paragraphs: string[],
   bullets: string[] | undefined,
   font: string,
-  colors: { primary: string; highlight: string },
   school: boolean
 ) {
-  const cellChildren: Paragraph[] = [
-    new Paragraph({
-      spacing: { before: 100, after: 80 },
-      children: [new TextRun({ text: heading, bold: true, size: 24, color: colors.primary, font })],
-    }),
+  const blocks: Paragraph[] = [
+    sectionHeadingParagraph(heading, font, school),
+    ...paragraphs.map((p) => richParagraph(p, font, { primary: "000000", highlight: "F3F4F6" }, { school, spacingAfter: 160 })),
   ];
-
-  for (const p of paragraphs) {
-    cellChildren.push(richParagraph(p, font, colors, { school, spacingAfter: 140, design: "expressive" }));
-  }
   for (const b of bullets || []) {
-    cellChildren.push(
+    blocks.push(
       new Paragraph({
+        style: BODY_STYLE,
         bullet: { level: 0 },
         spacing: { after: 100 },
-        children: parseRichTextRuns(b, font, { accentColor: colors.primary, highlightFill: colors.highlight }),
+        children: [new TextRun({ text: b, font, size: BODY_SIZE, color: BODY_COLOR })],
       })
     );
   }
-
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            shading: { fill: colors.highlight, type: ShadingType.CLEAR },
-            borders: {
-              top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-              bottom: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-              left: { style: BorderStyle.SINGLE, size: 10, color: colors.primary },
-              right: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-            },
-            children: cellChildren,
-          }),
-        ],
-      }),
-    ],
-  });
+  return blocks;
 }
 
 function centeredLine(
@@ -319,37 +294,35 @@ function schoolCoverBlock(
   style: WordDocStyle,
   title: string,
   meta: WordDocumentMeta | undefined,
-  colors: { primary: string; secondary: string },
-  font: string,
-  design: WordDesignPreset
+  font: string
 ) {
   const typeName = docTypeLabel(style).toUpperCase();
   const year = meta?.year || new Date().getFullYear().toString();
   const city = meta?.city?.trim() || "г. ________";
-  const rows: Paragraph[] = [new Paragraph({ spacing: { before: design === "modern" ? 1000 : 800 } })];
+  const rows: Paragraph[] = [new Paragraph({ spacing: { before: 480 } })];
 
   if (meta?.schoolName) {
-    rows.push(centeredLine(meta.schoolName, font, { size: 22, spacingAfter: 200 }));
+    rows.push(centeredLine(meta.schoolName, font, { size: 22, spacingAfter: 160 }));
   }
 
   rows.push(
     centeredLine(typeName, font, {
       bold: true,
-      size: design === "expressive" ? 36 : 32,
-      color: colors.primary,
-      spacingBefore: 400,
-      spacingAfter: 160,
+      size: 32,
+      color: BODY_COLOR,
+      spacingBefore: 240,
+      spacingAfter: 120,
     })
   );
 
   if (style === "school_project" || style === "referat" || style === "essay") {
-    rows.push(centeredLine(`на тему: «${title}»`, font, { bold: true, size: 26, spacingAfter: 240 }));
+    rows.push(centeredLine(`на тему: «${title}»`, font, { bold: true, size: 26, color: BODY_COLOR, spacingAfter: 160 }));
   } else if (style === "homework") {
-    rows.push(centeredLine(title, font, { bold: true, size: 26, spacingAfter: 240 }));
+    rows.push(centeredLine(title, font, { bold: true, size: 26, color: BODY_COLOR, spacingAfter: 160 }));
   }
 
   if (meta?.subject) {
-    rows.push(centeredLine(`по предмету: ${meta.subject}`, font, { size: 24, spacingAfter: 400 }));
+    rows.push(centeredLine(`по предмету: ${meta.subject}`, font, { size: 24, color: BODY_COLOR, spacingAfter: 240 }));
   }
 
   const studentLine = meta?.studentName
@@ -358,21 +331,17 @@ function schoolCoverBlock(
       : meta.studentName
     : null;
   if (studentLine) {
-    rows.push(rightAlignedLine("Выполнил(а):", font, { spacingBefore: 600 }));
+    rows.push(rightAlignedLine("Выполнил(а):", font, { spacingBefore: 360 }));
     studentLine.split("\n").forEach((line) => rows.push(rightAlignedLine(line, font)));
   }
 
   if (meta?.teacherName) {
-    rows.push(rightAlignedLine("Проверил(а):", font, { spacingBefore: 200 }));
+    rows.push(rightAlignedLine("Проверил(а):", font, { spacingBefore: 160 }));
     rows.push(rightAlignedLine(meta.teacherName, font));
   }
 
   rows.push(
-    centeredLine(`${city}, ${year}`, font, { spacingBefore: 800, spacingAfter: 400 }),
-    new Paragraph({
-      spacing: { before: 200 },
-      border: { bottom: { color: colors.primary, size: design === "modern" ? 12 : 8, style: BorderStyle.SINGLE } },
-    }),
+    centeredLine(`${city}, ${year}`, font, { spacingBefore: 480, spacingAfter: 240 }),
     new Paragraph({ children: [new PageBreak()] })
   );
 
@@ -384,22 +353,21 @@ function coverBlock(
   subtitle: string | undefined,
   author: string | undefined,
   colors: { primary: string; secondary: string },
-  font: string,
-  design: WordDesignPreset
+  font: string
 ) {
-  const titleFont = font === "Calibri" ? "Calibri Light" : font;
   const rows: Paragraph[] = [
-    new Paragraph({ spacing: { before: design === "modern" ? 1400 : 1200 } }),
+    new Paragraph({ spacing: { before: 400 } }),
     new Paragraph({
+      style: BODY_STYLE,
       alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
+      spacing: { after: 160 },
       children: [
         new TextRun({
           text: title,
           bold: true,
-          size: design === "expressive" ? 56 : 52,
+          size: 44,
           color: colors.primary,
-          font: titleFont,
+          font,
         }),
       ],
     }),
@@ -408,9 +376,10 @@ function coverBlock(
   if (subtitle) {
     rows.push(
       new Paragraph({
+        style: BODY_STYLE,
         alignment: AlignmentType.CENTER,
-        spacing: { after: 400 },
-        children: [new TextRun({ text: subtitle, size: 26, color: colors.secondary, font })],
+        spacing: { after: 240 },
+        children: [new TextRun({ text: subtitle, size: 24, color: colors.secondary, font })],
       })
     );
   }
@@ -418,58 +387,28 @@ function coverBlock(
   if (author) {
     rows.push(
       new Paragraph({
+        style: BODY_STYLE,
         alignment: AlignmentType.CENTER,
-        spacing: { before: 600 },
+        spacing: { before: 200, after: 240 },
         children: [new TextRun({ text: author, size: 22, color: "6B7280", font, italics: true })],
       })
     );
   }
 
-  rows.push(
-    new Paragraph({
-      spacing: { before: 800 },
-      border: { bottom: { color: colors.primary, size: 12, style: BorderStyle.SINGLE } },
-    })
-  );
-
   return rows;
 }
 
-function summaryBox(
+function summaryBlock(
   summary: string,
   font: string,
-  colors: { primary: string; highlight: string },
   label: string,
   school: boolean,
   design: WordDesignPreset
 ) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            shading: { fill: design === "expressive" ? colors.highlight : "F3F4F6", type: ShadingType.CLEAR },
-            borders: {
-              top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-              bottom: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-              left: { style: BorderStyle.SINGLE, size: design === "modern" ? 10 : 8, color: colors.primary },
-              right: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-            },
-            children: [
-              new Paragraph({
-                spacing: { before: 120, after: 80 },
-                children: [
-                  new TextRun({ text: label, bold: true, size: 22, color: colors.primary, font }),
-                ],
-              }),
-              richParagraph(summary, font, colors, { school, spacingAfter: 120, design }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
+  return [
+    sectionHeadingParagraph(label, font, school),
+    richParagraph(summary, font, { primary: "000000", highlight: "F3F4F6" }, { school, design, spacingAfter: 200 }),
+  ];
 }
 
 function isKeySection(heading: string, importance?: string): boolean {
@@ -487,13 +426,18 @@ export function buildWordDocument(
   const font = resolveWordFont(style, options);
   const design = resolveWordDesign(options);
 
-  const children: (Paragraph | Table)[] = school
-    ? schoolCoverBlock(style, data.title, data.meta, colors, font, design)
-    : coverBlock(data.title, data.subtitle, data.author || data.meta?.studentName, colors, font, design);
+  const children: Paragraph[] = school
+    ? schoolCoverBlock(style, data.title, data.meta, font)
+    : coverBlock(
+        data.title,
+        data.subtitle && !/^деловой документ$/i.test(data.subtitle) ? data.subtitle : undefined,
+        data.author || data.meta?.studentName,
+        colors,
+        font
+      );
 
   if (data.summary?.trim() && style !== "homework") {
-    children.push(new Paragraph({ spacing: { before: 400 } }));
-    children.push(summaryBox(data.summary.trim(), font, colors, summaryLabel(style), school, design));
+    children.push(...summaryBlock(data.summary.trim(), font, summaryLabel(style), school, design));
   }
 
   for (const section of data.sections) {
@@ -501,15 +445,13 @@ export function buildWordDocument(
     const heading = section.heading.trim();
     const paragraphs = (section.paragraphs || []).filter((p) => p.trim());
     const bullets = (section.bullets || []).filter((b) => b.trim());
-    const useCallout = design === "expressive" && isKeySection(heading, section.importance);
 
-    if (useCallout) {
-      children.push(new Paragraph({ spacing: { before: 240 } }));
-      children.push(calloutBlock(heading, paragraphs, bullets.length ? bullets : undefined, font, colors, school));
+    if (!school && design === "expressive" && isKeySection(heading, section.importance)) {
+      children.push(...calloutBlock(heading, paragraphs, bullets.length ? bullets : undefined, font, school));
       continue;
     }
 
-    children.push(sectionHeadingParagraph(heading, font, colors.primary, design));
+    children.push(sectionHeadingParagraph(heading, font, school));
 
     for (const p of paragraphs) {
       children.push(richParagraph(p, font, colors, { school, design }));
@@ -518,20 +460,19 @@ export function buildWordDocument(
     for (const b of bullets) {
       children.push(
         new Paragraph({
+          style: BODY_STYLE,
           bullet: { level: 0 },
           spacing: { after: 120 },
-          children:
-            design === "standard" || design === "academic"
-              ? [new TextRun({ text: b, font, size: 24, color: "374151" })]
-              : parseRichTextRuns(b, font, { accentColor: colors.primary, highlightFill: colors.highlight }),
+          children: [new TextRun({ text: b, font, size: BODY_SIZE, color: BODY_COLOR })],
         })
       );
     }
   }
 
   children.push(
-    new Paragraph({ spacing: { before: 600 } }),
+    new Paragraph({ spacing: { before: 400 } }),
     new Paragraph({
+      style: BODY_STYLE,
       alignment: AlignmentType.CENTER,
       children: [
         new TextRun({
@@ -545,10 +486,9 @@ export function buildWordDocument(
     })
   );
 
-  const margins =
-    design === "academic"
-      ? { top: 1440, right: 1134, bottom: 1440, left: 1701 }
-      : { top: 1440, right: 1440, bottom: 1440, left: 1440 };
+  const margins = school || design === "academic"
+    ? { top: 1134, right: 850, bottom: 1134, left: 1701 }
+    : { top: 1440, right: 1440, bottom: 1440, left: 1440 };
 
   return new Document({
     creator: "Decksy",
@@ -561,6 +501,7 @@ export function buildWordDocument(
           default: new Footer({
             children: [
               new Paragraph({
+                style: BODY_STYLE,
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({ text: "Стр. ", size: 18, color: "9CA3AF", font }),
@@ -649,7 +590,7 @@ export function buildLocalWordDocument(rawText: string, docStyle: WordDocStyle):
 
   return {
     title,
-    subtitle: docTypeLabel(docStyle),
+    subtitle: isSchoolDocStyle(docStyle) ? undefined : docTypeLabel(docStyle),
     summary: trimmed.slice(0, 280) + (trimmed.length > 280 ? "…" : ""),
     sections,
   };
