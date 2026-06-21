@@ -3793,11 +3793,13 @@ export default function App() {
         {!legalPage && screen === 'word' && (
           <WordGeneratorPage
             authToken={authToken}
+            isPro={isWatermarkRemoved}
             onOpenAuth={() => {
               setAuthError("Войдите или зарегистрируйтесь, чтобы генерировать документы.");
               setAuthTab("login");
               setShowAuthModal(true);
             }}
+            onOpenPlans={() => setScreen('plans')}
             onBack={() => setScreen('intro')}
           />
         )}

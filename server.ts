@@ -2312,13 +2312,31 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
   }
 });
 
-function generateLocalWordDocument(rawText: string, style: string, titleHint?: string): any {
+function generateLocalWordDocument(rawText: string, style: string, titleHint?: string, meta?: any): any {
   const trimmed = String(rawText).trim();
   const blocks = trimmed.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   const firstLine = blocks[0]?.split("\n")[0]?.trim() || "Документ";
   const title = titleHint?.trim() || (firstLine.length > 80 ? firstLine.slice(0, 77) + "…" : firstLine);
 
-  const sections: { heading: string; paragraphs?: string[]; bullets?: string[] }[] = blocks.slice(1).map((block, i) => {
+  const schoolTemplates: Record<string, string[]> = {
+    school_project: ["Введение", "Цель и задачи", "Основная часть", "Заключение", "Список литературы"],
+    referat: ["Введение", "Основная часть", "Заключение", "Список использованных источников"],
+    essay: ["Вступление", "Основная часть", "Заключение"],
+    homework: ["Задание 1", "Задание 2", "Задание 3"],
+  };
+
+  const subtitles: Record<string, string> = {
+    proposal: "Коммерческое предложение",
+    article: "Статья",
+    report: "Аналитический отчёт",
+    school_project: "Исследовательский проект",
+    referat: "Реферат",
+    essay: "Сочинение",
+    homework: "Домашнее задание",
+    business: "Деловой документ",
+  };
+
+  let sections: { heading: string; paragraphs?: string[]; bullets?: string[] }[] = blocks.slice(1).map((block, i) => {
     const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
     const bullets = lines.filter((l) => /^[-•*]\s/.test(l)).map((l) => l.replace(/^[-•*]\s*/, ""));
     const paragraphs = lines.filter((l) => !/^[-•*]\s/.test(l));
@@ -2330,53 +2348,91 @@ function generateLocalWordDocument(rawText: string, style: string, titleHint?: s
   });
 
   if (sections.length === 0) {
-    sections.push({
-      heading: "Основной текст",
-      paragraphs: trimmed.split("\n").filter(Boolean),
-    });
+    const template = schoolTemplates[style];
+    if (template) {
+      const lines = trimmed.split("\n").filter(Boolean);
+      const body = lines.length > 1 ? lines.slice(1) : lines;
+      const chunk = Math.max(1, Math.ceil(body.length / template.length));
+      sections = template.map((heading, i) => ({
+        heading,
+        paragraphs: body.slice(i * chunk, (i + 1) * chunk).length
+          ? body.slice(i * chunk, (i + 1) * chunk)
+          : undefined,
+      }));
+    } else {
+      sections.push({
+        heading: "Основной текст",
+        paragraphs: trimmed.split("\n").filter(Boolean),
+      });
+    }
   }
 
   return {
     title,
-    subtitle: style === "proposal" ? "Коммерческое предложение" : style === "article" ? "Статья" : "Деловой документ",
+    subtitle: subtitles[style] || subtitles.business,
     summary: trimmed.slice(0, 320) + (trimmed.length > 320 ? "…" : ""),
+    meta: meta || undefined,
     sections,
   };
 }
 
-async function generateWordWithAI(rawText: string, style: string, titleHint?: string): Promise<any> {
+async function generateWordWithAI(rawText: string, style: string, titleHint?: string, meta?: any): Promise<any> {
   const styleHints: Record<string, string> = {
     business: "Formal business tone: clear structure, professional Russian, actionable conclusions.",
     proposal: "Commercial proposal: value proposition, benefits, terms, call to action.",
     report: "Analytical report: facts, insights, numbered findings, executive summary.",
     article: "Readable article: engaging intro, logical flow, strong conclusion.",
+    school_project:
+      "Russian school research project (5-9 grade): Введение, Цель, Задачи, Гипотеза/Ход работы, Результаты, Заключение, Список литературы. Clear academic Russian, age-appropriate.",
+    referat:
+      "Russian school referat: Введение, 2-3 thematic sections in Основная часть, Заключение, Список использованных источников (3-5 sources if mentioned or placeholders).",
+    essay:
+      "Russian school essay (сочинение): expressive but correct Russian, thesis in intro, argumentation, conclusion with personal opinion. No bullet lists.",
+    homework:
+      "Russian homework answers: numbered tasks, clear concise answers, formulas/steps where needed. Section headings like Задание 1, Задание 2.",
   };
+
+  const sectionHints: Record<string, string> = {
+    school_project: "Use sections: Введение, Цель и задачи, Основная часть (or split into Ход работы + Результаты), Заключение, Список литературы",
+    referat: "Use sections: Введение, Основная часть (2-3 subtopics), Заключение, Список использованных источников",
+    essay: "Use sections: Вступление, Основная часть, Заключение — no bullets",
+    homework: "Use sections per task: Задание 1, Задание 2, etc.",
+  };
+
+  const metaCtx = meta
+    ? `\nStudent metadata (use on title page, do not invent):\n${JSON.stringify(meta, null, 2)}`
+    : "";
 
   const result = await callLLM(
     `You are a professional Russian document editor and formatter. Return JSON only:
 {
   "title": "Document title in Russian",
   "subtitle": "Optional subtitle",
-  "author": "Optional author or company name if mentioned in text",
-  "summary": "2-3 sentence executive summary in Russian",
+  "author": "Optional author name if not in meta",
+  "summary": "Introduction or executive summary in Russian (2-4 sentences)",
   "sections": [
     {
       "heading": "Section heading",
-      "paragraphs": ["Well-written paragraph 1", "Paragraph 2"],
-      "bullets": ["Optional bullet point"]
+      "importance": "normal | key | conclusion",
+      "paragraphs": ["Paragraph with **key terms** and ==important facts== highlighted"],
+      "bullets": ["Optional bullet with **bold** terms"]
     }
   ]
 }
 
 Rules:
 - Improve grammar, clarity, and structure — do NOT invent facts not in the source text
-- Split into 3-8 logical sections with clear headings
-- Use bullets only where appropriate (lists, features, steps)
+- Split into logical sections with clear headings appropriate for document type
+- Use bullets only where appropriate (lists, tasks, literature, sources)
 - ALL text in Russian unless source contains English brand names
 - Style: ${styleHints[style] || styleHints.business}
-- Keep numbers, names, and facts from the original text`,
-    `Source text to improve and structure:\n\n${String(rawText).trim().slice(0, 12000)}${titleHint ? `\n\nPreferred title: ${titleHint}` : ""}`,
-    4000
+${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split into 3-8 logical sections"}
+- Keep numbers, names, dates, and facts from the original text
+- For school documents write in clear student-appropriate Russian
+- FORMATTING: use **double asterisks** for key terms, ==double equals== for critical facts/numbers/conclusions, *single asterisks* for subtle emphasis (max 2-3 per paragraph)
+- Mark sections as importance "key" for Цель/Задачи/Результаты and "conclusion" for Вывод/Заключение`,
+    `Source text to improve and structure:\n\n${String(rawText).trim().slice(0, 12000)}${titleHint ? `\n\nPreferred title: ${titleHint}` : ""}${metaCtx}`,
+    4500
   );
 
   if (result?.title && Array.isArray(result.sections) && result.sections.length >= 1) {
@@ -2385,8 +2441,10 @@ Rules:
       subtitle: result.subtitle ? String(result.subtitle).trim() : undefined,
       author: result.author ? String(result.author).trim() : undefined,
       summary: result.summary ? String(result.summary).trim() : undefined,
-      sections: result.sections.slice(0, 12).map((s: any) => ({
+      meta: meta || undefined,
+      sections: result.sections.slice(0, 14).map((s: any) => ({
         heading: String(s.heading || "Раздел").trim(),
+        importance: ["normal", "key", "conclusion"].includes(s.importance) ? s.importance : undefined,
         paragraphs: Array.isArray(s.paragraphs) ? s.paragraphs.map(String).filter(Boolean) : undefined,
         bullets: Array.isArray(s.bullets) ? s.bullets.map(String).filter(Boolean) : undefined,
       })),
@@ -2427,18 +2485,29 @@ app.post("/api/generate_word", authenticateToken, async (req, res) => {
   const text = req.body.text;
   const style = req.body.style || "business";
   const title = req.body.title || null;
+  const meta = req.body.meta || null;
 
   if (!text || String(text).trim().length < 30) {
     return res.status(400).json({ error: "Вставьте текст минимум из 30 символов." });
   }
 
   try {
-    const document = await generateWordWithAI(String(text).trim(), String(style), title ? String(title) : undefined);
+    const document = await generateWordWithAI(
+      String(text).trim(),
+      String(style),
+      title ? String(title) : undefined,
+      meta
+    );
     res.json({ document });
   } catch (err: any) {
     console.warn("Word AI generation failed, using local fallback:", err.message?.slice(0, 120));
     res.json({
-      document: generateLocalWordDocument(String(text).trim(), String(style), title ? String(title) : undefined),
+      document: generateLocalWordDocument(
+        String(text).trim(),
+        String(style),
+        title ? String(title) : undefined,
+        meta
+      ),
     });
   }
 });
