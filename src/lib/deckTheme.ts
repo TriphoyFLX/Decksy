@@ -60,7 +60,7 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     accent: "#f0a050",
     selectedStyle: "cosmic-dark",
     layoutEngine: "apex",
-    overlayOpacity: 0.12,
+    overlayOpacity: 0.06,
   },
   ember: {
     id: "ember",

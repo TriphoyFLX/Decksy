@@ -676,7 +676,7 @@ app.use("/api/auth/register", createRateLimiter("auth-register", {
   max: 10,
   message: "Слишком много регистраций с этого IP. Попробуйте позже.",
 }));
-app.use(["/api/interview", "/api/generate_deck", "/api/generate_outline", "/api/rewrite_slide"], createRateLimiter("ai", {
+app.use(["/api/interview", "/api/generate_deck", "/api/generate_outline", "/api/rewrite_slide", "/api/generate_word"], createRateLimiter("ai", {
   windowMs: 60 * 60 * 1000,
   max: 40,
   message: "Слишком много ИИ-запросов за короткое время. Попробуйте позже.",
@@ -2312,6 +2312,90 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
   }
 });
 
+function generateLocalWordDocument(rawText: string, style: string, titleHint?: string): any {
+  const trimmed = String(rawText).trim();
+  const blocks = trimmed.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  const firstLine = blocks[0]?.split("\n")[0]?.trim() || "Документ";
+  const title = titleHint?.trim() || (firstLine.length > 80 ? firstLine.slice(0, 77) + "…" : firstLine);
+
+  const sections: { heading: string; paragraphs?: string[]; bullets?: string[] }[] = blocks.slice(1).map((block, i) => {
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    const bullets = lines.filter((l) => /^[-•*]\s/.test(l)).map((l) => l.replace(/^[-•*]\s*/, ""));
+    const paragraphs = lines.filter((l) => !/^[-•*]\s/.test(l));
+    return {
+      heading: paragraphs.shift() || `Раздел ${i + 1}`,
+      paragraphs: paragraphs.length ? paragraphs : undefined,
+      bullets: bullets.length ? bullets : undefined,
+    };
+  });
+
+  if (sections.length === 0) {
+    sections.push({
+      heading: "Основной текст",
+      paragraphs: trimmed.split("\n").filter(Boolean),
+    });
+  }
+
+  return {
+    title,
+    subtitle: style === "proposal" ? "Коммерческое предложение" : style === "article" ? "Статья" : "Деловой документ",
+    summary: trimmed.slice(0, 320) + (trimmed.length > 320 ? "…" : ""),
+    sections,
+  };
+}
+
+async function generateWordWithAI(rawText: string, style: string, titleHint?: string): Promise<any> {
+  const styleHints: Record<string, string> = {
+    business: "Formal business tone: clear structure, professional Russian, actionable conclusions.",
+    proposal: "Commercial proposal: value proposition, benefits, terms, call to action.",
+    report: "Analytical report: facts, insights, numbered findings, executive summary.",
+    article: "Readable article: engaging intro, logical flow, strong conclusion.",
+  };
+
+  const result = await callLLM(
+    `You are a professional Russian document editor and formatter. Return JSON only:
+{
+  "title": "Document title in Russian",
+  "subtitle": "Optional subtitle",
+  "author": "Optional author or company name if mentioned in text",
+  "summary": "2-3 sentence executive summary in Russian",
+  "sections": [
+    {
+      "heading": "Section heading",
+      "paragraphs": ["Well-written paragraph 1", "Paragraph 2"],
+      "bullets": ["Optional bullet point"]
+    }
+  ]
+}
+
+Rules:
+- Improve grammar, clarity, and structure — do NOT invent facts not in the source text
+- Split into 3-8 logical sections with clear headings
+- Use bullets only where appropriate (lists, features, steps)
+- ALL text in Russian unless source contains English brand names
+- Style: ${styleHints[style] || styleHints.business}
+- Keep numbers, names, and facts from the original text`,
+    `Source text to improve and structure:\n\n${String(rawText).trim().slice(0, 12000)}${titleHint ? `\n\nPreferred title: ${titleHint}` : ""}`,
+    4000
+  );
+
+  if (result?.title && Array.isArray(result.sections) && result.sections.length >= 1) {
+    return {
+      title: String(result.title).trim(),
+      subtitle: result.subtitle ? String(result.subtitle).trim() : undefined,
+      author: result.author ? String(result.author).trim() : undefined,
+      summary: result.summary ? String(result.summary).trim() : undefined,
+      sections: result.sections.slice(0, 12).map((s: any) => ({
+        heading: String(s.heading || "Раздел").trim(),
+        paragraphs: Array.isArray(s.paragraphs) ? s.paragraphs.map(String).filter(Boolean) : undefined,
+        bullets: Array.isArray(s.bullets) ? s.bullets.map(String).filter(Boolean) : undefined,
+      })),
+    };
+  }
+
+  throw new Error("Invalid AI word document response");
+}
+
 // 1.5 API: Generate business presentation outline
 app.post("/api/generate_outline", authenticateToken, async (req, res) => {
   const idea = req.body.idea;
@@ -2335,6 +2419,27 @@ app.post("/api/generate_outline", authenticateToken, async (req, res) => {
   } catch (err: any) {
     console.error("API Error in /api/generate_outline:", err.message?.slice(0, 200));
     res.json(generateLocalOutline(String(idea).trim(), mode, branding || undefined));
+  }
+});
+
+// 1.6 API: Improve text and structure for Word document export
+app.post("/api/generate_word", authenticateToken, async (req, res) => {
+  const text = req.body.text;
+  const style = req.body.style || "business";
+  const title = req.body.title || null;
+
+  if (!text || String(text).trim().length < 30) {
+    return res.status(400).json({ error: "Вставьте текст минимум из 30 символов." });
+  }
+
+  try {
+    const document = await generateWordWithAI(String(text).trim(), String(style), title ? String(title) : undefined);
+    res.json({ document });
+  } catch (err: any) {
+    console.warn("Word AI generation failed, using local fallback:", err.message?.slice(0, 120));
+    res.json({
+      document: generateLocalWordDocument(String(text).trim(), String(style), title ? String(title) : undefined),
+    });
   }
 });
 

@@ -36,7 +36,8 @@ import {
   Info,
   X,
   Image,
-  Upload
+  Upload,
+  FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminPanel } from "./components/AdminPanel";
@@ -48,6 +49,7 @@ import { OutlinePage } from "./pages/OutlinePage";
 import { TemplatePickerPage } from "./pages/TemplatePickerPage";
 import { GeneratingPage } from "./pages/GeneratingPage";
 import { InterviewPage } from "./pages/InterviewPage";
+import { WordGeneratorPage } from "./pages/WordGeneratorPage";
 import { DeckPage } from "./pages/DeckPage";
 import { LegalPage, LegalPageId } from "./pages/LegalPage";
 import { exportToPPTX } from "./lib/pptxExport";
@@ -323,7 +325,7 @@ const EXAMPLE_DECKS = [
 
 export default function App() {
   // Screen views: 'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
-  const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'>('intro');
+  const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans' | 'word'>('intro');
   const [legalPage, setLegalPage] = useState<LegalPageId | null>(() => getLegalPageFromPath(window.location.pathname));
   
   // Custom design style and selection state
@@ -2860,6 +2862,19 @@ export default function App() {
               <span>Тарифы & Экономика</span>
             </button>
 
+            {/* Nav Option 1.7: Word Generator */}
+            <button
+              onClick={() => setScreen('word')}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
+                screen === 'word'
+                  ? 'bg-blue-500/10 border-blue-500/15 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
+              }`}
+            >
+              <FileText className="h-4 w-4 text-blue-400 shrink-0" />
+              <span>Word Generator</span>
+            </button>
+
             {/* Nav Option 2: Интервью с инвестором */}
             <button
               disabled={messages.length === 0 && screen === 'intro'}
@@ -2973,7 +2988,9 @@ export default function App() {
             <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
               {screen === 'intro'
                 ? "Новый проект"
-                : screen === 'interview'
+                : screen === 'word'
+                  ? "Word Generator"
+                  : screen === 'interview'
                   ? "Интервью"
                   : screen === 'outline'
                     ? "План слайдов"
@@ -3770,6 +3787,18 @@ export default function App() {
             onBackToGenerator={() => setScreen('intro')}
             loadExampleDeck={loadExampleDeck}
             exampleDecks={EXAMPLE_DECKS}
+          />
+        )}
+
+        {!legalPage && screen === 'word' && (
+          <WordGeneratorPage
+            authToken={authToken}
+            onOpenAuth={() => {
+              setAuthError("Войдите или зарегистрируйтесь, чтобы генерировать документы.");
+              setAuthTab("login");
+              setShowAuthModal(true);
+            }}
+            onBack={() => setScreen('intro')}
           />
         )}
         

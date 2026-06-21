@@ -22,6 +22,66 @@ import type { SlideConstructorLayout } from "../types";
 const APEX_BLUE = "#0071e3";
 const APEX_GREEN = "#30d158";
 
+export type GlassSurface = {
+  isLight: boolean;
+  hasImageBg: boolean;
+  titleClass: string;
+  bodyClass: string;
+  mutedClass: string;
+  labelColor: string;
+};
+
+export function getGlassSurface(slide: Slide, forExport = false): GlassSurface {
+  const deckTemplate = (slide.visualData as { deckTemplate?: string } | undefined)?.deckTemplate;
+  const isLight = deckTemplate === "ember";
+  const hasImageBg =
+    deckTemplate === "titanium" || deckTemplate === "midnight" || deckTemplate === "ember";
+  return {
+    isLight,
+    hasImageBg,
+    titleClass: isLight ? "text-neutral-900" : "text-white",
+    bodyClass: isLight ? "text-neutral-700" : "text-white/75",
+    mutedClass: isLight ? "text-neutral-500" : "text-white/50",
+    labelColor: APEX_BLUE,
+  };
+}
+
+export function glassCardStyle(glass: GlassSurface, forExport = false): React.CSSProperties {
+  if (glass.isLight) {
+    return {
+      background: forExport ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.42)",
+      borderColor: "rgba(255,255,255,0.72)",
+      boxShadow: forExport
+        ? "0 4px 24px rgba(0,0,0,0.08)"
+        : "0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.85)",
+      backdropFilter: forExport ? undefined : "blur(24px)",
+      WebkitBackdropFilter: forExport ? undefined : "blur(24px)",
+    };
+  }
+  if (glass.hasImageBg) {
+    return {
+      background: forExport ? "rgba(12,12,18,0.78)" : "rgba(255,255,255,0.1)",
+      borderColor: "rgba(255,255,255,0.22)",
+      boxShadow: forExport
+        ? "0 4px 24px rgba(0,0,0,0.3)"
+        : "0 8px 32px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.18)",
+      backdropFilter: forExport ? undefined : "blur(22px)",
+      WebkitBackdropFilter: forExport ? undefined : "blur(22px)",
+    };
+  }
+  return {
+    background: forExport ? "rgba(18,18,22,0.88)" : "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.2)",
+    boxShadow: forExport
+      ? "0 4px 24px rgba(0,0,0,0.35)"
+      : "0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.14)",
+    backdropFilter: forExport ? undefined : "blur(20px)",
+    WebkitBackdropFilter: forExport ? undefined : "blur(20px)",
+  };
+}
+
+export const glassCardClass = "rounded-2xl border backdrop-blur-xl";
+
 const PAIN_ICON_COLORS = [
   { bg: "rgba(226,75,74,0.14)", fg: "#ff6b6b" },
   { bg: "rgba(255,179,0,0.12)", fg: "#ffb340" },
@@ -60,9 +120,12 @@ export const ApexSectionLabel: React.FC<{ children: React.ReactNode }> = ({ chil
   </p>
 );
 
-export const ApexTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
+export const ApexTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = "text-white",
+}) => (
   <h2
-    className={`text-lg sm:text-xl md:text-2xl font-bold tracking-tight leading-tight text-white mb-3 ${className}`}
+    className={`text-base sm:text-lg md:text-xl font-bold tracking-tight leading-tight mb-2 ${className}`}
     style={{ letterSpacing: "-0.03em" }}
   >
     {children}
@@ -243,8 +306,10 @@ export const ApexPainGrid: React.FC<{
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   image?: string;
   cardImages?: string[];
-}> = ({ content, parseBullet, renderBullet, image, cardImages }) => (
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-auto">
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, image, cardImages, glass, forExport }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-auto min-h-0">
     {content.slice(0, 4).map((item, i) => {
       const parsed = parseBullet(item);
       const label = parsed.label || `Боль ${i + 1}`;
@@ -257,8 +322,8 @@ export const ApexPainGrid: React.FC<{
       return (
         <div
           key={i}
-          className="rounded-2xl p-2.5 sm:p-3 flex flex-col gap-1.5 border text-left min-h-0"
-          style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.07)" }}
+          className={`${glassCardClass} p-2.5 sm:p-3 flex flex-col gap-1.5 text-left min-h-0`}
+          style={glassCardStyle(glass, forExport)}
         >
           {cardImg ? (
             <div className="h-12 rounded-xl overflow-hidden shrink-0">
@@ -281,10 +346,10 @@ export const ApexPainGrid: React.FC<{
               </span>
             </div>
           )}
-          <h3 className="text-[9px] sm:text-[10px] font-semibold text-white leading-tight line-clamp-2">
+          <h3 className={`text-[9px] sm:text-[10px] font-semibold leading-tight line-clamp-2 ${glass.titleClass}`}>
             {label}
           </h3>
-          <p className="text-[8px] sm:text-[9px] text-white/45 leading-snug line-clamp-3 flex-1">
+          <p className={`text-[8px] sm:text-[9px] leading-snug line-clamp-3 flex-1 ${glass.bodyClass}`}>
             {renderBullet(detail, i, "")}
           </p>
           {metric ? (
@@ -312,7 +377,9 @@ export const ApexMarketPanel: React.FC<{
   metrics?: SlideVisualData["metrics"];
   parseBullet: (s: string) => { label: string; detail: string };
   extractNumber: (s: string) => string;
-}> = ({ content, metrics, parseBullet, extractNumber }) => {
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, metrics, parseBullet, extractNumber, glass, forExport }) => {
   const items =
     metrics && metrics.length >= 2
       ? metrics.slice(0, 3).map((m) => ({ label: m.label, value: m.value, detail: "" }))
@@ -334,7 +401,8 @@ export const ApexMarketPanel: React.FC<{
         {items.map((item, i) => (
           <div
             key={i}
-            className="rounded-xl p-2 sm:p-2.5 flex flex-col gap-1 border border-white/[0.08] bg-white/[0.04] min-h-0 overflow-hidden"
+            className={`${glassCardClass} p-2 sm:p-2.5 flex flex-col gap-1 min-h-0 overflow-hidden`}
+            style={glassCardStyle(glass, forExport)}
           >
             <span
               className="text-[6.5px] sm:text-[7px] font-mono uppercase tracking-widest font-bold truncate px-1.5 py-0.5 rounded-full w-fit max-w-full"
@@ -342,17 +410,20 @@ export const ApexMarketPanel: React.FC<{
             >
               {item.label}
             </span>
-            <div className="text-[11px] sm:text-xs font-bold text-white leading-tight line-clamp-2">{item.value}</div>
+            <div className={`text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 ${glass.titleClass}`}>{item.value}</div>
             {item.detail && (
-              <p className="text-[7px] sm:text-[8px] text-white/45 leading-snug line-clamp-3 flex-1">{item.detail}</p>
+              <p className={`text-[7px] sm:text-[8px] leading-snug line-clamp-3 flex-1 ${glass.bodyClass}`}>{item.detail}</p>
             )}
           </div>
         ))}
       </div>
       {content[3] && (
-        <div className="shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 flex items-center gap-1.5">
-          <span className="text-[6px] font-mono uppercase text-emerald-400 font-bold shrink-0">Тренд</span>
-          <span className="text-[7px] text-white/55 line-clamp-1">{content[3]}</span>
+        <div
+          className={`shrink-0 ${glassCardClass} px-2 py-1 flex items-center gap-1.5 border-emerald-500/25`}
+          style={{ ...glassCardStyle(glass, forExport), background: glass.isLight ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.1)" }}
+        >
+          <span className="text-[6px] font-mono uppercase text-emerald-500 font-bold shrink-0">Тренд</span>
+          <span className={`text-[7px] line-clamp-1 ${glass.bodyClass}`}>{content[3]}</span>
         </div>
       )}
     </div>
@@ -364,24 +435,29 @@ export const ApexCompetitionPanel: React.FC<{
   parseBullet: (s: string) => { label: string; detail: string };
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   image?: string;
-}> = ({ content, parseBullet, renderBullet, image }) => (
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, image, glass, forExport }) => (
   <div className={`grid gap-2 my-auto min-h-0 flex-1 ${image ? "grid-cols-3" : "grid-cols-2"}`}>
-    <div className="rounded-xl p-2.5 border border-rose-500/20 bg-rose-500/[0.06] flex flex-col gap-1 min-h-0 overflow-hidden">
+    <div className={`${glassCardClass} p-2.5 flex flex-col gap-1 min-h-0 overflow-hidden`} style={glassCardStyle(glass, forExport)}>
       <span className="text-[7px] font-mono uppercase tracking-widest text-rose-400 font-bold">Конкуренты</span>
       <ul className="space-y-1 flex-1 min-h-0 overflow-hidden">
         {content.slice(0, 2).map((item, i) => (
-          <li key={i} className="text-[8px] text-white/55 leading-snug flex gap-1">
+          <li key={i} className={`text-[8px] leading-snug flex gap-1 ${glass.bodyClass}`}>
             <span className="text-rose-400 shrink-0">•</span>
             <span className="line-clamp-2">{renderBullet(parseBullet(item).detail || item, i, "")}</span>
           </li>
         ))}
       </ul>
     </div>
-    <div className="rounded-xl p-2.5 border border-emerald-500/25 bg-emerald-500/[0.06] flex flex-col gap-1 min-h-0 overflow-hidden">
-      <span className="text-[7px] font-mono uppercase tracking-widest text-emerald-400 font-bold">Наше отличие</span>
+    <div
+      className={`${glassCardClass} p-2.5 flex flex-col gap-1 min-h-0 overflow-hidden border-emerald-500/30`}
+      style={{ ...glassCardStyle(glass, forExport), background: glass.isLight ? "rgba(16,185,129,0.14)" : "rgba(16,185,129,0.1)" }}
+    >
+      <span className="text-[7px] font-mono uppercase tracking-widest text-emerald-500 font-bold">Наше отличие</span>
       <ul className="space-y-1 flex-1 min-h-0 overflow-hidden">
         {(content.slice(2, 4).length ? content.slice(2, 4) : content.slice(0, 2)).map((item, i) => (
-          <li key={i} className="text-[8px] text-emerald-200/80 leading-snug flex gap-1">
+          <li key={i} className={`text-[8px] leading-snug flex gap-1 ${glass.isLight ? "text-emerald-800" : "text-emerald-200/90"}`}>
             <span className="text-emerald-400 shrink-0">✓</span>
             <span className="line-clamp-2">{renderBullet(parseBullet(item).detail || item, i + 2, "")}</span>
           </li>
@@ -389,8 +465,8 @@ export const ApexCompetitionPanel: React.FC<{
       </ul>
     </div>
     {image && (
-      <div className="rounded-xl overflow-hidden min-h-0 border border-white/10">
-        <PremiumImage src={image} variant="thumb" className="!min-h-full h-full" />
+      <div className={`${glassCardClass} overflow-hidden min-h-0 p-1`} style={glassCardStyle(glass, forExport)}>
+        <PremiumImage src={image} variant="thumb" className="!min-h-full h-full rounded-xl" />
       </div>
     )}
   </div>
@@ -400,7 +476,10 @@ export const ApexStatsGrid: React.FC<{
   content: string[];
   parseBullet: (s: string) => { label: string; detail: string };
   extractNumber: (s: string) => string;
-}> = ({ content, parseBullet, extractNumber }) => {
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, extractNumber, renderBullet, glass, forExport }) => {
   const hasNumbers = content.slice(0, 4).some((item) => {
     const parsed = parseBullet(item);
     return Boolean(extractNumber(item) || parsed.detail.match(/[\d$%]+/));
@@ -411,13 +490,15 @@ export const ApexStatsGrid: React.FC<{
       <ApexPainGrid
         content={content}
         parseBullet={parseBullet}
-        renderBullet={(t) => t}
+        renderBullet={renderBullet}
+        glass={glass}
+        forExport={forExport}
       />
     );
   }
 
   return (
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-0.5 rounded-2xl overflow-hidden border border-white/[0.06] my-auto">
+  <div className={`grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-auto`}>
     {content.slice(0, 4).map((item, i) => {
       const parsed = parseBullet(item);
       const num = extractNumber(item) || parsed.detail.match(/[\d$%млнмлрдтыс]+/i)?.[0];
@@ -429,14 +510,15 @@ export const ApexStatsGrid: React.FC<{
       return (
         <div
           key={i}
-          className="p-3 sm:p-4 flex flex-col gap-1 border-r border-white/[0.06] last:border-r-0 bg-white/[0.04] hover:bg-white/[0.07] transition-colors"
+          className={`${glassCardClass} p-3 sm:p-4 flex flex-col gap-1 min-h-0`}
+          style={glassCardStyle(glass, forExport)}
         >
           {num ? (
             <>
-              <div className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-none">
+              <div className={`text-xl sm:text-2xl font-bold tracking-tight leading-none ${glass.titleClass}`}>
                 {num}
               </div>
-              <div className="text-[9px] text-white/45 leading-snug line-clamp-2">{label}</div>
+              <div className={`text-[9px] leading-snug line-clamp-2 ${glass.bodyClass}`}>{label}</div>
               {metric && (
                 <div className="text-[8px] font-medium mt-0.5" style={{ color: APEX_GREEN }}>
                   {metric}
@@ -451,8 +533,8 @@ export const ApexStatsGrid: React.FC<{
               >
                 <Icon className="h-4 w-4" strokeWidth={2.2} />
               </div>
-              <div className="text-[9px] font-semibold text-white leading-snug line-clamp-2">{label}</div>
-              <div className="text-[8px] text-white/40 leading-snug line-clamp-2">{parsed.detail}</div>
+              <div className={`text-[9px] font-semibold leading-snug line-clamp-2 ${glass.titleClass}`}>{label}</div>
+              <div className={`text-[8px] leading-snug line-clamp-2 ${glass.mutedClass}`}>{parsed.detail}</div>
             </>
           )}
         </div>
@@ -468,42 +550,53 @@ export const ApexProductSplit: React.FC<{
   imageCaption?: string;
   parseBullet: (s: string) => { label: string; detail: string };
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
-}> = ({ content, image, imageCaption, parseBullet, renderBullet }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-auto items-center">
-    <div className="space-y-3">
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, image, imageCaption, parseBullet, renderBullet, glass, forExport }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-auto items-stretch min-h-0 flex-1">
+    <div className={`${glassCardClass} p-3 space-y-2.5 flex flex-col justify-center`} style={glassCardStyle(glass, forExport)}>
       {content.slice(0, 3).map((item, i) => {
         const p = parseBullet(item);
         return (
-          <div key={i} className="flex gap-3 items-start">
+          <div
+            key={i}
+            className={`flex gap-2.5 items-start rounded-xl p-2 border ${glass.isLight ? "border-white/60 bg-white/35" : "border-white/10 bg-white/[0.04]"}`}
+          >
             <div
-              className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-sm"
-              style={{ background: i === 0 ? "rgba(0,113,227,0.12)" : i === 1 ? "rgba(48,209,88,0.1)" : "rgba(255,179,0,0.1)" }}
+              className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm"
+              style={{ background: i === 0 ? "rgba(0,113,227,0.15)" : i === 1 ? "rgba(48,209,88,0.12)" : "rgba(255,179,0,0.12)" }}
             >
               {i === 0 ? "⚡" : i === 1 ? "🔒" : "🤖"}
             </div>
-            <div>
-              {p.label && <h3 className="text-[11px] font-semibold text-white mb-0.5">{p.label}</h3>}
-              <p className="text-[10px] text-white/45 leading-relaxed">{renderBullet(p.detail || item, i, "")}</p>
+            <div className="min-w-0">
+              {p.label && <h3 className={`text-[10px] font-semibold mb-0.5 ${glass.titleClass}`}>{p.label}</h3>}
+              <p className={`text-[9px] leading-relaxed line-clamp-3 ${glass.bodyClass}`}>
+                {renderBullet(p.detail || item, i, "")}
+              </p>
             </div>
           </div>
         );
       })}
     </div>
     {image ? (
-      <PremiumImage src={image} caption={imageCaption} variant="hero" />
+      <div className={`${glassCardClass} p-1.5 overflow-hidden min-h-0`} style={glassCardStyle(glass, forExport)}>
+        <PremiumImage src={image} caption={imageCaption} variant="hero" className="!rounded-xl !min-h-[120px]" />
+      </div>
     ) : (
       <div
-        className="aspect-square rounded-[28px] border border-white/[0.08] flex items-center justify-center relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" }}
+        className={`${glassCardClass} aspect-square flex items-center justify-center relative overflow-hidden`}
+        style={glassCardStyle(glass, forExport)}
       >
-        <div className="w-[80%] rounded-2xl border border-white/10 bg-white/[0.05] p-4 space-y-2">
+        <div
+          className={`w-[80%] rounded-2xl border p-4 space-y-2 ${glass.isLight ? "border-neutral-200/80 bg-white/50" : "border-white/15 bg-white/[0.06]"}`}
+        >
           <div className="flex gap-1.5 mb-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
           </div>
-          {[100, 80, 60, 45, 100, 75].map((w, i) => (
-            <div key={i} className="h-1.5 rounded-full bg-white/10" style={{ width: `${w}%`, opacity: 1 - i * 0.08 }} />
+          {[100, 80, 60, 45, 100, 75].map((w, idx) => (
+            <div key={idx} className={`h-1.5 rounded-full ${glass.isLight ? "bg-neutral-300/60" : "bg-white/10"}`} style={{ width: `${w}%`, opacity: 1 - idx * 0.08 }} />
           ))}
         </div>
       </div>
@@ -515,7 +608,9 @@ export const ApexPricingCards: React.FC<{
   content: string[];
   parseBullet: (s: string) => { label: string; detail: string };
   extractNumber: (s: string) => string;
-}> = ({ content, parseBullet, extractNumber }) => (
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, extractNumber, glass, forExport }) => (
   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-auto">
     {content.slice(0, 3).map((item, i) => {
       const p = parseBullet(item);
@@ -524,15 +619,23 @@ export const ApexPricingCards: React.FC<{
       return (
         <div
           key={i}
-          className={`rounded-2xl p-3 border text-left ${featured ? "ring-1 ring-white/20 scale-[1.02]" : ""}`}
-          style={{
-            background: featured ? "linear-gradient(160deg, #0071e3 0%, #0040a8 100%)" : "rgba(255,255,255,0.03)",
-            borderColor: featured ? "transparent" : "rgba(255,255,255,0.08)",
-          }}
+          className={`${glassCardClass} p-3 text-left ${featured ? "ring-1 ring-white/25 scale-[1.02]" : ""}`}
+          style={
+            featured
+              ? {
+                  background: "linear-gradient(160deg, rgba(0,113,227,0.85) 0%, rgba(0,64,168,0.9) 100%)",
+                  borderColor: "rgba(255,255,255,0.25)",
+                  backdropFilter: forExport ? undefined : "blur(16px)",
+                  WebkitBackdropFilter: forExport ? undefined : "blur(16px)",
+                }
+              : glassCardStyle(glass, forExport)
+          }
         >
-          <div className="text-[8px] uppercase tracking-widest text-white/50 mb-1">{p.label || `Тариф ${i + 1}`}</div>
-          <div className="text-lg font-bold text-white mb-2">{price}</div>
-          <p className="text-[9px] text-white/55 leading-relaxed">{p.detail}</p>
+          <div className={`text-[8px] uppercase tracking-widest mb-1 ${featured ? "text-white/70" : glass.mutedClass}`}>
+            {p.label || `Тариф ${i + 1}`}
+          </div>
+          <div className={`text-lg font-bold mb-2 ${featured ? "text-white" : glass.titleClass}`}>{price}</div>
+          <p className={`text-[9px] leading-relaxed ${featured ? "text-white/80" : glass.bodyClass}`}>{p.detail}</p>
         </div>
       );
     })}
@@ -542,29 +645,31 @@ export const ApexPricingCards: React.FC<{
 export const ApexRoadmap: React.FC<{
   content: string[];
   parseBullet: (s: string) => { label: string; detail: string };
-}> = ({ content, parseBullet }) => (
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, glass, forExport }) => (
   <div className="relative my-auto pl-2">
-    <div className="absolute left-[4.5rem] top-3 bottom-3 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent" />
+    <div className={`absolute left-[4.5rem] top-3 bottom-3 w-px bg-gradient-to-b from-transparent ${glass.isLight ? "via-neutral-300/50" : "via-white/15"} to-transparent`} />
     <div className="space-y-2">
       {content.slice(0, 4).map((item, i) => {
         const p = parseBullet(item);
         return (
           <div key={i} className="grid grid-cols-[4.5rem_1fr] gap-3 items-start">
-            <div className="text-[8px] font-semibold text-white/35 text-right pt-3 uppercase tracking-wide">
+            <div className={`text-[8px] font-semibold text-right pt-3 uppercase tracking-wide ${glass.mutedClass}`}>
               Q{i + 1} '26
             </div>
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3 relative">
+            <div className={`${glassCardClass} p-3 relative`} style={glassCardStyle(glass, forExport)}>
               <div
                 className="absolute -left-[1.15rem] top-3 w-2.5 h-2.5 rounded-full border-2"
                 style={{
-                  background: i === 0 ? APEX_GREEN : i === 1 ? APEX_BLUE : "rgba(255,255,255,0.2)",
-                  borderColor: i <= 1 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)",
+                  background: i === 0 ? APEX_GREEN : i === 1 ? APEX_BLUE : glass.isLight ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.2)",
+                  borderColor: i <= 1 ? "rgba(255,255,255,0.15)" : glass.isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)",
                 }}
               />
               <div className="text-[8px] uppercase tracking-widest font-semibold mb-0.5" style={{ color: i === 0 ? APEX_GREEN : APEX_BLUE }}>
                 {p.label || `Этап ${i + 1}`}
               </div>
-              <p className="text-[10px] text-white/75 leading-snug">{p.detail}</p>
+              <p className={`text-[10px] leading-snug ${glass.bodyClass}`}>{p.detail}</p>
             </div>
           </div>
         );
@@ -579,7 +684,9 @@ export const ApexCTA: React.FC<{
   content: string[];
   image?: string;
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
-}> = ({ title, subtitle, content, image, renderBullet }) => (
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ title, subtitle, content, image, renderBullet, glass, forExport }) => (
   <div className="h-full flex flex-col items-center justify-center text-center my-auto">
     <span
       className="inline-block text-[8px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-3 border"
@@ -587,12 +694,16 @@ export const ApexCTA: React.FC<{
     >
       Инвестиционное предложение
     </span>
-    <div className="text-xl sm:text-2xl font-extrabold text-white mb-2 tracking-tight">{title}</div>
-    {subtitle && <p className="text-sm text-white/40 mb-4 max-w-sm">{subtitle}</p>}
+    <div className={`text-xl sm:text-2xl font-extrabold mb-2 tracking-tight ${glass.titleClass}`}>{title}</div>
+    {subtitle && <p className={`text-sm mb-4 max-w-sm ${glass.mutedClass}`}>{subtitle}</p>}
     <div className="flex flex-wrap justify-center gap-2 mb-4">
       {content.slice(0, 3).map((c, i) => (
-        <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] text-white/70">
-          {renderBullet(c, i, "")}
+        <div
+          key={i}
+          className={`${glassCardClass} px-3 py-2 text-[10px]`}
+          style={glassCardStyle(glass, forExport)}
+        >
+          <span className={glass.bodyClass}>{renderBullet(c, i, "")}</span>
         </div>
       ))}
     </div>
@@ -606,7 +717,9 @@ export const SwissProblemGrid: React.FC<{
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   image?: string;
   cardImages?: string[];
-}> = ({ content, parseBullet, renderBullet, image, cardImages }) => (
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, image, cardImages, glass, forExport }) => (
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-auto">
     {content.slice(0, 4).map((item, i) => {
       const p = parseBullet(item);
@@ -620,8 +733,8 @@ export const SwissProblemGrid: React.FC<{
       return (
         <div
           key={i}
-          className="rounded-[18px] p-2.5 sm:p-3 border flex flex-col gap-1.5 text-left min-h-0"
-          style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}
+          className={`${glassCardClass} p-2.5 sm:p-3 flex flex-col gap-1.5 text-left min-h-0`}
+          style={glassCardStyle(glass, forExport)}
         >
           {cardImg ? (
             <div className="h-11 rounded-xl overflow-hidden shrink-0">
@@ -644,11 +757,11 @@ export const SwissProblemGrid: React.FC<{
               </span>
             </div>
           )}
-          <h3 className="text-[9px] sm:text-[10px] font-semibold text-white leading-tight line-clamp-2">
+          <h3 className={`text-[9px] sm:text-[10px] font-semibold leading-tight line-clamp-2 ${glass.titleClass}`}>
             {label}
           </h3>
           {detail && (
-            <p className="text-[8px] sm:text-[9px] text-white/45 leading-snug line-clamp-3 flex-1">
+            <p className={`text-[8px] sm:text-[9px] leading-snug line-clamp-3 flex-1 ${glass.bodyClass}`}>
               {renderBullet(detail, i, "")}
             </p>
           )}
@@ -657,7 +770,7 @@ export const SwissProblemGrid: React.FC<{
               {metric}
             </div>
           ) : (
-            <div className="text-[7px] text-white/25 mt-auto line-clamp-1 italic">
+            <div className={`text-[7px] mt-auto line-clamp-1 italic ${glass.mutedClass}`}>
               {shortInsight(detail) || "Ключевая боль"}
             </div>
           )}
@@ -665,8 +778,8 @@ export const SwissProblemGrid: React.FC<{
       );
     })}
     {image && content.length <= 3 && (
-      <div className="col-span-2 sm:col-span-4 rounded-2xl overflow-hidden h-20 mt-0.5">
-        <PremiumImage src={image} variant="hero" className="!min-h-full !rounded-2xl" />
+      <div className={`col-span-2 sm:col-span-4 ${glassCardClass} overflow-hidden h-20 mt-0.5 p-1`} style={glassCardStyle(glass, forExport)}>
+        <PremiumImage src={image} variant="hero" className="!min-h-full !rounded-xl" />
       </div>
     )}
   </div>
@@ -678,33 +791,37 @@ export const SwissSolutionList: React.FC<{
   imageCaption?: string;
   parseBullet: (s: string) => { label: string; detail: string };
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
-}> = ({ content, image, imageCaption, parseBullet, renderBullet }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-auto items-center">
-    <div className="space-y-2">
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, image, imageCaption, parseBullet, renderBullet, glass, forExport }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-auto items-stretch min-h-0 flex-1">
+    <div className={`${glassCardClass} p-3 space-y-2`} style={glassCardStyle(glass, forExport)}>
       {content.slice(0, 3).map((item, i) => {
         const p = parseBullet(item);
         return (
           <div key={i} className="flex gap-2 items-start">
             <div
-              className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm"
+              className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm font-semibold"
               style={{ background: "rgba(0,113,227,0.12)", color: "#4da3ff" }}
             >
               {i + 1}
             </div>
             <div className="min-w-0">
-              <h3 className="text-[10px] font-semibold text-white mb-0.5">{p.label || renderBullet(item, i, "")}</h3>
-              {p.detail && <p className="text-[9px] text-white/45 leading-snug line-clamp-2">{p.detail}</p>}
+              <h3 className={`text-[10px] font-semibold mb-0.5 ${glass.titleClass}`}>{p.label || renderBullet(item, i, "")}</h3>
+              {p.detail && <p className={`text-[9px] leading-snug line-clamp-2 ${glass.bodyClass}`}>{p.detail}</p>}
             </div>
           </div>
         );
       })}
     </div>
     {image ? (
-      <PremiumImage src={image} caption={imageCaption} variant="hero" />
+      <div className={`${glassCardClass} p-1.5 overflow-hidden`} style={glassCardStyle(glass, forExport)}>
+        <PremiumImage src={image} caption={imageCaption} variant="hero" className="!rounded-xl" />
+      </div>
     ) : (
       <div
-        className="aspect-[4/3] rounded-3xl border border-dashed flex items-center justify-center text-[9px] text-white/30"
-        style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.18)" }}
+        className={`${glassCardClass} aspect-[4/3] flex items-center justify-center text-[9px] border-dashed ${glass.mutedClass}`}
+        style={glassCardStyle(glass, forExport)}
       >
         Скриншот продукта
       </div>
@@ -748,30 +865,17 @@ export const ApexSlideContent: React.FC<{
   const type = slide.type;
   const variant = slide.visualData?.variant || "";
   const swiss = isSwissTemplate(slide);
-  const slideBg = swiss
-    ? "linear-gradient(to bottom, #050505, #0a0a0a)"
-    : "linear-gradient(to bottom, #000000, #050505)";
+  const glass = getGlassSurface(slide, forExport);
 
   return (
-    <div
-      className="h-full w-full min-h-0 overflow-hidden rounded-xl"
-      style={{ background: slideBg }}
-    >
-    <div className="h-full flex flex-col py-1 relative min-h-0 overflow-hidden">
-      <div
-        className="absolute inset-0 pointer-events-none opacity-40"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
-      <div className="relative z-10 flex flex-col h-full">
+    <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">
+    <div className="h-full flex flex-col py-0.5 relative min-h-0 overflow-hidden">
+      <div className="relative z-10 flex flex-col h-full min-h-0">
         {index !== 0 && type !== "title" && (
-          <div className="mb-2 text-left">
+          <div className="mb-2 text-left shrink-0">
             {sectionLabel && <ApexSectionLabel>{sectionLabel}</ApexSectionLabel>}
-            <ApexTitle>{title}</ApexTitle>
-            {subtitle && <p className="text-[10px] text-white/45">{subtitle}</p>}
+            <ApexTitle className={glass.titleClass}>{title}</ApexTitle>
+            {subtitle && <p className={`text-[10px] ${glass.mutedClass}`}>{subtitle}</p>}
           </div>
         )}
 
@@ -799,6 +903,8 @@ export const ApexSlideContent: React.FC<{
               renderBullet={renderBullet}
               image={slide.image}
               cardImages={slide.visualData?.images}
+              glass={glass}
+              forExport={forExport}
             />
           ) : (
             <ApexPainGrid
@@ -807,6 +913,8 @@ export const ApexSlideContent: React.FC<{
               renderBullet={renderBullet}
               image={slide.image}
               cardImages={slide.visualData?.images}
+              glass={glass}
+              forExport={forExport}
             />
           ))}
 
@@ -816,6 +924,8 @@ export const ApexSlideContent: React.FC<{
             metrics={slide.visualData?.metrics}
             parseBullet={parseBullet}
             extractNumber={extractNumber}
+            glass={glass}
+            forExport={forExport}
           />
         )}
 
@@ -827,6 +937,8 @@ export const ApexSlideContent: React.FC<{
               imageCaption={slide.imageDescription}
               parseBullet={parseBullet}
               renderBullet={renderBullet}
+              glass={glass}
+              forExport={forExport}
             />
           ) : (
             <ApexProductSplit
@@ -835,11 +947,19 @@ export const ApexSlideContent: React.FC<{
               imageCaption={slide.imageDescription}
               parseBullet={parseBullet}
               renderBullet={renderBullet}
+              glass={glass}
+              forExport={forExport}
             />
           ))}
 
         {type === "traction" && (
-          <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} />
+          <ApexPainGrid
+            content={content}
+            parseBullet={parseBullet}
+            renderBullet={renderBullet}
+            glass={glass}
+            forExport={forExport}
+          />
         )}
 
         {type === "competition" && (
@@ -848,12 +968,24 @@ export const ApexSlideContent: React.FC<{
             parseBullet={parseBullet}
             renderBullet={renderBullet}
             image={slide.image}
+            glass={glass}
+            forExport={forExport}
           />
         )}
 
-        {type === "pricing" && <ApexPricingCards content={content} parseBullet={parseBullet} extractNumber={extractNumber} />}
+        {type === "pricing" && (
+          <ApexPricingCards
+            content={content}
+            parseBullet={parseBullet}
+            extractNumber={extractNumber}
+            glass={glass}
+            forExport={forExport}
+          />
+        )}
 
-        {type === "launch" && <ApexRoadmap content={content} parseBullet={parseBullet} />}
+        {type === "launch" && (
+          <ApexRoadmap content={content} parseBullet={parseBullet} glass={glass} forExport={forExport} />
+        )}
 
         {(type === "ask" || type === "cta" || type === "vision") && (
           <ApexCTA
@@ -862,16 +994,32 @@ export const ApexSlideContent: React.FC<{
             content={content}
             image={slide.image}
             renderBullet={renderBullet}
+            glass={glass}
+            forExport={forExport}
           />
         )}
 
         {type === "sauce" && !slide.visualData?.teamMembers?.length && (
-          <ApexPainGrid content={content} parseBullet={parseBullet} renderBullet={renderBullet} image={slide.image} />
+          <ApexPainGrid
+            content={content}
+            parseBullet={parseBullet}
+            renderBullet={renderBullet}
+            image={slide.image}
+            glass={glass}
+            forExport={forExport}
+          />
         )}
 
         {!["title", "problem", "solution", "product", "market", "pricing", "traction", "launch", "ask", "cta", "vision", "competition", "sauce"].includes(type) &&
           index !== 0 && (
-            <ApexStatsGrid content={content} parseBullet={parseBullet} extractNumber={extractNumber} />
+            <ApexStatsGrid
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderBullet={renderBullet}
+              glass={glass}
+              forExport={forExport}
+            />
           )}
       </div>
     </div>
