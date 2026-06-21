@@ -3,6 +3,7 @@ import {
   Document,
   Footer,
   HeadingLevel,
+  LevelFormat,
   Packer,
   PageBreak,
   PageNumber,
@@ -10,6 +11,7 @@ import {
   ShadingType,
   TableOfContents,
   TextRun,
+  convertInchesToTwip,
 } from "docx";
 
 /* =========================================================================
@@ -128,6 +130,7 @@ const MARGINS = {
 } as const;
 
 const RU_LANG = { value: "ru-RU" } as const;
+const BULLET_LIST_REFERENCE = "decksy-bullet-list";
 
 const STYLE_ACCENTS: Record<WordDocStyle, { primary: string; secondary: string; highlight: string }> = {
   business: { primary: "1F4E79", secondary: "2E75B6", highlight: "DBEAFE" },
@@ -174,9 +177,16 @@ export function inferSchoolDocStyle(text: string): WordDocStyle {
   const t = text.toLowerCase();
   if (/задание\s*\d|домашн|контрольн|\bдз\b|упражнени|решите|вычислите/.test(t)) return "homework";
   if (/сочинен|рассужден|эссе|мнение автора|герой|мораль|дружб/.test(t)) return "essay";
-  if (/цель:|задачи:|гипотез|эксперимент|опыт|лаборатор|исследован|проект|материал/.test(t)) {
+  if (/реферат/.test(t) && !/проект/.test(t)) return "referat";
+  if (
+    /цель:|задачи:|гипотез|эксперимент|опыт|лаборатор|исследован|материал/.test(t) ||
+    /(?:сделай|напиши|создай|составь).{0,40}(?:проект|исследов)/.test(t) ||
+    /\bпроект\b/.test(t)
+  ) {
     return "school_project";
   }
+  if (/(?:сделай|напиши|составь).{0,40}реферат/.test(t)) return "referat";
+  if (/(?:сделай|напиши|составь).{0,40}сочинен/.test(t)) return "essay";
   return "referat";
 }
 
@@ -332,9 +342,13 @@ function headingParagraph(text: string, font: string, themeColor: string, school
 
 function bulletParagraph(text: string, font: string): Paragraph {
   return new Paragraph({
-    bullet: { level: 0 },
+    numbering: { reference: BULLET_LIST_REFERENCE, level: 0 },
     spacing: { after: SPACING.paragraphAfterTight },
-    children: [new TextRun({ text, font, size: TYPE_SCALE.body, color: "000000", language: RU_LANG })],
+    children: parseRichTextRuns(text.replace(/^[-•*]\s*/, ""), font, {
+      base: "000000",
+      accent: "000000",
+      highlight: "E5E7EB",
+    }),
   });
 }
 
@@ -553,6 +567,26 @@ export function buildWordDocument(data: WordDocumentData, style: WordDocStyle = 
     creator: "Decksy",
     title: data.title,
     description: data.subtitle || data.summary,
+    numbering: {
+      config: [
+        {
+          reference: BULLET_LIST_REFERENCE,
+          levels: [
+            {
+              level: 0,
+              format: LevelFormat.BULLET,
+              text: "\u2022",
+              alignment: AlignmentType.LEFT,
+              style: {
+                paragraph: {
+                  indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
     sections: [
       {
         properties: { page: { margin: margins } },

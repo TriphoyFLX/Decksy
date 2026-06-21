@@ -18,6 +18,11 @@ import { brandingContextForAI, parseBrandingFromCanvas } from "./src/lib/project
 import { businessPromptForAI } from "./src/lib/businessSlides";
 import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
 import { assignDeckVariants } from "./src/lib/deckVariants";
+import {
+  extractWordPromptTopic,
+  isWordGenerationPrompt,
+  resolveWordGenerationMode,
+} from "./src/lib/wordPromptUtils";
 import { GoogleGenAI, Type } from "@google/genai";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -2461,6 +2466,130 @@ ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split
   throw new Error("Invalid AI word document response");
 }
 
+async function generateWordFromPromptWithAI(
+  prompt: string,
+  style: string,
+  titleHint?: string,
+  meta?: any
+): Promise<any> {
+  const topic = extractWordPromptTopic(prompt);
+  const styleHints: Record<string, string> = {
+    business: "Formal business document on the topic: structure, professional Russian, actionable conclusions.",
+    proposal: "Commercial proposal on the topic: value proposition, benefits, terms, call to action.",
+    report: "Analytical report on the topic: facts, insights, numbered findings, executive summary.",
+    article: "Readable article on the topic: engaging intro, logical flow, strong conclusion.",
+    school_project:
+      "Russian school research project (5-9 grade) on the topic: Введение, Цель, Задачи, Гипотеза, Ход работы, Результаты, Заключение, Список литературы. Age-appropriate academic Russian.",
+    referat:
+      "Russian school referat on the topic: Введение, 2-3 thematic sections, Заключение, Список использованных источников (3-5 plausible sources).",
+    essay:
+      "Russian school essay (сочинение) on the topic: expressive but correct Russian, thesis, argumentation, personal conclusion. No bullet lists.",
+    homework:
+      "Russian homework-style answers on the topic: numbered tasks with clear concise answers.",
+  };
+
+  const sectionHints: Record<string, string> = {
+    school_project: "Sections: Введение, Цель и задачи, Основная часть (or Ход работы + Результаты), Заключение, Список литературы",
+    referat: "Sections: Введение, Основная часть (2-3 subtopics), Заключение, Список использованных источников",
+    essay: "Sections: Вступление, Основная часть, Заключение — no bullets",
+    homework: "Sections per task: Задание 1, Задание 2, etc.",
+  };
+
+  const metaCtx = meta
+    ? `\nStudent metadata (use on title page, do not invent conflicting names):\n${JSON.stringify(meta, null, 2)}`
+    : "";
+
+  const result = await callLLM(
+    `You are a professional Russian document writer. Return JSON only:
+{
+  "title": "Document title in Russian",
+  "subtitle": "Optional subtitle",
+  "author": "Optional author name if not in meta",
+  "summary": "Introduction or executive summary in Russian (2-4 sentences)",
+  "sections": [
+    {
+      "heading": "Section heading",
+      "importance": "normal | key | conclusion",
+      "paragraphs": ["Paragraph with **key terms** and ==important facts== highlighted"],
+      "bullets": ["Optional bullet with **bold** terms"]
+    }
+  ]
+}
+
+Rules:
+- The user gives a TOPIC or brief request — NOT finished text. WRITE the complete document yourself.
+- Topic: "${topic}"
+- Use accurate general knowledge appropriate for Russian school/business context; do NOT refuse or say data is missing.
+- Style: ${styleHints[style] || styleHints.business}
+${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split into 3-8 logical sections"}
+- ALL text in Russian unless the topic requires English terms
+- FORMATTING: use **double asterisks** for key terms, ==double equals== for critical facts/numbers, *single asterisks* for subtle emphasis
+- Mark sections as importance "key" for Цель/Задачи/Результаты and "conclusion" for Вывод/Заключение
+- Do NOT duplicate section titles in summary (if summary is Введение, do not also add a section titled Введение with the same text)`,
+    `User request:\n${String(prompt).trim().slice(0, 500)}${titleHint ? `\n\nPreferred title: ${titleHint}` : ""}${metaCtx}`,
+    5500
+  );
+
+  if (result?.title && Array.isArray(result.sections) && result.sections.length >= 1) {
+    const schoolStyles = ["school_project", "referat", "essay", "homework"];
+    return {
+      title: String(result.title).trim(),
+      subtitle: schoolStyles.includes(style)
+        ? undefined
+        : result.subtitle
+          ? String(result.subtitle).trim()
+          : undefined,
+      author: result.author ? String(result.author).trim() : undefined,
+      summary: result.summary ? String(result.summary).trim() : undefined,
+      meta: meta || undefined,
+      sections: result.sections.slice(0, 14).map((s: any) => ({
+        heading: String(s.heading || "Раздел").trim(),
+        importance: ["normal", "key", "conclusion"].includes(s.importance) ? s.importance : undefined,
+        paragraphs: Array.isArray(s.paragraphs) ? s.paragraphs.map(String).filter(Boolean) : undefined,
+        bullets: Array.isArray(s.bullets) ? s.bullets.map(String).filter(Boolean) : undefined,
+      })),
+    };
+  }
+
+  throw new Error("Invalid AI word document response");
+}
+
+function generateLocalWordFromPrompt(prompt: string, style: string, titleHint?: string, meta?: any): any {
+  const topic = extractWordPromptTopic(prompt);
+  const title = titleHint?.trim() || topic.slice(0, 80) || "Документ";
+  const schoolTemplates: Record<string, string[]> = {
+    school_project: ["Введение", "Цель и задачи", "Основная часть", "Заключение", "Список литературы"],
+    referat: ["Введение", "Основная часть", "Заключение", "Список использованных источников"],
+    essay: ["Вступление", "Основная часть", "Заключение"],
+    homework: ["Задание 1", "Задание 2", "Задание 3"],
+  };
+
+  const template = schoolTemplates[style];
+  const sections = template
+    ? template.map((heading, i) => ({
+        heading,
+        paragraphs: [
+          i === 0
+            ? `Тема работы: ${topic}. В данном разделе раскрывается актуальность и основные положения.`
+            : `Раздел «${heading}» по теме «${topic}». Добавьте или уточните содержание после повторной генерации с ИИ.`,
+        ],
+        importance: /цель|задач|заключ|вывод/i.test(heading) ? "key" : "normal",
+      }))
+    : [
+        { heading: "Введение", paragraphs: [`Документ по теме: ${topic}.`] },
+        { heading: "Основная часть", paragraphs: [`Ключевые положения по теме «${topic}».`] },
+        { heading: "Заключение", paragraphs: [`Итоги и выводы по теме «${topic}».`], importance: "conclusion" },
+      ];
+
+  return {
+    title,
+    subtitle: ["school_project", "referat", "essay", "homework"].includes(style) ? undefined : undefined,
+    summary: `Тема документа: ${topic}.`,
+    meta: meta || undefined,
+    sections,
+  };
+}
+
 // 1.5 API: Generate business presentation outline
 app.post("/api/generate_outline", authenticateToken, async (req, res) => {
   const idea = req.body.idea;
@@ -2493,28 +2622,52 @@ app.post("/api/generate_word", authenticateToken, async (req, res) => {
   const style = req.body.style || "business";
   const title = req.body.title || null;
   const meta = req.body.meta || null;
+  const mode = resolveWordGenerationMode(String(text || ""), req.body.mode);
 
-  if (!text || String(text).trim().length < 30) {
-    return res.status(400).json({ error: "Вставьте текст минимум из 30 символов." });
+  const minLen = mode === "prompt" ? 12 : 30;
+  if (!text || String(text).trim().length < minLen) {
+    return res.status(400).json({
+      error:
+        mode === "prompt"
+          ? "Опишите запрос минимум в 12 символов, например: «Сделай проект про робототехнику»."
+          : "Вставьте текст минимум из 30 символов.",
+    });
   }
 
   try {
-    const document = await generateWordWithAI(
-      String(text).trim(),
-      String(style),
-      title ? String(title) : undefined,
-      meta
-    );
-    res.json({ document });
+    const document =
+      mode === "prompt"
+        ? await generateWordFromPromptWithAI(
+            String(text).trim(),
+            String(style),
+            title ? String(title) : undefined,
+            meta
+          )
+        : await generateWordWithAI(
+            String(text).trim(),
+            String(style),
+            title ? String(title) : undefined,
+            meta
+          );
+    res.json({ document, mode });
   } catch (err: any) {
     console.warn("Word AI generation failed, using local fallback:", err.message?.slice(0, 120));
     res.json({
-      document: generateLocalWordDocument(
-        String(text).trim(),
-        String(style),
-        title ? String(title) : undefined,
-        meta
-      ),
+      mode,
+      document:
+        mode === "prompt"
+          ? generateLocalWordFromPrompt(
+              String(text).trim(),
+              String(style),
+              title ? String(title) : undefined,
+              meta
+            )
+          : generateLocalWordDocument(
+              String(text).trim(),
+              String(style),
+              title ? String(title) : undefined,
+              meta
+            ),
     });
   }
 });

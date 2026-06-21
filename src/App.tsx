@@ -90,6 +90,7 @@ import {
   compressSessionImages,
 } from "./lib/sessionPersistence";
 import { EditableText } from "./components/EditableText";
+import { isWordGenerationPrompt } from "./lib/wordPromptUtils";
 import decksyLogo from "./images/logo.png";
 
 const INITIAL_CANVAS: PitchCanvas = {
@@ -370,6 +371,7 @@ export default function App() {
   const [generationProgress, setGenerationProgress] = useState(0);
 
   const [activeAds, setActiveAds] = useState<any[]>([]);
+  const [wordSeed, setWordSeed] = useState<{ text: string; autoGenerate: boolean } | null>(null);
 
   // --- New Database Authentication and Preserved Library States ---
   const [user, setUser] = useState<{
@@ -1018,7 +1020,21 @@ export default function App() {
   };
 
   const handleStartInterview = async () => {
-    if (!idea.trim() || idea.trim().length < 15) return;
+    if (!idea.trim()) return;
+
+    if (isWordGenerationPrompt(idea)) {
+      if (!authToken || !user) {
+        setAuthError("Войдите или зарегистрируйтесь, чтобы создавать документы.");
+        setAuthTab("login");
+        setShowAuthModal(true);
+        return;
+      }
+      setWordSeed({ text: idea.trim(), autoGenerate: true });
+      setScreen("word");
+      return;
+    }
+
+    if (idea.trim().length < 15) return;
     if (!authToken || !user) {
       setAuthError("Войдите или зарегистрируйтесь, чтобы создавать презентации.");
       setAuthTab("login");
@@ -2864,7 +2880,10 @@ export default function App() {
 
             {/* Nav Option 1.7: Word Generator */}
             <button
-              onClick={() => setScreen('word')}
+              onClick={() => {
+                setWordSeed(null);
+                setScreen('word');
+              }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'word'
                   ? 'bg-blue-500/10 border-blue-500/15 text-white'
@@ -3800,7 +3819,12 @@ export default function App() {
               setShowAuthModal(true);
             }}
             onOpenPlans={() => setScreen('plans')}
-            onBack={() => setScreen('intro')}
+            onBack={() => {
+              setWordSeed(null);
+              setScreen('intro');
+            }}
+            initialText={wordSeed?.text}
+            autoGenerate={wordSeed?.autoGenerate}
           />
         )}
         

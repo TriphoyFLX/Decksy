@@ -69,7 +69,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           )}
         </h1>
         <p className="mt-4 text-sm sm:text-base text-slate-400 font-normal">
-          Опишите идею — агент проведёт интервью и соберёт план.
+          Опишите идею для презентации или запрос на Word-документ — агент поможет собрать результат.
         </p>
       </div>
 
@@ -80,7 +80,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Опишите стартап-идею..."
+            placeholder="Презентация или «Сделай проект docx про робототехнику»..."
             rows={1}
             disabled={isLoading}
             className="w-full min-h-[52px] max-h-[200px] bg-transparent border-none rounded-[1.75rem] px-5 py-4 pr-14 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none resize-none leading-relaxed"
@@ -113,16 +113,29 @@ export const IntroPage: React.FC<IntroPageProps> = ({
       </div>
 
       {activeAds && activeAds.length > 0 && (
-        <div className="pb-8 space-y-3 opacity-60 hover:opacity-90 transition-opacity">
-          {activeAds.slice(0, 1).map((ad: any) => (
+        <div className="pb-8 space-y-3 opacity-70 hover:opacity-100 transition-opacity">
+          {activeAds.slice(0, 2).map((ad: any) => (
             <a
               key={ad.id}
               href={ad.link || "#"}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-center text-[11px] text-slate-500 hover:text-slate-400 no-underline"
+              target={ad.link ? "_blank" : undefined}
+              rel={ad.link ? "noreferrer" : undefined}
+              onClick={(e) => {
+                if (!ad.link) e.preventDefault();
+              }}
+              className="block rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-center no-underline hover:bg-white/[0.05] transition-colors"
             >
-              {ad.title}
+              {ad.imageUrl && (
+                <img
+                  src={ad.imageUrl}
+                  alt=""
+                  className="mx-auto mb-2 max-h-10 object-contain"
+                />
+              )}
+              <span className="block text-[11px] font-semibold text-slate-300">{ad.title}</span>
+              {ad.content && (
+                <span className="block text-[10px] text-slate-500 mt-1 leading-snug">{ad.content}</span>
+              )}
             </a>
           ))}
         </div>
