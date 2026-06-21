@@ -614,7 +614,7 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={isGenerating || rawText.trim().length < 30}
+              disabled={isGenerating || rawText.trim().length < minInputLength}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-black py-3 text-sm font-bold uppercase tracking-wider hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer border-none"
             >
               {isGenerating ? (
@@ -740,6 +740,41 @@ export const WordGeneratorPage: React.FC<WordGeneratorPageProps> = ({
                         ))}
                       </ul>
                     )}
+                    {section.tables?.map((table, tableIndex) => (
+                      <div key={tableIndex} className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-black/20">
+                        {table.title && (
+                          <div className="px-3 py-2 text-[10px] uppercase tracking-widest font-semibold text-violet-300 border-b border-white/10">
+                            {table.title}
+                          </div>
+                        )}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-[11px]">
+                            {table.headers && table.headers.length > 0 && (
+                              <thead>
+                                <tr className="bg-violet-500/15 text-violet-100">
+                                  {table.headers.map((header, cellIndex) => (
+                                    <th key={cellIndex} className="px-2.5 py-2 font-semibold border-r border-white/10 last:border-r-0">
+                                      {header}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                            )}
+                            <tbody>
+                              {table.rows.slice(0, 8).map((row, rowIndex) => (
+                                <tr key={rowIndex} className={rowIndex % 2 ? "bg-white/[0.03]" : ""}>
+                                  {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex} className="px-2.5 py-2 text-slate-400 border-t border-white/8 border-r border-white/8 last:border-r-0 align-top">
+                                      <RichTextPreview text={cell} />
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 );
               })}

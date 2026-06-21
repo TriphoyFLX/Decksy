@@ -807,7 +807,14 @@ const DECK_SLIDE_SCHEMA = `{
   "speechScript": "3-5 sentences in Russian for the speaker",
   "image": "Optional exact matched image ID from the uploaded list, or empty if none",
   "imageDescription": "Optional exact matched image description, or empty if none",
-  "visualData": "Optional { layout, teamMembers: [{name, role}], metrics: [{label, value}] }"
+  "visualData": {
+    "layout": "default | hero | split | metrics | timeline | pricing | matrix | team",
+    "metrics": [{ "label": "TAM", "value": "$4.2 млрд", "highlight": true }],
+    "timeline": [{ "label": "Q1", "title": "Pilot launch", "detail": "..." }],
+    "pricing": [{ "label": "Pro", "price": "$49/mo", "detail": "...", "featured": true }],
+    "competitors": [{ "label": "Avito", "detail": "Weakness", "ours": false }],
+    "teamMembers": [{ "name": "Name", "role": "CEO", "image": "exact uploaded image ID" }]
+  }
 }`;
 
 async function generateOutlineWithAI(
@@ -961,6 +968,12 @@ Rules:
 - Vary slide titles and structures — avoid generic repeated phrasing across decks
 - Use distinct sectionLabel and badge text per slide
 - Assign unique angles: stats-heavy problem slide, product-demo solution, roadmap launch, etc.
+- visualData is REQUIRED for business design quality:
+  - market/traction/ask: include visualData.layout="metrics" and 3-4 visualData.metrics from user facts; if facts missing use content bullets with "требует валидации", not fake values
+  - launch: include visualData.layout="timeline" and 3-4 visualData.timeline items
+  - pricing: include visualData.layout="pricing" and visualData.pricing if pricing facts exist
+  - competition: include visualData.layout="matrix" and visualData.competitors
+  - solution/product: prefer visualData.layout="split" or "hero" when product/UI/image context exists
 - СТРОГОЕ ПРАВИЛО: НЕ выдумывайте новые функции, фичи, интеграции или продукты, о которых не писал пользователь! Опирайтесь ТОЛЬКО на реальное описание идеи пользователя и его ответы в интервью/канвасе.
 - ЗАПРЕЩЕНО без доказательств: "патентуемая архитектура", "120k размеченных данных", "moat", "feedback loop", "pipeline", "viral loops", выдуманные ML-преимущества
 - Для marketplace/P2P: обязательно описать операционку — escrow/депозит, страхование/порча, верификация, споры, юридическое оформление (если пользователь упоминал)
@@ -969,7 +982,7 @@ Rules:
 - traction slide: if no metrics — say "Early stage", list validation signals, do NOT invent revenue
 - vision slide: 3-5 year horizon, why it can be big — realistic not fantasy
 - Пиши что делает пользователь за 10 секунд, а не абстрактные "инновации"`,
-      `${baseContext}\nGenerate the complete 10-slide pitch deck.`,
+      `${baseContext}\nGenerate the complete 12-slide pitch deck.`,
       8000
     );
     if (isDeckComplete(full)) return full;
@@ -995,7 +1008,7 @@ Rules:
         `Return JSON: { "slides": [ ${DECK_SLIDE_SCHEMA} x6 ] }
 Generate exactly 6 slides for a pitch deck. Types in order:
 ${typesForBatch}
-All text in Russian. Follow BUSINESS FORMAT per slide type.
+All text in Russian. Follow BUSINESS FORMAT per slide type. Include visualData for metrics/timeline/pricing/matrix slides when applicable.
 СТРОГОЕ ПРАВИЛО: НЕ выдумывайте фичи, бренды, имена, цифры. Traction — early stage если нет данных.`,
         `${baseContext}\nGenerate ${batch.label}.`,
         1200
@@ -1024,6 +1037,7 @@ All text in Russian. Follow BUSINESS FORMAT per slide type.
       const slideResult = await callLLM(
         `Return JSON: { "slide": ${DECK_SLIDE_SCHEMA.replace("SLIDE_TYPE", SLIDE_TYPES[i])} }
 One slide only. type="${SLIDE_TYPES[i]}". Russian. 4 bullets with numbers/metrics from user facts only.
+Include visualData.layout and matching metrics/timeline/pricing/competitors when useful for a premium visual layout.
 СТРОГОЕ ПРАВИЛО: НЕ выдумывайте функции или цифры. Без AI-хайпа и фейкового moat.`,
         `${baseContext}\nGenerate slide ${i + 1} (${SLIDE_TYPES[i]}).`,
         350
@@ -2341,14 +2355,61 @@ function generateLocalWordDocument(rawText: string, style: string, titleHint?: s
     business: "Деловой документ",
   };
 
-  let sections: { heading: string; paragraphs?: string[]; bullets?: string[] }[] = blocks.slice(1).map((block, i) => {
+  const normalizeTables = (tables: any): { title?: string; headers?: string[]; rows: string[][] }[] | undefined => {
+    if (!Array.isArray(tables)) return undefined;
+    const normalized = tables
+      .map((table) => {
+        const headers = Array.isArray(table?.headers) ? table.headers.map(String).map((s: string) => s.trim()).filter(Boolean) : [];
+        const rows = Array.isArray(table?.rows)
+          ? table.rows
+              .map((row: any) => (Array.isArray(row) ? row.map(String).map((s: string) => s.trim()) : []))
+              .filter((row: string[]) => row.some(Boolean))
+          : [];
+        if (!rows.length) return null;
+        const columnCount = Math.max(headers.length, ...rows.map((row: string[]) => row.length), 1);
+        const pad = (row: string[]) => Array.from({ length: columnCount }, (_, idx) => row[idx] || "");
+        return {
+          title: table?.title ? String(table.title).trim() : undefined,
+          headers: headers.length ? pad(headers) : undefined,
+          rows: rows.map(pad),
+        };
+      })
+      .filter(Boolean);
+    return normalized.length ? normalized : undefined;
+  };
+
+  const extractMarkdownTables = (lines: string[]) => {
+    const textLines: string[] = [];
+    const tables: { headers?: string[]; rows: string[][] }[] = [];
+    let i = 0;
+    const isTableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
+    const isSeparator = (line: string) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+    const splitRow = (line: string) =>
+      line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+    while (i < lines.length) {
+      if (isTableLine(lines[i]) && i + 1 < lines.length && isSeparator(lines[i + 1])) {
+        const headers = splitRow(lines[i]);
+        i += 2;
+        const rows: string[][] = [];
+        while (i < lines.length && isTableLine(lines[i])) rows.push(splitRow(lines[i++]));
+        tables.push({ headers, rows });
+        continue;
+      }
+      textLines.push(lines[i++]);
+    }
+    return { textLines, tables: normalizeTables(tables) };
+  };
+
+  let sections: { heading: string; paragraphs?: string[]; bullets?: string[]; tables?: any[] }[] = blocks.slice(1).map((block, i) => {
     const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
-    const bullets = lines.filter((l) => /^[-•*]\s/.test(l)).map((l) => l.replace(/^[-•*]\s*/, ""));
-    const paragraphs = lines.filter((l) => !/^[-•*]\s/.test(l));
+    const { textLines, tables } = extractMarkdownTables(lines);
+    const bullets = textLines.filter((l) => /^[-•*]\s/.test(l)).map((l) => l.replace(/^[-•*]\s*/, ""));
+    const paragraphs = textLines.filter((l) => !/^[-•*]\s/.test(l));
     return {
       heading: paragraphs.shift() || `Раздел ${i + 1}`,
       paragraphs: paragraphs.length ? paragraphs : undefined,
       bullets: bullets.length ? bullets : undefined,
+      tables,
     };
   });
 
@@ -2381,6 +2442,29 @@ function generateLocalWordDocument(rawText: string, style: string, titleHint?: s
     meta: meta || undefined,
     sections,
   };
+}
+
+function normalizeAiWordTables(tables: any): { title?: string; headers?: string[]; rows: string[][] }[] | undefined {
+  if (!Array.isArray(tables)) return undefined;
+  const normalized = tables
+    .map((table) => {
+      const headers = Array.isArray(table?.headers) ? table.headers.map(String).map((s: string) => s.trim()).filter(Boolean) : [];
+      const rows = Array.isArray(table?.rows)
+        ? table.rows
+            .map((row: any) => (Array.isArray(row) ? row.map(String).map((s: string) => s.trim()) : []))
+            .filter((row: string[]) => row.some(Boolean))
+        : [];
+      if (!rows.length) return null;
+      const columnCount = Math.max(headers.length, ...rows.map((row: string[]) => row.length), 1);
+      const pad = (row: string[]) => Array.from({ length: columnCount }, (_, i) => row[i] || "");
+      return {
+        title: table?.title ? String(table.title).trim() : undefined,
+        headers: headers.length ? pad(headers) : undefined,
+        rows: rows.map(pad),
+      };
+    })
+    .filter(Boolean);
+  return normalized.length ? normalized : undefined;
 }
 
 async function generateWordWithAI(rawText: string, style: string, titleHint?: string, meta?: any): Promise<any> {
@@ -2422,7 +2506,14 @@ async function generateWordWithAI(rawText: string, style: string, titleHint?: st
       "heading": "Section heading",
       "importance": "normal | key | conclusion",
       "paragraphs": ["Paragraph with **key terms** and ==important facts== highlighted"],
-      "bullets": ["Optional bullet with **bold** terms"]
+      "bullets": ["Optional bullet with **bold** terms"],
+      "tables": [
+        {
+          "title": "Optional table title",
+          "headers": ["Column 1", "Column 2", "Column 3"],
+          "rows": [["Cell 1", "Cell 2", "Cell 3"]]
+        }
+      ]
     }
   ]
 }
@@ -2431,6 +2522,8 @@ Rules:
 - Improve grammar, clarity, and structure — do NOT invent facts not in the source text
 - Split into logical sections with clear headings appropriate for document type
 - Use bullets only where appropriate (lists, tasks, literature, sources)
+- Use tables when they improve readability: comparison, schedule, budget, experiment results, pros/cons, criteria, homework answers, source lists
+- Tables must be compact: max 5 columns and max 8 rows; keep cells short; do NOT duplicate the same information as paragraphs
 - ALL text in Russian unless source contains English brand names
 - Style: ${styleHints[style] || styleHints.business}
 ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split into 3-8 logical sections"}
@@ -2459,6 +2552,7 @@ ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split
         importance: ["normal", "key", "conclusion"].includes(s.importance) ? s.importance : undefined,
         paragraphs: Array.isArray(s.paragraphs) ? s.paragraphs.map(String).filter(Boolean) : undefined,
         bullets: Array.isArray(s.bullets) ? s.bullets.map(String).filter(Boolean) : undefined,
+        tables: normalizeAiWordTables(s.tables),
       })),
     };
   }
@@ -2511,7 +2605,14 @@ async function generateWordFromPromptWithAI(
       "heading": "Section heading",
       "importance": "normal | key | conclusion",
       "paragraphs": ["Paragraph with **key terms** and ==important facts== highlighted"],
-      "bullets": ["Optional bullet with **bold** terms"]
+      "bullets": ["Optional bullet with **bold** terms"],
+      "tables": [
+        {
+          "title": "Optional table title",
+          "headers": ["Column 1", "Column 2", "Column 3"],
+          "rows": [["Cell 1", "Cell 2", "Cell 3"]]
+        }
+      ]
     }
   ]
 }
@@ -2523,6 +2624,8 @@ Rules:
 - Style: ${styleHints[style] || styleHints.business}
 ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split into 3-8 logical sections"}
 - ALL text in Russian unless the topic requires English terms
+- Use tables when they make the document stronger: comparison, schedule, budget, experiment results, pros/cons, criteria, homework answers, source lists
+- Tables must be compact: max 5 columns and max 8 rows; keep cells short; do NOT duplicate the same information as paragraphs
 - FORMATTING: use **double asterisks** for key terms, ==double equals== for critical facts/numbers, *single asterisks* for subtle emphasis
 - Mark sections as importance "key" for Цель/Задачи/Результаты and "conclusion" for Вывод/Заключение
 - Do NOT duplicate section titles in summary (if summary is Введение, do not also add a section titled Введение with the same text)`,
@@ -2547,6 +2650,7 @@ ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split
         importance: ["normal", "key", "conclusion"].includes(s.importance) ? s.importance : undefined,
         paragraphs: Array.isArray(s.paragraphs) ? s.paragraphs.map(String).filter(Boolean) : undefined,
         bullets: Array.isArray(s.bullets) ? s.bullets.map(String).filter(Boolean) : undefined,
+        tables: normalizeAiWordTables(s.tables),
       })),
     };
   }
@@ -2573,6 +2677,20 @@ function generateLocalWordFromPrompt(prompt: string, style: string, titleHint?: 
             ? `Тема работы: ${topic}. В данном разделе раскрывается актуальность и основные положения.`
             : `Раздел «${heading}» по теме «${topic}». Добавьте или уточните содержание после повторной генерации с ИИ.`,
         ],
+        tables:
+          /цель|задач/i.test(heading)
+            ? [
+                {
+                  title: "План работы",
+                  headers: ["Элемент", "Содержание"],
+                  rows: [
+                    ["Цель", `Раскрыть тему «${topic}»`],
+                    ["Задача 1", "Изучить основные понятия"],
+                    ["Задача 2", "Сравнить факты и сделать вывод"],
+                  ],
+                },
+              ]
+            : undefined,
         importance: /цель|задач|заключ|вывод/i.test(heading) ? "key" : "normal",
       }))
     : [

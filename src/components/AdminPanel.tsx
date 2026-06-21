@@ -458,7 +458,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   multiple
                   className="hidden"
                   onChange={(e) => {
-                    Array.from(e.target.files || []).forEach((file, idx) => {
+                    const files = e.currentTarget.files;
+                    if (!files) return;
+                    for (let idx = 0; idx < files.length; idx++) {
+                      const file = files.item(idx);
+                      if (!file) continue;
                       const reader = new FileReader();
                       reader.onloadend = () => {
                         if (typeof reader.result === "string") {
@@ -469,7 +473,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         }
                       };
                       reader.readAsDataURL(file);
-                    });
+                    }
                     e.target.value = "";
                   }}
                 />

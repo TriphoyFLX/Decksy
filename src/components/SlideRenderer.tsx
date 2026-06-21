@@ -808,8 +808,8 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // 10. THE ASK / FUNDING (Index 9 or type === 'ask' || type === 'cta')
-  if (slideType === "ask" || slideType === "cta") {
+  // 10. THE ASK / FUNDING
+  if (slideType === "ask") {
     const isLight = selectedStyle === 'clean-light';
     const isCobalt = selectedStyle === 'cobalt';
     return (

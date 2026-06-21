@@ -20,6 +20,7 @@ const BUSINESS_SLIDE_HINTS: Record<Slide["type"], string> = {
   title: "Название стартапа и одна строка ценности",
   problem: "Кто клиент, какая боль, почему сейчас",
   solution: "Что делает продукт за 10 секунд, ключевые фичи",
+  product: "Как выглядит продукт, user flow, MVP или демо",
   market: "TAM/SAM/SOM или сегменты ЦА с цифрами",
   pricing: "Модель монетизации, чек, юнит-экономика",
   sauce: "Команда, технология, операционное преимущество",
@@ -29,6 +30,7 @@ const BUSINESS_SLIDE_HINTS: Record<Slide["type"], string> = {
   ask: "Сумма раунда, на что пойдут деньги",
   traction: "Метрики, рост, доказательства спроса",
   tech: "Архитектура, стек, масштабирование",
+  vision: "Куда компания придёт через 3-5 лет",
 };
 
 export function generateLocalOutline(

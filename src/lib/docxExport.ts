@@ -1,5 +1,6 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   Footer,
   HeadingLevel,
@@ -9,8 +10,13 @@ import {
   PageNumber,
   Paragraph,
   ShadingType,
+  Table,
+  TableCell,
   TableOfContents,
+  TableRow,
   TextRun,
+  VerticalAlign,
+  WidthType,
   convertInchesToTwip,
 } from "docx";
 
@@ -62,10 +68,17 @@ export interface WordDocumentMeta {
   year?: string;
 }
 
+export interface WordDocumentTable {
+  title?: string;
+  headers?: string[];
+  rows: string[][];
+}
+
 export interface WordDocumentSection {
   heading: string;
   paragraphs?: string[];
   bullets?: string[];
+  tables?: WordDocumentTable[];
   importance?: "normal" | "key" | "conclusion";
 }
 
@@ -236,6 +249,60 @@ function isKeySection(heading: string, importance?: WordDocumentSection["importa
   return KEY_SECTION_PATTERN.test(heading);
 }
 
+function normalizeTable(table: WordDocumentTable | undefined): WordDocumentTable | null {
+  if (!table || !Array.isArray(table.rows)) return null;
+  const headers = Array.isArray(table.headers) ? table.headers.map((h) => String(h || "").trim()).filter(Boolean) : [];
+  const rows = table.rows
+    .map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : []))
+    .filter((row) => row.some(Boolean));
+
+  if (rows.length === 0) return null;
+
+  const columnCount = Math.max(headers.length, ...rows.map((row) => row.length), 1);
+  const pad = (row: string[]) => Array.from({ length: columnCount }, (_, i) => row[i] || "");
+
+  return {
+    title: table.title ? String(table.title).trim() : undefined,
+    headers: headers.length ? pad(headers) : undefined,
+    rows: rows.map(pad),
+  };
+}
+
+function extractMarkdownTables(lines: string[]): { textLines: string[]; tables: WordDocumentTable[] } {
+  const textLines: string[] = [];
+  const tables: WordDocumentTable[] = [];
+  let i = 0;
+
+  const isTableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
+  const isSeparator = (line: string) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+  const splitRow = (line: string) =>
+    line
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((cell) => cell.trim());
+
+  while (i < lines.length) {
+    if (isTableLine(lines[i]) && i + 1 < lines.length && isSeparator(lines[i + 1])) {
+      const headers = splitRow(lines[i]);
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && isTableLine(lines[i])) {
+        rows.push(splitRow(lines[i]));
+        i += 1;
+      }
+      const normalized = normalizeTable({ headers, rows });
+      if (normalized) tables.push(normalized);
+      continue;
+    }
+    textLines.push(lines[i]);
+    i += 1;
+  }
+
+  return { textLines, tables };
+}
+
 /* =========================================================================
  * Rich text parsing
  * ======================================================================= */
@@ -350,6 +417,97 @@ function bulletParagraph(text: string, font: string): Paragraph {
       highlight: "E5E7EB",
     }),
   });
+}
+
+function tableCellParagraph(
+  text: string,
+  font: string,
+  colors: RichTextColors,
+  opts?: { bold?: boolean; center?: boolean; size?: number; color?: string }
+): Paragraph {
+  const children = opts?.bold
+    ? [new TextRun({ text, font, size: opts.size ?? TYPE_SCALE.body, bold: true, color: opts.color || colors.base, language: RU_LANG })]
+    : parseRichTextRuns(text, font, {
+        base: opts?.color || colors.base,
+        accent: colors.accent,
+        highlight: colors.highlight,
+      });
+
+  return new Paragraph({
+    alignment: opts?.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+    spacing: { before: 0, after: 0, line: SPACING.lineStandard },
+    children,
+  });
+}
+
+function tableBlock(
+  table: WordDocumentTable,
+  font: string,
+  theme: { primary: string; secondary: string; highlight: string },
+  school: boolean,
+  design: WordDesignPreset
+): (Paragraph | Table)[] {
+  const normalized = normalizeTable(table);
+  if (!normalized) return [];
+
+  const baseColors: RichTextColors = {
+    base: school ? "000000" : "1F2937",
+    accent: theme.primary,
+    highlight: theme.highlight,
+  };
+  const borderColor = school || design === "academic" ? "9CA3AF" : theme.secondary;
+  const cellMargins = { top: 100, bottom: 100, left: 120, right: 120 };
+
+  const makeCell = (text: string, opts?: { header?: boolean; center?: boolean; zebra?: boolean }) =>
+    new TableCell({
+      verticalAlign: VerticalAlign.CENTER,
+      margins: cellMargins,
+      shading: opts?.header
+        ? { type: ShadingType.CLEAR, fill: school ? "E5E7EB" : theme.primary }
+        : opts?.zebra
+          ? { type: ShadingType.CLEAR, fill: school || design === "academic" ? "F9FAFB" : "F8FAFC" }
+          : undefined,
+      children: [
+        tableCellParagraph(text || " ", font, baseColors, {
+          bold: opts?.header,
+          center: opts?.center,
+          size: opts?.header ? 22 : 20,
+          color: opts?.header && !school ? "FFFFFF" : baseColors.base,
+        }),
+      ],
+    });
+
+  const rows: TableRow[] = [];
+  if (normalized.headers?.length) {
+    rows.push(new TableRow({ tableHeader: true, children: normalized.headers.map((cell) => makeCell(cell, { header: true, center: true })) }));
+  }
+  normalized.rows.forEach((row, rowIndex) => {
+    rows.push(new TableRow({ children: row.map((cell) => makeCell(cell, { zebra: rowIndex % 2 === 1 })) }));
+  });
+
+  return [
+    ...(normalized.title
+      ? [
+          new Paragraph({
+            spacing: { before: 120, after: 80 },
+            children: [new TextRun({ text: normalized.title, bold: true, size: 22, color: school ? "000000" : theme.primary, font, language: RU_LANG })],
+          }),
+        ]
+      : []),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
+        left: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
+        right: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+      },
+      rows,
+    }),
+    new Paragraph({ spacing: { after: SPACING.paragraphAfterTight } }),
+  ];
 }
 
 function calloutBlock(
@@ -519,7 +677,7 @@ export function buildWordDocument(data: WordDocumentData, style: WordDocStyle = 
   const font = resolveWordFont(style, options);
   const design = resolveWordDesign(options);
 
-  const children: (Paragraph | TableOfContents)[] = school
+  const children: (Paragraph | TableOfContents | Table)[] = school
     ? schoolCoverBlock(style, data.title, data.meta, font)
     : coverBlock(data.title, data.showSubtitleOnCover ? data.subtitle : undefined, data.author || data.meta?.studentName, theme, font);
 
@@ -538,9 +696,13 @@ export function buildWordDocument(data: WordDocumentData, style: WordDocStyle = 
     const heading = section.heading.trim();
     const paragraphs = (section.paragraphs ?? []).filter((p) => p.trim());
     const bullets = (section.bullets ?? []).filter((b) => b.trim());
+    const tables = (section.tables ?? []).map(normalizeTable).filter(Boolean) as WordDocumentTable[];
 
     if (!school && design === "expressive" && isKeySection(heading, section.importance)) {
       children.push(...calloutBlock(heading, paragraphs, bullets.length ? bullets : undefined, font, theme));
+      for (const table of tables) {
+        children.push(...tableBlock(table, font, theme, school, design));
+      }
       continue;
     }
 
@@ -550,6 +712,9 @@ export function buildWordDocument(data: WordDocumentData, style: WordDocStyle = 
     }
     for (const b of bullets) {
       children.push(bulletParagraph(b, font));
+    }
+    for (const table of tables) {
+      children.push(...tableBlock(table, font, theme, school, design));
     }
   }
 
@@ -660,13 +825,15 @@ export function buildLocalWordDocument(rawText: string, docStyle: WordDocStyle):
 
   let sections: WordDocumentSection[] = blocks.slice(1).map((block, i) => {
     const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
-    const bullets = lines.filter((l) => /^[-•*]\s/.test(l)).map((l) => l.replace(/^[-•*]\s*/, ""));
-    const paragraphs = lines.filter((l) => !/^[-•*]\s/.test(l));
+    const { textLines, tables } = extractMarkdownTables(lines);
+    const bullets = textLines.filter((l) => /^[-•*]\s/.test(l)).map((l) => l.replace(/^[-•*]\s*/, ""));
+    const paragraphs = textLines.filter((l) => !/^[-•*]\s/.test(l));
     const heading = paragraphs.shift() || `Раздел ${i + 1}`;
     return {
       heading,
       paragraphs: paragraphs.length ? paragraphs : undefined,
       bullets: bullets.length ? bullets : undefined,
+      tables: tables.length ? tables : undefined,
       importance: KEY_SECTION_PATTERN.test(heading) ? "key" : "normal",
     };
   });
@@ -683,7 +850,12 @@ export function buildLocalWordDocument(rawText: string, docStyle: WordDocStyle):
         importance: KEY_SECTION_PATTERN.test(heading) ? "key" : "normal",
       }));
     } else {
-      sections.push({ heading: "Основной текст", paragraphs: trimmed.split("\n").filter(Boolean) });
+      const { textLines, tables } = extractMarkdownTables(trimmed.split("\n").map((l) => l.trim()).filter(Boolean));
+      sections.push({
+        heading: "Основной текст",
+        paragraphs: textLines.length ? textLines : undefined,
+        tables: tables.length ? tables : undefined,
+      });
     }
   }
 

@@ -7,13 +7,16 @@ const SLIDE_VARIANTS: Record<string, string[]> = {
   title: ["hero-centered", "hero-bold", "hero-minimal"],
   problem: ["stats-grid", "pain-stack", "split-quote"],
   solution: ["product-split", "feature-columns", "demo-hero"],
+  product: ["product-split", "feature-columns", "demo-hero"],
   market: ["metric-row", "chart-focus", "tam-bento"],
   pricing: ["price-tiers", "unit-economics", "revenue-ladder"],
+  traction: ["traction-metrics", "growth-timeline", "proof-board"],
   sauce: ["team-grid", "moat-tech", "ip-stack"],
   competition: ["matrix-2x2", "compare-table", "positioning"],
   launch: ["roadmap", "milestone-track", "gtm-funnel"],
   risks: ["risk-cards", "mitigation-grid", "scenario-split"],
   ask: ["cta-center", "funding-split", "contact-row"],
+  vision: ["vision-map", "future-state", "north-star"],
 };
 
 function hashSeed(...parts: (string | number)[]): number {
@@ -58,5 +61,5 @@ export function getSlideVariant(slide: Slide): string {
 }
 
 export function getDeckTemplate(slide: Slide): DeckTemplate {
-  return (slide.visualData?.template as DeckTemplate) || "apex";
+  return (slide.visualData?.deckTemplate as DeckTemplate) || "apex";
 }

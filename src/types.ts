@@ -46,10 +46,14 @@ export interface SlideConstructorLayout {
 
 export interface SlideVisualData {
   template?: 'apex' | 'swiss';
+  deckTemplate?: 'apex' | 'swiss' | 'titanium' | 'ember' | 'midnight';
   variant?: string;
-  layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics';
+  layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics' | 'timeline' | 'pricing' | 'matrix';
   teamMembers?: { name: string; role: string; image: string }[];
   metrics?: { label: string; value: string; highlight?: boolean }[];
+  timeline?: { label: string; title: string; detail?: string }[];
+  pricing?: { label: string; price: string; detail?: string; featured?: boolean }[];
+  competitors?: { label: string; detail: string; ours?: boolean }[];
   accentImage?: string;
   images?: string[];
   constructorLayout?: SlideConstructorLayout;

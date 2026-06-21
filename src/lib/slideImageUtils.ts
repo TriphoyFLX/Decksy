@@ -85,6 +85,68 @@ function firstSlideIndex(slides: Slide[], types: Slide["type"][]): number {
   return -1;
 }
 
+function parseLabelDetail(line: string): { label: string; detail: string } {
+  const m = line.match(/^([^:—\-]+)[:—\-]\s*(.+)$/);
+  if (!m) return { label: "", detail: line.trim() };
+  return { label: m[1].trim(), detail: m[2].trim() };
+}
+
+function extractMetricValue(text: string): string {
+  return text.match(/(?:\$|₽)?\d[\d\s,.]*(?:\s?(?:млрд|млн|тыс|%|B|M|K|к\b|руб\.?|₽|x))?/i)?.[0]?.trim() || "";
+}
+
+function applyStructuredVisualData(slides: Slide[]): void {
+  for (const slide of slides) {
+    if (!slide.content?.length) continue;
+    const parsed = slide.content.map(parseLabelDetail);
+
+    const metrics = parsed
+      .map(({ label, detail }) => {
+        const raw = detail || label;
+        const value = extractMetricValue(raw);
+        if (!value && !/\d|tam|sam|som|cac|ltv|mrr|arr|gmv|выруч|рост/i.test(`${label} ${raw}`)) return null;
+        return {
+          label: label || "Метрика",
+          value: value || raw.slice(0, 42),
+          highlight: /tam|sam|som|mrr|arr|cac|ltv|gmv|рост|выруч/i.test(label),
+        };
+      })
+      .filter(Boolean) as NonNullable<SlideVisualData["metrics"]>;
+
+    if (metrics.length >= 2 && ["market", "pricing", "traction", "ask"].includes(slide.type)) {
+      slide.visualData = { ...(slide.visualData || {}), metrics, layout: slide.visualData?.layout || "metrics" };
+    }
+
+    if (slide.type === "pricing") {
+      const pricing = parsed.slice(0, 4).map(({ label, detail }, i) => ({
+        label: label || (i === 0 ? "Base" : i === 1 ? "Pro" : `Tier ${i + 1}`),
+        price: extractMetricValue(detail) || extractMetricValue(label) || (i === 1 ? "Pro" : "Custom"),
+        detail: detail.replace(extractMetricValue(detail), "").replace(/^[\s—\-:]+/, "").trim() || detail,
+        featured: i === 1,
+      }));
+      slide.visualData = { ...(slide.visualData || {}), pricing, layout: slide.visualData?.layout || "pricing" };
+    }
+
+    if (slide.type === "launch" || slide.type === "traction") {
+      const timeline = parsed.slice(0, 4).map(({ label, detail }, i) => ({
+        label: label || (slide.type === "launch" ? `Q${i + 1}` : `Этап ${i + 1}`),
+        title: detail.split(/[.;]/)[0]?.trim() || detail || label,
+        detail,
+      }));
+      slide.visualData = { ...(slide.visualData || {}), timeline, layout: slide.visualData?.layout || "timeline" };
+    }
+
+    if (slide.type === "competition") {
+      const competitors = parsed.slice(0, 4).map(({ label, detail }, i) => ({
+        label: label || (i < 2 ? `Конкурент ${i + 1}` : "Наше отличие"),
+        detail,
+        ours: /наш|мы|отлич|преим/i.test(`${label} ${detail}`) || i >= 2,
+      }));
+      slide.visualData = { ...(slide.visualData || {}), competitors, layout: slide.visualData?.layout || "matrix" };
+    }
+  }
+}
+
 export function fixMisplacedTeamLayout(slides: Slide[]): void {
   const sauceIdx = findSlideIndexByType(slides, "sauce");
   if (sauceIdx < 0) return;
@@ -111,6 +173,7 @@ export function fixMisplacedTeamLayout(slides: Slide[]): void {
 export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionImage[]): void {
   if (!Array.isArray(slides)) return;
   fixMisplacedTeamLayout(slides);
+  applyStructuredVisualData(slides);
   if (!sessionImages?.length) return;
 
   const byCategory = new Map<ImageCategory, SessionImage[]>();
@@ -173,7 +236,7 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
 
   const contact = byCategory.get("contact")?.[0];
   if (contact) {
-    assignToSlide(firstSlideIndex(slides, ["ask", "cta"]), contact.image, contact.description);
+    assignToSlide(firstSlideIndex(slides, ["ask"]), contact.image, contact.description);
   }
 
   const usedIds = new Set<string>();
@@ -254,31 +317,5 @@ export function enrichSlidesWithVisuals(slides: Slide[], sessionImages: SessionI
     }
   }
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
-    if (!slide.content?.length) continue;
-    const metrics = slide.content
-      .map((line) => {
-        const m = line.match(/^([^:—\-]+)[:—\-]\s*(.+)$/);
-        if (!m) return null;
-        const label = m[1].trim();
-        const rawValue = m[2].trim();
-        const numMatch = rawValue.match(/([\d][\d\s,.]*\s*(?:млрд|млн|тыс|%|B|M|K|к\b|руб\.?|₽)?)/i);
-        const value = numMatch ? numMatch[1].trim() : rawValue.slice(0, 48);
-        const detail = numMatch ? rawValue.replace(numMatch[0], "").replace(/^[\s—\-]+/, "").trim() : "";
-        if (/\$|%|\d|млрд|млн|тыс|руб/i.test(rawValue)) {
-          return {
-            label,
-            value: detail ? `${value} — ${detail}`.slice(0, 80) : value,
-            highlight: /tam|sam|som|mrr|arr|cac|ltv/i.test(label),
-          };
-        }
-        return null;
-      })
-      .filter(Boolean) as SlideVisualData["metrics"];
-
-    if (metrics.length >= 2 && (slide.type === "market" || slide.type === "pricing")) {
-      slide.visualData = { ...(slide.visualData || {}), metrics, layout: slide.visualData?.layout || "metrics" };
-    }
-  }
+  applyStructuredVisualData(slides);
 }

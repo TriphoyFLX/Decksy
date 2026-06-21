@@ -40,7 +40,10 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const compiledCount = Object.values(canvas).filter((c) => c.status === "compiled").length;
+  const compiledCount = Object.values(canvas).filter(
+    (c): c is PitchCanvas[keyof PitchCanvas] & { status: "compiled" } =>
+      Boolean(c && typeof c === "object" && "status" in c && c.status === "compiled")
+  ).length;
 
   return (
     <motion.div
@@ -240,7 +243,11 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
                         multiple
                         className="hidden"
                         onChange={(e) => {
-                          Array.from(e.target.files || []).forEach((file, idx) => {
+                          const files = e.currentTarget.files;
+                          if (!files) return;
+                          for (let idx = 0; idx < files.length; idx++) {
+                            const file = files.item(idx);
+                            if (!file) continue;
                             const reader = new FileReader();
                             reader.onloadend = () => {
                               if (typeof reader.result === "string") {
@@ -251,7 +258,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
                               }
                             };
                             reader.readAsDataURL(file);
-                          });
+                          }
                           e.target.value = "";
                         }}
                       />
