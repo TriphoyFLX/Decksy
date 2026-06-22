@@ -17,6 +17,7 @@ interface InterviewPageProps {
   handleGenerateDeck: () => void;
   canvas: PitchCanvas;
   disabled?: boolean;
+  generationDisabled?: boolean;
 }
 
 export const InterviewPage: React.FC<InterviewPageProps> = ({
@@ -33,6 +34,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
   handleGenerateDeck,
   canvas,
   disabled = false,
+  generationDisabled = false,
 }) => {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [showMemory, setShowMemory] = useState(false);
@@ -152,9 +154,9 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
 
         {/* Input area — ChatGPT style */}
         <div className="shrink-0 border-t border-white/10 p-3 sm:p-4 space-y-3 bg-[#0d0d0f]/90">
-          {disabled && (
+          {generationDisabled && (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-300 leading-relaxed">
-              Презентация уже собрана. Чтобы начать новый диалог с агентом и не тратить генерации повторно, нажмите New Session.
+              Презентация уже собрана. Чат доступен, но повторная сборка плана отключена, чтобы не тратить генерации повторно.
             </div>
           )}
           <div className="relative flex items-end rounded-[1.5rem] border border-white/12 bg-[#2a2a2c] focus-within:border-white/25 transition-colors">
@@ -196,7 +198,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
             <button
               id="fast-generate-btn"
               onClick={handleGenerateDeck}
-              disabled={disabled || isLoading}
+              disabled={generationDisabled || isLoading}
               className="ml-auto text-[11px] font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-slate-200 disabled:opacity-40 cursor-pointer border-none transition-colors"
             >
               Собрать план →

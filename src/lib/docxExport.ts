@@ -140,6 +140,11 @@ const MARGINS = {
   school: { top: 1134, right: 850, bottom: 1134, left: 1701 },
 } as const;
 
+const A4_PAGE = {
+  width: 11906,
+  height: 16838,
+} as const;
+
 const RU_LANG = { value: "ru-RU" } as const;
 const BULLET_LIST_REFERENCE = "decksy-bullet-list";
 
@@ -370,12 +375,12 @@ function bodyParagraph(
   const baseColor = school ? "000000" : "1F2937";
 
   return new Paragraph({
-    alignment: AlignmentType.JUSTIFIED,
+    alignment: AlignmentType.LEFT,
     spacing: {
       after: opts.spacingAfter ?? SPACING.paragraphAfter,
       line: school || design === "academic" ? SPACING.lineSchool : SPACING.lineStandard,
     },
-    indent: school || design === "academic" ? { firstLine: SPACING.firstLineIndent } : undefined,
+    indent: undefined,
     children: useRichFormatting
       ? parseRichTextRuns(text, font, { base: baseColor, accent: themeColors.primary, highlight: themeColors.highlight })
       : [new TextRun({ text, font, size: TYPE_SCALE.body, color: baseColor, language: RU_LANG })],
@@ -460,13 +465,12 @@ function tableBlock(
   const borderColor = school || design === "academic" ? "9CA3AF" : theme.secondary;
   const cellMargins = { top: 100, bottom: 100, left: 120, right: 120 };
   const columnCount = Math.max(normalized.headers?.length || 0, ...normalized.rows.map((row) => row.length), 1);
-  const tableWidth = school ? 8800 : 9000;
-  const columnWidth = Math.floor(tableWidth / columnCount);
+  const columnWidth = `${Math.max(12, Math.floor(100 / columnCount))}%` as `${number}%`;
 
   const makeCell = (text: string, opts?: { header?: boolean; center?: boolean; zebra?: boolean }) =>
     new TableCell({
       verticalAlign: VerticalAlign.CENTER,
-      width: { size: columnWidth, type: WidthType.DXA },
+      width: { size: columnWidth, type: WidthType.PERCENTAGE },
       margins: cellMargins,
       shading: opts?.header
         ? { type: ShadingType.CLEAR, fill: school ? "E5E7EB" : theme.primary }
@@ -501,7 +505,7 @@ function tableBlock(
         ]
       : []),
     new Table({
-      width: { size: tableWidth, type: WidthType.DXA },
+      width: { size: "100%", type: WidthType.PERCENTAGE },
       borders: {
         top: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
         bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
@@ -748,7 +752,12 @@ export function buildWordDocument(data: WordDocumentData, style: WordDocStyle = 
     },
     sections: [
       {
-        properties: { page: { margin: margins } },
+        properties: {
+          page: {
+            size: A4_PAGE,
+            margin: margins,
+          },
+        },
         footers: {
           default: new Footer({
             children: [

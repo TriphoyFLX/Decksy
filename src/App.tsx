@@ -1070,6 +1070,20 @@ export default function App() {
     setIsLoading(false);
   };
 
+  const openAgentChat = () => {
+    if (deck && messages.length === 0) {
+      setMessages([
+        {
+          id: `deck-chat-${Date.now()}`,
+          sender: "investor",
+          text: `Презентация «${deck.title}» уже собрана. Можете задать вопрос по слайдам, попросить критику, идеи для улучшения или текст для питча. Повторная сборка плана отключена, чтобы не тратить генерации случайно.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    }
+    setScreen("interview");
+  };
+
   const handleBrandingChange = (patch: Partial<ProjectBranding>) => {
     setProjectBranding((prev) => ({ ...prev, ...patch }));
   };
@@ -1373,7 +1387,7 @@ export default function App() {
         userAnswers >= getMaxQuestions() ||
         isInterviewDoneMessage(data.nextQuestion || "");
 
-      if (interviewDone) {
+      if (!deck && interviewDone) {
         setInputMessage("");
         setTimeout(() => {
           handleProceedToGeneration();
@@ -2771,12 +2785,10 @@ export default function App() {
 
         {/* Tab 2: Чат-Интервью */}
         <button
-          disabled={Boolean(deck) || (messages.length === 0 && (screen === 'intro' || screen === 'outline' || screen === 'templates'))}
+          disabled={!deck && messages.length === 0 && (screen === 'intro' || screen === 'outline' || screen === 'templates')}
           onClick={() => {
-            if (deck) {
-              setScreen('deck');
-            } else if (messages.length > 0 || screen === 'interview' || screen === 'generating') {
-              setScreen('interview');
+            if (deck || messages.length > 0 || screen === 'interview' || screen === 'generating') {
+              openAgentChat();
             } else if (presentationOutline) {
               setScreen('outline');
             }
@@ -2909,12 +2921,10 @@ export default function App() {
 
             {/* Nav Option 2: Интервью с инвестором */}
             <button
-              disabled={Boolean(deck) || (messages.length === 0 && screen === 'intro')}
+              disabled={!deck && messages.length === 0 && screen === 'intro'}
               onClick={() => {
-                if (deck) {
-                  setScreen('deck');
-                } else if (messages.length > 0 || screen === 'interview' || screen === 'generating') {
-                  setScreen('interview');
+                if (deck || messages.length > 0 || screen === 'interview' || screen === 'generating') {
+                  openAgentChat();
                 }
               }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border disabled:opacity-25 disabled:cursor-not-allowed ${
@@ -2922,7 +2932,7 @@ export default function App() {
                   ? 'bg-amber-500/10 border-amber-500/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
               }`}
-              title={deck ? "Презентация уже собрана. Для нового чата нажмите New Session." : messages.length === 0 && screen === 'intro' ? "Опишите вашу стартап идею, чтобы начать интервью" : "Посмотреть чат-интервью"}
+              title={!deck && messages.length === 0 && screen === 'intro' ? "Опишите вашу стартап идею, чтобы начать интервью" : "Посмотреть чат-интервью"}
             >
               <Users className="h-4 w-4 text-blue-400 shrink-0" />
               <span>Agent Chat</span>
@@ -3904,7 +3914,8 @@ export default function App() {
             setSessionImages={setSessionImages}
             handleGenerateDeck={handleGenerateDeck}
             canvas={canvas}
-            disabled={Boolean(deck)}
+            disabled={false}
+            generationDisabled={Boolean(deck)}
           />
         )}
 
