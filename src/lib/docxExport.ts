@@ -3,7 +3,6 @@ import {
   BorderStyle,
   Document,
   Footer,
-  HeadingLevel,
   LevelFormat,
   Packer,
   PageBreak,
@@ -12,7 +11,6 @@ import {
   ShadingType,
   Table,
   TableCell,
-  TableOfContents,
   TableRow,
   TextRun,
   VerticalAlign,
@@ -391,19 +389,23 @@ function bodyParagraph(
  *  - the heading carries the document's accent color instead of being permanently black
  */
 function headingParagraph(text: string, font: string, themeColor: string, school: boolean): Paragraph {
-  // GOST-style school documents: headings are centered, uppercase, no accent color.
-  if (school) {
-    return new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      alignment: AlignmentType.CENTER,
-      spacing: { before: SPACING.sectionBefore, after: SPACING.sectionAfter },
-      children: [new TextRun({ text: text.toUpperCase(), bold: true, size: TYPE_SCALE.heading, color: "000000", font, language: RU_LANG })],
-    });
-  }
+  // Plain formatted headings are far more reliable in Apple Pages than Word heading fields.
+  // We intentionally avoid HeadingLevel here: Pages can render inherited heading styles as
+  // underlined/blue body text and can break auto-TOC page numbers.
   return new Paragraph({
-    heading: HeadingLevel.HEADING_1,
+    alignment: school ? AlignmentType.CENTER : AlignmentType.LEFT,
     spacing: { before: SPACING.sectionBefore, after: SPACING.sectionAfter },
-    children: [new TextRun({ text, bold: true, size: TYPE_SCALE.heading, color: themeColor, font, language: RU_LANG })],
+    keepNext: true,
+    children: [
+      new TextRun({
+        text: school ? text.toUpperCase() : text,
+        bold: true,
+        size: TYPE_SCALE.heading,
+        color: school ? "000000" : themeColor,
+        font,
+        language: RU_LANG,
+      }),
+    ],
   });
 }
 
@@ -457,10 +459,14 @@ function tableBlock(
   };
   const borderColor = school || design === "academic" ? "9CA3AF" : theme.secondary;
   const cellMargins = { top: 100, bottom: 100, left: 120, right: 120 };
+  const columnCount = Math.max(normalized.headers?.length || 0, ...normalized.rows.map((row) => row.length), 1);
+  const tableWidth = school ? 8800 : 9000;
+  const columnWidth = Math.floor(tableWidth / columnCount);
 
   const makeCell = (text: string, opts?: { header?: boolean; center?: boolean; zebra?: boolean }) =>
     new TableCell({
       verticalAlign: VerticalAlign.CENTER,
+      width: { size: columnWidth, type: WidthType.DXA },
       margins: cellMargins,
       shading: opts?.header
         ? { type: ShadingType.CLEAR, fill: school ? "E5E7EB" : theme.primary }
@@ -495,7 +501,7 @@ function tableBlock(
         ]
       : []),
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: tableWidth, type: WidthType.DXA },
       borders: {
         top: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
         bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColor },
@@ -658,15 +664,6 @@ function summaryBlock(
   ];
 }
 
-/** Auto-generated, navigable Table of Contents (real Word field, updates on open/F9). */
-function tableOfContentsBlock(font: string, school: boolean): (Paragraph | TableOfContents)[] {
-  return [
-    headingParagraph("Содержание", font, "000000", school),
-    new TableOfContents("Содержание", { hyperlink: true, headingStyleRange: "1-1" }),
-    new Paragraph({ children: [new PageBreak()] }),
-  ];
-}
-
 /* =========================================================================
  * Document assembly
  * ======================================================================= */
@@ -677,17 +674,14 @@ export function buildWordDocument(data: WordDocumentData, style: WordDocStyle = 
   const font = resolveWordFont(style, options);
   const design = resolveWordDesign(options);
 
-  const children: (Paragraph | TableOfContents | Table)[] = school
+  const children: (Paragraph | Table)[] = school
     ? schoolCoverBlock(style, data.title, data.meta, font)
     : coverBlock(data.title, data.showSubtitleOnCover ? data.subtitle : undefined, data.author || data.meta?.studentName, theme, font);
 
-  // Long, multi-section documents benefit from a navigable TOC; short ones (e.g. homework) don't need one.
-  const sectionCount = data.sections.filter((s) => s.heading?.trim()).length;
-  if (school && sectionCount >= 3) {
-    children.push(...tableOfContentsBlock(font, school));
-  }
+  // Apple Pages renders Word TOC fields poorly (numbers on separate lines, duplicated text).
+  // Keep export stable and readable: no generated TOC field.
 
-  if (data.summary?.trim() && style !== "homework") {
+  if (data.summary?.trim() && !school && style !== "homework") {
     children.push(...summaryBlock(data.summary.trim(), font, summaryLabel(style), school, design, theme));
   }
 

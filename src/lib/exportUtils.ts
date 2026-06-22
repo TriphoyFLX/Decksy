@@ -149,14 +149,6 @@ export function applyExportSafeStyles(root: HTMLElement) {
     el.remove();
   });
 
-  root.querySelectorAll<HTMLElement>('[class*="blur"]').forEach((el) => {
-    el.style.display = "none";
-  });
-
-  root.querySelectorAll<HTMLElement>('[style*="blur"]').forEach((el) => {
-    el.style.display = "none";
-  });
-
   root.querySelectorAll<HTMLElement>("*").forEach((el) => {
     const nextCls = typeof el.className === "string" ? el.className : "";
     const hasClipText =
@@ -182,17 +174,26 @@ export function applyExportSafeStyles(root: HTMLElement) {
       el.style.display = "block";
     }
 
+    if (nextCls.includes("backdrop-blur")) {
+      el.style.backdropFilter = "none";
+      (el.style as CSSStyleDeclaration & { webkitBackdropFilter?: string }).webkitBackdropFilter = "none";
+    }
+    const computedFilter = el.style.filter || "";
+    if (computedFilter.includes("blur(")) {
+      el.style.filter = "none";
+    }
+
     el.style.animation = "none";
     el.style.transition = "none";
   });
 }
 
-/** Base slide frame size before scale-up to 1280×720 export. */
-export const EXPORT_SLIDE_WIDTH = 1280;
-export const EXPORT_SLIDE_HEIGHT = 720;
-export const EXPORT_BASE_WIDTH = 512;
-export const EXPORT_BASE_HEIGHT = 288;
-export const EXPORT_FRAME_SCALE = EXPORT_SLIDE_WIDTH / EXPORT_BASE_WIDTH;
+/** Export renders a stable 1280×720 slide at 3× resolution (3840×2160). */
+export const EXPORT_BASE_WIDTH = 1280;
+export const EXPORT_BASE_HEIGHT = 720;
+export const EXPORT_SLIDE_WIDTH = EXPORT_BASE_WIDTH * 3;
+export const EXPORT_SLIDE_HEIGHT = EXPORT_BASE_HEIGHT * 3;
+export const EXPORT_FRAME_SCALE = 1;
 
 export function getExportHtml2canvasOptions(element: HTMLElement) {
   const w = element.offsetWidth || EXPORT_BASE_WIDTH;
@@ -262,7 +263,7 @@ export function exportImagesToPDF(images: string[], title: string) {
     if (idx > 0) {
       pdf.addPage([width, height], "landscape");
     }
-    pdf.addImage(imgDataUrl, "PNG", 0, 0, width, height, undefined, "MEDIUM");
+    pdf.addImage(imgDataUrl, "PNG", 0, 0, width, height, undefined, "NONE");
   });
 
   pdf.save(`${title.replace(/[^a-zA-Z0-9А-Яа-я]/g, "_")}_Pitch_Deck.pdf`);
@@ -288,7 +289,7 @@ export function exportImagesToPPTX(images: string[], title: string) {
 
 export async function downloadSlidesAsZIP(images: string[], title: string) {
   const zip = new JSZip();
-  const folderName = `${title.replace(/[^a-zA-Z0-9А-Яа-я]/g, "_")}_Slides_JPEG`;
+  const folderName = `${title.replace(/[^a-zA-Z0-9А-Яа-я]/g, "_")}_Slides_PNG`;
   const folder = zip.folder(folderName);
   
   if (!folder) throw new Error("Could not create ZIP folder");
@@ -297,7 +298,7 @@ export async function downloadSlidesAsZIP(images: string[], title: string) {
     // strip out the data:image/... header to get raw base64 contents
     const base64Data = imgDataUrl.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
     const slideNumber = String(idx + 1).padStart(2, '0');
-    folder.file(`Slide_${slideNumber}.jpg`, base64Data, { base64: true });
+    folder.file(`Slide_${slideNumber}.png`, base64Data, { base64: true });
   });
 
   const content = await zip.generateAsync({ type: "blob" });

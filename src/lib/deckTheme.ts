@@ -56,11 +56,11 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     backgroundImage: "/themes/titanium-bg.jpeg",
     frameGradient: "linear-gradient(135deg, #0a0a10 0%, #1a1520 50%, #0d0d12 100%)",
     gridBg:
-      "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+      "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)",
     accent: "#f0a050",
     selectedStyle: "cosmic-dark",
     layoutEngine: "apex",
-    overlayOpacity: 0.06,
+    overlayOpacity: 0.42,
   },
   ember: {
     id: "ember",
@@ -70,12 +70,12 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     backgroundImage: "/themes/ember-bg.jpeg",
     frameGradient: "linear-gradient(to bottom, #fdf8f0, #fff5eb)",
     gridBg:
-      "linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)",
+      "linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px)",
     accent: "#ea580c",
     selectedStyle: "clean-light",
     isLightBackground: true,
     layoutEngine: "apex",
-    overlayOpacity: 0,
+    overlayOpacity: 0.18,
   },
   midnight: {
     id: "midnight",
@@ -85,11 +85,11 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     backgroundImage: "/themes/midnight-bg.jpeg",
     frameGradient: "linear-gradient(135deg, #050505 0%, #121212 60%, #1a1a1a 100%)",
     gridBg:
-      "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+      "linear-gradient(rgba(255,255,255,0.014) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.014) 1px, transparent 1px)",
     accent: "#e2e8f0",
     selectedStyle: "cosmic-dark",
     layoutEngine: "apex",
-    overlayOpacity: 0.18,
+    overlayOpacity: 0.34,
   },
 };
 
@@ -159,6 +159,9 @@ export function getTemplateFrameAppearance(
       headerClass += "border-neutral-300/60 text-neutral-500";
       footerClass += "border-neutral-300/60 text-neutral-500";
       titleHeaderClass = "text-neutral-900 uppercase tracking-widest font-bold";
+      if (tpl.overlayOpacity && tpl.overlayOpacity > 0) {
+        overlayStyle = { background: `rgba(255,255,255,${tpl.overlayOpacity})` };
+      }
     } else {
       frameBorderClass = "border-white/10";
       headerClass += "border-white/15 text-white/55";

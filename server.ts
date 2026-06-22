@@ -962,7 +962,10 @@ Rules:
 - Title slide (type=title): MUST show companyName, tagline/subtitle, founderName, founderRole, brandQuote from branding. Fields: founderName, founderRole, brandQuote on slide object.
 - NEVER invent company/brand names (no "Ritual Coffee", no creative names). Use exact user name or "Название проекта".
 - If founder name unknown — leave founderName empty, do NOT invent a person.
-- Each slide MUST have 4-5 specific bullets with numbers, $ amounts, percentages — ONLY if user provided them in interview/canvas
+- Each non-title slide MUST have 3-4 dense bullets, 45-90 characters each. Short enough to fit cards; no long paragraphs in content[].
+- Use concrete business language: segment, pain, workflow, conversion, cost, payback, risk, validation, channel.
+- Each bullet must be presentation-ready and carry one idea only. No filler like "улучшает эффективность", "инновационный подход", "помогает бизнесу".
+- Use numbers, $ amounts, percentages — ONLY if user provided them in interview/canvas; otherwise write "требует валидации" instead of fake metrics.
 - Use format "Label: Value" for market/pricing bullets (e.g. "TAM: $4.2 млрд")
 - speechScript required for every slide
 - Vary slide titles and structures — avoid generic repeated phrasing across decks
@@ -2661,48 +2664,181 @@ ${sectionHints[style] ? `- Section structure: ${sectionHints[style]}` : "- Split
 function generateLocalWordFromPrompt(prompt: string, style: string, titleHint?: string, meta?: any): any {
   const topic = extractWordPromptTopic(prompt);
   const title = titleHint?.trim() || topic.slice(0, 80) || "Документ";
-  const schoolTemplates: Record<string, string[]> = {
-    school_project: ["Введение", "Цель и задачи", "Основная часть", "Заключение", "Список литературы"],
-    referat: ["Введение", "Основная часть", "Заключение", "Список использованных источников"],
-    essay: ["Вступление", "Основная часть", "Заключение"],
-    homework: ["Задание 1", "Задание 2", "Задание 3"],
-  };
+  const capitalizedTopic = topic.charAt(0).toUpperCase() + topic.slice(1);
 
-  const template = schoolTemplates[style];
-  const sections = template
-    ? template.map((heading, i) => ({
-        heading,
-        paragraphs: [
-          i === 0
-            ? `Тема работы: ${topic}. В данном разделе раскрывается актуальность и основные положения.`
-            : `Раздел «${heading}» по теме «${topic}». Добавьте или уточните содержание после повторной генерации с ИИ.`,
-        ],
-        tables:
-          /цель|задач/i.test(heading)
-            ? [
+  const schoolProjectSections = [
+    {
+      heading: "Введение",
+      paragraphs: [
+        `${capitalizedTopic} — это тема, которая помогает понять связь современных технологий, науки и практической деятельности человека. Она актуальна, потому что такие решения всё чаще используются в образовании, промышленности, медицине, транспорте и быту.`,
+        `В проекте рассматривается, что представляет собой ${topic}, где это применяется и какие преимущества и ограничения имеет данное направление.`,
+      ],
+    },
+    {
+      heading: "Цель и задачи",
+      paragraphs: [`Цель проекта — изучить тему «${topic}» и показать её значение на понятных примерах.`],
+      tables: [
+        {
+          title: "План исследования",
+          headers: ["Элемент", "Содержание"],
+          rows: [
+            ["Цель", `Раскрыть тему «${topic}»`],
+            ["Задача 1", "Объяснить основные понятия"],
+            ["Задача 2", "Рассмотреть области применения"],
+            ["Задача 3", "Выделить преимущества, риски и выводы"],
+          ],
+        },
+      ],
+      importance: "key",
+    },
+    {
+      heading: "Основная часть",
+      paragraphs: [
+        `Основная идея темы заключается в том, что ${topic} объединяет теоретические знания и практические решения. Для понимания важно рассмотреть не только определения, но и реальные примеры применения.`,
+        `Например, подобные технологии могут помогать выполнять повторяющиеся действия, повышать точность работы, экономить время и снижать нагрузку на человека. При этом для их использования нужны знания, аккуратная настройка и соблюдение правил безопасности.`,
+      ],
+      tables: [
+        {
+          title: "Краткая характеристика темы",
+          headers: ["Аспект", "Описание", "Пример"],
+          rows: [
+            ["Назначение", "Решение практических задач", "Автоматизация действий"],
+            ["Польза", "Экономия времени и повышение точности", "Помощь человеку в сложной работе"],
+            ["Ограничения", "Нужны настройка и контроль", "Ошибки при неправильном использовании"],
+          ],
+        },
+      ],
+    },
+    {
+      heading: "Заключение",
+      paragraphs: [
+        `Таким образом, ${topic} является важной и перспективной темой. Её изучение помогает лучше понять, как современные решения применяются в реальной жизни и почему человеку важно разбираться в технологиях.`,
+        "Главный вывод: развитие технологий полезно тогда, когда оно помогает человеку решать конкретные задачи и используется ответственно.",
+      ],
+      importance: "conclusion",
+    },
+    {
+      heading: "Список литературы",
+      bullets: [
+        "Учебные материалы по информатике и технологии.",
+        "Научно-популярные статьи о современных технологиях.",
+        "Энциклопедические и образовательные интернет-ресурсы.",
+      ],
+    },
+  ];
+
+  const referatSections = [
+    {
+      heading: "Введение",
+      paragraphs: [`Тема «${topic}» представляет интерес, потому что связана с современным развитием общества, науки и практической деятельности человека.`],
+    },
+    {
+      heading: "Основная часть",
+      paragraphs: [
+        `${capitalizedTopic} можно рассматривать как направление, которое включает основные понятия, историю развития, области применения и влияние на повседневную жизнь.`,
+        "Для полного понимания темы важно учитывать как положительные стороны, так и возможные ограничения.",
+      ],
+      tables: [
+        {
+          title: "Основные положения",
+          headers: ["Пункт", "Краткое содержание"],
+          rows: [
+            ["Понятие", `Что означает тема «${topic}»`],
+            ["Применение", "Где и зачем используется"],
+            ["Значение", "Как влияет на человека и общество"],
+          ],
+        },
+      ],
+    },
+    {
+      heading: "Заключение",
+      paragraphs: [`Изучение темы «${topic}» показывает, что она имеет практическое значение и помогает лучше понимать современные процессы.`],
+      importance: "conclusion",
+    },
+    {
+      heading: "Список использованных источников",
+      bullets: ["Учебная литература.", "Энциклопедические материалы.", "Образовательные интернет-ресурсы."],
+    },
+  ];
+
+  const essaySections = [
+    {
+      heading: "Вступление",
+      paragraphs: [`Тема «${topic}» заставляет задуматься о том, какую роль она играет в жизни человека и общества.`],
+    },
+    {
+      heading: "Основная часть",
+      paragraphs: [
+        `Я считаю, что ${topic} важно рассматривать не поверхностно, а с разных сторон. С одной стороны, эта тема открывает новые возможности. С другой стороны, она требует ответственности и понимания последствий.`,
+        "Именно поэтому важно не только знать факты, но и уметь делать собственные выводы.",
+      ],
+    },
+    {
+      heading: "Заключение",
+      paragraphs: [`В заключение можно сказать, что тема «${topic}» остаётся актуальной и помогает лучше понять современный мир.`],
+      importance: "conclusion",
+    },
+  ];
+
+  const homeworkSections = [
+    {
+      heading: "Задание 1",
+      paragraphs: [`Краткий ответ по теме «${topic}»: необходимо выделить основные понятия и объяснить их своими словами.`],
+    },
+    {
+      heading: "Задание 2",
+      paragraphs: ["Для закрепления материала можно привести пример из жизни или учебной практики."],
+      tables: [
+        {
+          title: "Ответ в таблице",
+          headers: ["Вопрос", "Ответ"],
+          rows: [
+            ["Что изучается?", topic],
+            ["Почему важно?", "Помогает понять тему и применить знания на практике"],
+          ],
+        },
+      ],
+    },
+    {
+      heading: "Задание 3",
+      paragraphs: ["Вывод: тема усвоена, если ученик может объяснить её значение и привести пример."],
+      importance: "conclusion",
+    },
+  ];
+
+  const sections =
+    style === "school_project"
+      ? schoolProjectSections
+      : style === "referat"
+        ? referatSections
+        : style === "essay"
+          ? essaySections
+          : style === "homework"
+            ? homeworkSections
+            : [
+                { heading: "Введение", paragraphs: [`Документ подготовлен по теме «${topic}».`] },
                 {
-                  title: "План работы",
-                  headers: ["Элемент", "Содержание"],
-                  rows: [
-                    ["Цель", `Раскрыть тему «${topic}»`],
-                    ["Задача 1", "Изучить основные понятия"],
-                    ["Задача 2", "Сравнить факты и сделать вывод"],
+                  heading: "Ключевые положения",
+                  paragraphs: [`В разделе собраны основные мысли, которые помогают структурировать тему «${topic}».`],
+                  tables: [
+                    {
+                      title: "Структура документа",
+                      headers: ["Блок", "Содержание"],
+                      rows: [
+                        ["Контекст", "Почему тема важна"],
+                        ["Основная часть", "Ключевые факты и выводы"],
+                        ["Итог", "Практическое значение"],
+                      ],
+                    },
                   ],
                 },
-              ]
-            : undefined,
-        importance: /цель|задач|заключ|вывод/i.test(heading) ? "key" : "normal",
-      }))
-    : [
-        { heading: "Введение", paragraphs: [`Документ по теме: ${topic}.`] },
-        { heading: "Основная часть", paragraphs: [`Ключевые положения по теме «${topic}».`] },
-        { heading: "Заключение", paragraphs: [`Итоги и выводы по теме «${topic}».`], importance: "conclusion" },
-      ];
+                { heading: "Заключение", paragraphs: [`Тема «${topic}» раскрыта в базовой структуре и может быть дополнена деталями.`], importance: "conclusion" },
+              ];
 
   return {
     title,
     subtitle: ["school_project", "referat", "essay", "homework"].includes(style) ? undefined : undefined,
-    summary: `Тема документа: ${topic}.`,
+    summary: ["school_project", "referat", "essay", "homework"].includes(style) ? undefined : `Тема документа: ${topic}.`,
     meta: meta || undefined,
     sections,
   };
@@ -2860,6 +2996,11 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
 
 // 2.5 API: Rewrite slide using image description/theme
 app.post("/api/rewrite_slide", authenticateToken, async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    error: "Переписывание слайда под картинку через ИИ временно отключено из-за высокой стоимости запросов.",
+  });
+
   try {
     const { slide, imageDescription, idea, mode } = req.body;
 

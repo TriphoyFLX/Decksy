@@ -60,11 +60,8 @@ import {
   patchComputedStyle,
   downloadSlidesAsZIP,
   getExportHtml2canvasOptions,
-  EXPORT_SLIDE_WIDTH,
-  EXPORT_SLIDE_HEIGHT,
   EXPORT_BASE_WIDTH,
   EXPORT_BASE_HEIGHT,
-  EXPORT_FRAME_SCALE,
 } from "./lib/exportUtils";
 import { generatePythonPPTXCode } from "./lib/pythonGenerator";
 import { DeckCustomizer } from "./components/DeckCustomizer";
@@ -906,6 +903,7 @@ export default function App() {
   // Persist chat while interviewing
   useEffect(() => {
     if (!messages.length) return;
+    if (screen === "deck") return;
     saveChatSession({
       idea,
       mode,
@@ -1043,6 +1041,8 @@ export default function App() {
     }
     setPresentationOutline(null);
     setProjectBranding(EMPTY_PROJECT_BRANDING);
+    setDeck(null);
+    clearChatSession();
     setIsLoading(true);
     setScreen("interview");
     setCanvas(INITIAL_CANVAS);
@@ -1207,6 +1207,9 @@ export default function App() {
       }
       const deckData = await finalizeDeckFromPayload(payload, idea.trim(), mode, canvas, sessionImages);
       setScreen("deck");
+      setMessages([]);
+      setInputMessage("");
+      clearChatSession();
       if (authToken) {
         saveDeckToDatabase(deckData);
       }
@@ -1283,6 +1286,9 @@ export default function App() {
       }
       const deckData = await finalizeDeckFromPayload(payload, finalIdea, mode, INITIAL_CANVAS, images);
       setScreen('deck');
+      setMessages([]);
+      setInputMessage("");
+      clearChatSession();
       if (authToken) {
         saveDeckToDatabase(deckData);
       }
@@ -1444,6 +1450,8 @@ export default function App() {
         setDeckCustomTheme(deckData.theme);
       }
       setScreen("deck");
+      setMessages([]);
+      setInputMessage("");
       clearChatSession();
       if (authToken) {
         saveDeckToDatabase(deckData);
@@ -1581,12 +1589,15 @@ export default function App() {
         await new Promise((resolve) => setTimeout(resolve, 400));
 
         const element =
-          document.getElementById("deck-slide-capture") ||
-          document.getElementById("export-active-slide-node");
+          document.getElementById("export-active-slide-node") ||
+          document.getElementById("deck-slide-capture");
         if (!element) {
           throw new Error(`Не удалось найти контейнер экспорта slide-node для слайда ${i + 1}`);
         }
 
+        if ("fonts" in document) {
+          await document.fonts.ready.catch(() => undefined);
+        }
         await Promise.all(
           Array.from(element.querySelectorAll("img")).map(
             (img) =>
@@ -2760,9 +2771,11 @@ export default function App() {
 
         {/* Tab 2: Чат-Интервью */}
         <button
-          disabled={messages.length === 0 && (screen === 'intro' || screen === 'outline' || screen === 'templates')}
+          disabled={Boolean(deck) || (messages.length === 0 && (screen === 'intro' || screen === 'outline' || screen === 'templates'))}
           onClick={() => {
-            if (messages.length > 0 || screen === 'interview' || screen === 'deck' || screen === 'generating') {
+            if (deck) {
+              setScreen('deck');
+            } else if (messages.length > 0 || screen === 'interview' || screen === 'generating') {
               setScreen('interview');
             } else if (presentationOutline) {
               setScreen('outline');
@@ -2896,9 +2909,11 @@ export default function App() {
 
             {/* Nav Option 2: Интервью с инвестором */}
             <button
-              disabled={messages.length === 0 && screen === 'intro'}
+              disabled={Boolean(deck) || (messages.length === 0 && screen === 'intro')}
               onClick={() => {
-                if (messages.length > 0 || screen === 'interview' || screen === 'deck' || screen === 'generating') {
+                if (deck) {
+                  setScreen('deck');
+                } else if (messages.length > 0 || screen === 'interview' || screen === 'generating') {
                   setScreen('interview');
                 }
               }}
@@ -2907,7 +2922,7 @@ export default function App() {
                   ? 'bg-amber-500/10 border-amber-500/15 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
               }`}
-              title={messages.length === 0 && screen === 'intro' ? "Опишите вашу стартап идею, чтобы начать интервью" : "Посмотреть чат-интервью"}
+              title={deck ? "Презентация уже собрана. Для нового чата нажмите New Session." : messages.length === 0 && screen === 'intro' ? "Опишите вашу стартап идею, чтобы начать интервью" : "Посмотреть чат-интервью"}
             >
               <Users className="h-4 w-4 text-blue-400 shrink-0" />
               <span>Agent Chat</span>
@@ -3889,6 +3904,7 @@ export default function App() {
             setSessionImages={setSessionImages}
             handleGenerateDeck={handleGenerateDeck}
             canvas={canvas}
+            disabled={Boolean(deck)}
           />
         )}
 
@@ -4081,7 +4097,7 @@ export default function App() {
                         <span>СЛАЙД {activeSlideIndex + 1} ИЗ {deck.slides.length}</span>
                       </div>
 
-                      <div className="my-auto relative z-10 h-[74%] flex flex-col justify-stretch">
+                      <div className="my-auto relative z-10 h-[78%] flex flex-col justify-stretch min-h-0">
                         <SlideConstructor
                           enabled={constructorMode}
                           onToggle={setConstructorMode}
@@ -4304,24 +4320,9 @@ export default function App() {
                           />
                         </div>
 
-                        {/* Rewrite AI action button */}
-                        <button
-                          type="button"
-                          onClick={() => handleRewriteSlideWithAI(activeSlideIndex, deck.slides[activeSlideIndex]?.imageDescription || "")}
-                          disabled={isRewritingSlide}
-                          className="w-full h-8 text-[10px] font-mono uppercase tracking-widest font-extrabold flex items-center justify-center space-x-1.5 bg-gradient-to-r from-sky-500/15 via-blue-500/15 to-indigo-500/15 border border-sky-400/30 hover:border-sky-400/60 text-sky-300 hover:text-sky-200 rounded cursor-pointer transition-all disabled:opacity-50 disabled:cursor-wait"
-                        >
-                          {isRewritingSlide ? (
-                            <>
-                              <span className="h-2.5 w-2.5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></span>
-                              <span>Переписываем слайд через ИИ...</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>✨ Переписать слайд под картинку (ИИ)</span>
-                            </>
-                          )}
-                        </button>
+                        <div className="rounded border border-amber-500/20 bg-amber-500/10 px-2.5 py-2 text-[10px] text-amber-200 leading-relaxed">
+                          Переписывание слайда под картинку через ИИ временно отключено, чтобы не списывать дорогие запросы. Картинку можно использовать как визуал и редактировать текст вручную.
+                        </div>
                         {rewriteError && (
                           <p className="text-[10px] text-red-400 text-center font-mono">{rewriteError}</p>
                         )}
@@ -4733,40 +4734,8 @@ export default function App() {
 
       {/* HIGH-FIDELITY EXPORT NODE — fallback if preview not in DOM */}
       {exportSlideIndex !== null && deck && (() => {
-        const isExpLight = selectedStyle === 'clean-light';
-        const isExpCobalt = selectedStyle === 'cobalt';
         const isExpTitle = exportSlideIndex === 0 || (deck.slides[exportSlideIndex]?.type === 'title');
-
-        let frameStyle: React.CSSProperties = { background: 'linear-gradient(to bottom, #09090b, #040405)' };
-        let headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-white/5 text-slate-500";
-        let footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-white/5 text-slate-500";
-        let gridBg = "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)";
-        let gridBgSize = "40px 40px";
-        let titleHeaderClass = "text-white uppercase tracking-widest font-bold";
-
-        if (isExpLight) {
-          frameStyle = { background: 'linear-gradient(to bottom, #ffffff, #fafafa)' };
-          headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-neutral-200/60 text-neutral-400";
-          footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-neutral-200/60 text-neutral-400";
-          gridBg = "linear-gradient(rgba(0,0,0,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.015) 1px, transparent 1px)";
-          gridBgSize = "30px 30px";
-          titleHeaderClass = "text-neutral-900 uppercase tracking-widest font-bold";
-        } else if (isExpCobalt) {
-          if (isExpTitle) {
-            frameStyle = { background: 'linear-gradient(to bottom right, #0b45cf, #001f7a)' };
-            headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-white/10 text-blue-200/65";
-            footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-white/10 text-blue-200/65";
-            gridBg = "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)";
-            titleHeaderClass = "text-white uppercase tracking-widest font-bold";
-          } else {
-            frameStyle = { background: 'linear-gradient(to bottom, #ffffff, #f7faf5)' };
-            headerClass = "flex items-center justify-between text-[8px] font-mono pb-2 relative z-10 border-b border-blue-100/50 text-slate-400";
-            footerClass = "pt-2 flex items-center justify-between text-[7px] font-mono uppercase tracking-widest relative z-10 border-t border-blue-100/50 text-slate-400";
-            gridBg = "linear-gradient(rgba(0,77,230,0.008) 1px, transparent 1px), linear-gradient(90deg, rgba(0,77,230,0.008) 1px, transparent 1px)";
-            gridBgSize = "45px 45px";
-            titleHeaderClass = "text-[#004de6] uppercase tracking-widest font-bold";
-          }
-        }
+        const frame = getTemplateFrameAppearance(selectedTemplate, selectedStyle, isExpTitle);
 
         return (
           <div
@@ -4776,8 +4745,8 @@ export default function App() {
               position: 'fixed',
               top: 0,
               left: -16000,
-              width: EXPORT_SLIDE_WIDTH,
-              height: EXPORT_SLIDE_HEIGHT,
+              width: EXPORT_BASE_WIDTH,
+              height: EXPORT_BASE_HEIGHT,
               overflow: 'hidden',
               background: '#000',
               zIndex: 99999,
@@ -4788,29 +4757,31 @@ export default function App() {
               style={{
                 width: EXPORT_BASE_WIDTH,
                 height: EXPORT_BASE_HEIGHT,
-                transform: `scale(${EXPORT_FRAME_SCALE})`,
                 transformOrigin: 'top left',
               }}
             >
               <div
-                className="relative overflow-hidden flex flex-col justify-between border border-white/5 rounded-2xl p-7 font-sans"
-                style={{ ...frameStyle, width: EXPORT_BASE_WIDTH, height: EXPORT_BASE_HEIGHT, boxSizing: 'border-box' }}
+                className="relative overflow-hidden flex flex-col justify-between border-0 rounded-none p-12 font-sans"
+                style={{ ...frame.frameStyle, width: EXPORT_BASE_WIDTH, height: EXPORT_BASE_HEIGHT, boxSizing: 'border-box' }}
               >
+                {frame.overlayStyle && (
+                  <div className="absolute inset-0 pointer-events-none z-[1]" style={frame.overlayStyle} />
+                )}
                 <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ backgroundImage: gridBg, backgroundSize: gridBgSize }}
+                  className="absolute inset-0 pointer-events-none z-[2]"
+                  style={{ backgroundImage: frame.gridBg, backgroundSize: frame.gridBgSize }}
                 />
 
-                <div className={headerClass}>
-                  <span className={titleHeaderClass}>{deck.title}</span>
+                <div className={frame.headerClass}>
+                  <span className={frame.titleHeaderClass}>{deck.title}</span>
                   <span>СЛАЙД {exportSlideIndex + 1} ИЗ {deck.slides.length}</span>
                 </div>
 
-                <div className="my-auto relative z-10 h-[74%] flex flex-col justify-stretch">
+                <div className="my-auto relative z-10 h-[78%] flex flex-col justify-stretch">
                   {renderSlideContent(deck.slides[exportSlideIndex], exportSlideIndex, true)}
                 </div>
 
-                <div className={footerClass}>
+                <div className={frame.footerClass}>
                   <span>© {deck.title} • Seed Round</span>
                   <span className="flex items-center gap-1">
                     <span className="h-1 w-1 rounded-full bg-emerald-500" />
