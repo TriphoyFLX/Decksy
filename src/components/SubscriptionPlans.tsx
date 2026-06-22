@@ -54,14 +54,6 @@ const PLAN_RANK: Record<string, number> = {
 const getPlanRank = (plan?: string | null) => PLAN_RANK[plan || "Free"] ?? PLAN_RANK.Free;
 
 export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGenerator }: SubscriptionPlansProps) {
-  // Navigation tabs in this billing/finances screen
-  const [activeSubTab, setActiveSubTab] = useState<'tariffs' | 'economics' | 'calculator'>('tariffs');
-
-  // Slider or value states for the interactive break-even simulator
-  const [simBaseUsers, setSimBaseUsers] = useState<number>(3);
-  const [simMiddleUsers, setSimMiddleUsers] = useState<number>(2);
-  const [simProUsers, setSimProUsers] = useState<number>(1);
-
   // YooKassa state variables
   const [selectedPlanForUpgrade, setSelectedPlanForUpgrade] = useState<string | null>(null);
   const [upgradePrice, setUpgradePrice] = useState<number>(0);
@@ -244,9 +236,9 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       desc: "Для базового ознакомления",
       features: [
         "1 презентация в месяц",
-        "1 тема оформления",
-        "Водяной знак Decksy",
-        "Без редактирования слайдов",
+        "Редактирование текста слайдов",
+        "Экспорт PPTX/PDF с водяным знаком",
+        "Сохранение проектов в аккаунте",
       ],
       color: "border-white/10 text-slate-400 bg-white/[0.01]",
       buttonText: "Текущий тариф",
@@ -259,9 +251,9 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       desc: "Оптимален для точечной работы",
       features: [
         "До 5 презентаций в месяц",
-        "2 темы оформления",
-        "Возможность менять слайды",
-        "Водяной знак Decksy",
+        "Редактирование текста и пунктов слайдов",
+        "Экспорт PPTX/PDF с водяным знаком",
+        "Сохранение проектов в аккаунте",
       ],
       color: "border-sky-500/30 text-sky-400 bg-sky-950/10",
       buttonText: "Выбрать Базовый",
@@ -274,10 +266,10 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       desc: "Полноценный контент и экспорт",
       features: [
         "До 15 презентаций в месяц",
-        "3 темы оформления",
-        "Добавление графиков/картинок",
-        "Возможность менять слайды",
-        "Без водяного знака Decksy",
+        "Экспорт PPTX/PDF без водяного знака",
+        "Редактирование слайдов и speaker notes",
+        "Брендинг, изображения и конструктор слайда",
+        "Сохранение проектов в аккаунте",
       ],
       color: "border-indigo-500/45 text-indigo-400 bg-indigo-950/15 ring-1 ring-indigo-500/20",
       buttonText: "Выбрать Миддл",
@@ -291,41 +283,16 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       desc: "Для серийных стартаперов",
       features: [
         "До 30 презентаций в месяц",
-        "5 тем оформления",
-        "Кастомные стили под запрос",
-        "Добавление графиков/картинок",
-        "Возможность менять слайды",
-        "Без водяного знака Decksy",
+        "Экспорт PPTX/PDF без водяного знака",
+        "Брендинг, изображения и конструктор слайда",
+        "Расширенное редактирование структуры слайдов",
+        "Приоритетный лимит для частой работы",
+        "Сохранение проектов в аккаунте",
       ],
       color: "border-emerald-500/40 text-emerald-400 bg-emerald-950/15",
       buttonText: "Выбрать Проф",
     }
   ];
-
-  // Calculations for break-even
-  const monthlyFixedServerCost = 810;
-  const monthlyFixedApiCost = 750;
-  const totalMonthlyFixedCost = monthlyFixedServerCost + monthlyFixedApiCost; // 1560 ₽
-
-  // Variable costs
-  const baseCostPerPres = 5;
-
-  const totalSimBaseRevenue = simBaseUsers * 149;
-  const totalSimMiddleRevenue = simMiddleUsers * 299;
-  const totalSimProRevenue = simProUsers * 499;
-  const totalSimRevenue = totalSimBaseRevenue + totalSimMiddleRevenue + totalSimProRevenue;
-
-  // Maximum presentation counts used in variable cost calculations
-  const simBasePresCost = simBaseUsers * 5 * baseCostPerPres; // 5 presentations each
-  const simMiddlePresCost = simMiddleUsers * 15 * baseCostPerPres; // 15 presentations each
-  const simProPresCost = simProUsers * 30 * baseCostPerPres; // 30 presentations each
-  const totalSimVariableCost = simBasePresCost + simMiddlePresCost + simProPresCost;
-
-  const totalSimExpenses = totalMonthlyFixedCost + totalSimVariableCost;
-  const totalSimProfit = totalSimRevenue - totalSimExpenses;
-
-  // Percentage of physical fixed cost covered by current revenue simulator
-  const fixedCostCoveragePct = Math.min(100, Math.round((totalSimRevenue / totalMonthlyFixedCost) * 100));
 
   const handleSelectPlan = (planId: string, priceStr: string) => {
     if (!user) {
@@ -407,43 +374,9 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
         </button>
       </div>
 
-      {/* Screen Sub Tabs */}
-      <div className="flex flex-wrap border-b border-white/5 gap-1.5">
-        <button
-          onClick={() => setActiveSubTab('tariffs')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono transition-all cursor-pointer ${
-            activeSubTab === 'tariffs' 
-              ? 'border-white text-white' 
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Тарифы
-        </button>
-        <button
-          onClick={() => setActiveSubTab('economics')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono transition-all cursor-pointer ${
-            activeSubTab === 'economics' 
-              ? 'border-white text-white' 
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Инфраструктура
-        </button>
-        <button
-          onClick={() => setActiveSubTab('calculator')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono transition-all cursor-pointer ${
-            activeSubTab === 'calculator' 
-              ? 'border-white text-white' 
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Модель сервиса
-        </button>
-      </div>
-
       {/* Screen Body Component Switching */}
       <AnimatePresence mode="wait">
-        {activeSubTab === 'tariffs' && (
+        {(
           <motion.div
             key="tariffs-tab"
             initial={{ opacity: 0, x: -10 }}
@@ -578,330 +511,6 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
           </motion.div>
         )}
 
-        {/* Expenses & Unit Economics Tab */}
-        {activeSubTab === 'economics' && (
-          <motion.div
-            key="economics-tab"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 10 }}
-            className="space-y-6"
-          >
-            {/* Costs layout detail */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              
-              {/* Startup expenditures card */}
-              <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center space-x-2 text-violet-400">
-                  <Briefcase className="h-5 w-5" />
-                  <h3 className="text-sm font-bold tracking-wider font-mono uppercase">🚀 Стартовые затраты (Капитал)</h3>
-                </div>
-                
-                <p className="text-xs text-slate-400">
-                  Базовая сумма инвестиций, необходимая для запуска прототипа и вывода MVP сервиса в продакшен.
-                </p>
-
-                <div className="space-y-2 pt-2">
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                    <span className="text-slate-450 text-slate-400 flex items-center gap-1.5 font-sans"><Globe className="h-3.5 w-3.5 text-slate-500" />Регистрация домена .RU</span>
-                    <span className="font-mono text-white font-bold">169 ₽</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                    <span className="text-slate-450 text-slate-400 flex items-center gap-1.5 font-sans"><Server className="h-3.5 w-3.5 text-slate-500" />Старт облака на первый тестовый день</span>
-                    <span className="font-mono text-white font-bold">27 ₽</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                    <span className="text-slate-450 text-slate-400 flex items-center gap-1.5 font-sans"><Cpu className="h-3.5 w-3.5 text-slate-500" />Базовый баланс API нейросети</span>
-                    <span className="font-mono text-white font-bold">100 ₽</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                    <span className="text-slate-450 text-slate-400 flex items-center gap-1.5 font-sans"><ShieldCheck className="h-3.5 w-3.5 text-slate-500" />SSL-сертификат безопасности</span>
-                    <span className="font-mono text-emerald-400 font-bold">0 ₽ (Let's Encrypt)</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm pt-2 text-slate-100">
-                    <strong className="font-mono uppercase text-xs tracking-wider">Всего капвложений (Итого)</strong>
-                    <strong className="font-mono text-purple-450 text-purple-400 text-base">296 ₽</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Monthly operational expenses card */}
-              <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center space-x-2 text-rose-400">
-                  <Server className="h-5 w-5" />
-                  <h3 className="text-sm font-bold tracking-wider font-mono uppercase">💸 Ежемесячные OPEX расходы</h3>
-                </div>
-
-                <p className="text-xs text-slate-400">
-                  Постоянные затраты сервиса Decksy для бесперебойного поддержания хостинга, бэкенда и рендеринг скриншотов.
-                </p>
-
-                <div className="space-y-2 pt-2">
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                    <span className="text-slate-450 text-slate-400 font-sans">Хостинг бэкенда & СУБД SQLite</span>
-                    <span className="font-mono text-white font-bold">810 ₽/мес</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                    <span className="text-slate-450 text-slate-400 font-sans">Потребительские API лимиты Deepskeek/V4 & Gemini</span>
-                    <span className="font-mono text-white font-bold">~750 ₽/мес</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm pt-2 text-slate-100">
-                    <strong className="font-mono uppercase text-xs tracking-wider">Итого OPEX расхода</strong>
-                    <strong className="font-mono text-rose-450 text-rose-400 text-base">~1 560 ₽/мес</strong>
-                  </div>
-                </div>
-
-                <div className="bg-rose-950/10 border border-rose-500/10 p-2.5 rounded-lg">
-                  <p className="text-[10px] text-slate-450 text-slate-405 leading-relaxed">
-                    * Постоянные расходы не зависят от того, сколько людей заходят в сервис. Они окупаются за счет подписок.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Unit Economics table */}
-            <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center space-x-2 text-emerald-400">
-                <TrendingUp className="h-5 w-5" />
-                <h3 className="text-sm font-bold tracking-wider font-mono uppercase">📊 Юнит-экономика одного юзера (Подписчика)</h3>
-              </div>
-              <p className="text-xs text-slate-400">
-                Себестоимость генерации и экспорта одной презентации заложена в бюджете как <span className="text-emerald-400 font-bold font-mono">5 ₽</span> (запросы к ИИ и кэширование картинок). Посмотрим маржинальность каждого тарифа при полной выгрузке лимита:
-              </p>
-
-              <div className="grid md:grid-cols-3 gap-4 pt-2">
-                
-                {/* Economy - Base */}
-                <div className="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                  <span className="text-[9.5px] font-mono tracking-widest text-sky-400 uppercase font-bold bg-sky-950/30 border border-sky-850/45 px-2 py-0.5 rounded">ТАРИФ БАЗОВЫЙ</span>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-xs text-slate-400">
-                      <span>Лимит презентаций</span>
-                      <span className="text-white font-mono font-bold">5 шт</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 pb-1.5 border-b border-white/5">
-                      <span>Себестоимость (5 × 5 ₽)</span>
-                      <span className="text-rose-400 font-mono font-bold">25 ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 pt-1">
-                      <span>Доход (Стоимость)</span>
-                      <span className="text-white font-mono font-bold">149 ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs pt-1 border-t border-white/5 text-slate-200">
-                      <strong>Валовая Маржа</strong>
-                      <strong className="text-emerald-400 font-mono text-sm">124 ₽</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Economy - Middle */}
-                <div className="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                  <span className="text-[9.5px] font-mono tracking-widest text-indigo-400 uppercase font-bold bg-indigo-950/30 border border-indigo-850/45 px-2 py-0.5 rounded">ТАРИФ МИДДЛ</span>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-xs text-slate-400">
-                      <span>Лимит презентаций</span>
-                      <span className="text-white font-mono font-bold">15 шт</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 pb-1.5 border-b border-white/5">
-                      <span>Себестоимость (15 × 5 ₽)</span>
-                      <span className="text-rose-400 font-mono font-bold">75 ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 pt-1">
-                      <span>Доход (Стоимость)</span>
-                      <span className="text-white font-mono font-bold">299 ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs pt-1 border-t border-white/5 text-slate-200">
-                      <strong>Валовая Маржа</strong>
-                      <strong className="text-emerald-400 font-mono text-sm">224 ₽</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Economy - Pro */}
-                <div className="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                  <span className="text-[9.5px] font-mono tracking-widest text-emerald-400 uppercase font-bold bg-emerald-950/30 border border-emerald-850/45 px-2 py-0.5 rounded">ТАРИФ ПРОФ</span>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-xs text-slate-400">
-                      <span>Лимит презентаций</span>
-                      <span className="text-white font-mono font-bold">30 шт</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 pb-1.5 border-b border-white/5">
-                      <span>Себестоимость (30 × 5 ₽)</span>
-                      <span className="text-rose-400 font-mono font-bold">150 ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 pt-1">
-                      <span>Доход (Стоимость)</span>
-                      <span className="text-white font-mono font-bold">499 ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs pt-1 border-t border-white/5 text-slate-200">
-                      <strong>Валовая Маржа</strong>
-                      <strong className="text-emerald-400 font-mono text-sm">349 ₽</strong>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Break-even point Interactive Simulator */}
-        {activeSubTab === 'calculator' && (
-          <motion.div
-            key="calculator-tab"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 10 }}
-            className="space-y-6"
-          >
-            <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 space-y-6">
-              
-              {/* Top description */}
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2 text-purple-400">
-                  <Calculator className="h-5 w-5" />
-                  <h3 className="text-sm font-bold tracking-wider font-mono uppercase">🎯 Калькулятор Покрытия Постоянных OPEX Расходов</h3>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Наш серверный расход составляет <span className="text-white font-mono font-bold">~1 560 ₽</span> ежемесячно. Двигайте ползунки симуляции подписчиков, чтобы узнать, когда Decksy выходит в чистый плюс!
-                </p>
-              </div>
-
-              {/* Sliders layout */}
-              <div className="grid md:grid-cols-2 gap-8 items-center">
-                
-                {/* Control sliders */}
-                <div className="space-y-5 bg-black/30 p-5 rounded-xl border border-white/5">
-                  <h4 className="text-xs font-mono font-bold text-slate-350 tracking-wider uppercase mb-1">Симуляция подписчиков</h4>
-                  
-                  {/* Slider 1: Base */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-sky-400">Базовый (149 ₽):</span>
-                      <span className="text-white font-extrabold">{simBaseUsers} чел</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="40"
-                      value={simBaseUsers}
-                      onChange={(e) => setSimBaseUsers(parseInt(e.target.value))}
-                      className="w-full accent-sky-500 cursor-pointer h-1.5 rounded-lg bg-white/10"
-                    />
-                    <span className="block text-[9px] text-slate-500 font-mono text-right">+ {simBaseUsers * 149} ₽</span>
-                  </div>
-
-                  {/* Slider 2: Middle */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-indigo-400">Миддл (299 ₽):</span>
-                      <span className="text-white font-extrabold">{simMiddleUsers} чел</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="30"
-                      value={simMiddleUsers}
-                      onChange={(e) => setSimMiddleUsers(parseInt(e.target.value))}
-                      className="w-full accent-indigo-500 cursor-pointer h-1.5 rounded-lg bg-white/10"
-                    />
-                    <span className="block text-[9px] text-slate-500 font-mono text-right">+ {simMiddleUsers * 299} ₽</span>
-                  </div>
-
-                  {/* Slider 3: Pro */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-emerald-400">Проф (499 ₽):</span>
-                      <span className="text-white font-extrabold">{simProUsers} чел</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      value={simProUsers}
-                      onChange={(e) => setSimProUsers(parseInt(e.target.value))}
-                      className="w-full accent-emerald-500 cursor-pointer h-1.5 rounded-lg bg-white/10"
-                    />
-                    <span className="block text-[9px] text-slate-500 font-mono text-right">+ {simProUsers * 499} ₽</span>
-                  </div>
-                </div>
-
-                {/* Calculation Screen / Outputs */}
-                <div className="space-y-4">
-                  <div className="bg-black/50 border border-white/5 rounded-xl p-5 space-y-3 font-mono">
-                    
-                    <div className="flex justify-between items-center text-xs text-slate-400">
-                      <span>Симулированная Выручка:</span>
-                      <span className="text-white font-semibold">{totalSimRevenue} ₽/мес</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-slate-400">
-                      <span>Фиксированные OPEX расходы:</span>
-                      <span className="text-[#bfdbfe]">{totalMonthlyFixedCost} ₽/мес</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-slate-400">
-                      <span>Переменные затраты (ИИ):</span>
-                      <span className="text-rose-350 text-rose-350 text-rose-450 text-rose-400">-{totalSimVariableCost} ₽</span>
-                    </div>
-
-                    <div className="border-t border-white/5 py-1" />
-
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-bold uppercase tracking-wider text-xs">Чистая Прибыль:</span>
-                      <strong className={`text-base font-black ${totalSimProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        {totalSimProfit >= 0 ? `+${totalSimProfit}` : totalSimProfit} ₽/мес
-                      </strong>
-                    </div>
-
-                  </div>
-
-                  {/* Coverage Indicator */}
-                  <div className="space-y-1.5 font-mono">
-                    <div className="flex justify-between text-[11px] text-slate-400">
-                      <span>Покрытие постоянных расходов (1 560 ₽)</span>
-                      <span className={`${totalSimRevenue >= totalMonthlyFixedCost ? "text-emerald-400 font-bold" : "text-slate-400"}`}>{fixedCostCoveragePct}%</span>
-                    </div>
-                    <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-300 ${
-                          totalSimProfit >= 0 ? "bg-emerald-500" : "bg-purple-500"
-                        }`}
-                        style={{ width: `${fixedCostCoveragePct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-slate-500 leading-normal italic font-sans text-center md:text-left">
-                    * Для безубыточности (без учета переменных затрат на ИИ) требуется ровно 11 Base-юзеров, либо 6 Middle-юзеров, либо 4 Pro-пользователя.
-                  </p>
-                </div>
-
-              </div>
-
-              {/* Theoretical static breakdown */}
-              <div className="border-t border-white/5 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-                  <span className="text-[10px] text-slate-450 text-slate-400 font-mono uppercase block">100% на Базовом</span>
-                  <strong className="text-sm font-mono text-white mt-1 block">11 Пользователей</strong>
-                  <p className="text-[9px] text-slate-500 font-sans mt-0.5">Нужно для безубыточности</p>
-                </div>
-                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-                  <span className="text-[10px] text-slate-450 text-slate-400 font-mono uppercase block">100% на Миддл</span>
-                  <strong className="text-sm font-mono text-white mt-1 block">6 Пользователей</strong>
-                  <p className="text-[9px] text-slate-500 font-sans mt-0.5">Нужно для безубыточности</p>
-                </div>
-                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-                  <span className="text-[10px] text-slate-450 text-slate-400 font-mono uppercase block">100% на Проф</span>
-                  <strong className="text-sm font-mono text-white mt-1 block">4 Пользователя</strong>
-                  <p className="text-[9px] text-slate-500 font-sans mt-0.5">Нужно для безубыточности</p>
-                </div>
-              </div>
-
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
 
       {/* SECURED CHECKOUT POPUP DIALOG FOR UPGRADES */}

@@ -101,9 +101,9 @@ export function exportToPPTX(deck: PitchDeck, options?: { removeWatermark?: bool
     }
 
     if (!options?.removeWatermark) {
-      s.addText("Decksy Ai • decksy.ru", {
+      s.addText("made decksy.ru", {
         x: 0.7, y: 6.85, w: 4.0, h: 0.25,
-        fontSize: 9, color: "475569", fontFace: "Arial",
+        fontSize: 9, color: "64748B", fontFace: "Arial",
       });
     } else {
       s.addText(deck.title, {

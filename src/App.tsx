@@ -89,6 +89,7 @@ import {
 import { EditableText } from "./components/EditableText";
 import { isWordGenerationPrompt } from "./lib/wordPromptUtils";
 import decksyLogo from "./images/logo.png";
+import { DeckWatermark } from "./components/DeckWatermark";
 
 const INITIAL_CANVAS: PitchCanvas = {
   problem: { title: "🧩 Проблема", summary: "Ожидание более детальных ответов на вопросы инвестора...", bullets: [], status: "locked" },
@@ -130,7 +131,7 @@ const EXAMPLE_DECKS = [
         subtitle: "Ультрабыстрые зеленые зарядные хабы нового поколения",
         content: [
           "Ключевая ценность: Полный заряд батареи до 80% всего за 12 минут",
-          "Инфраструктура: 100% автономная работа за счет крышных солнечных панелей",
+          "Сеть станций: 100% автономная работа за счет крышных солнечных панелей",
           "Потенциал рынка: TAM в размере $12.4 млрд к 2028 году",
           "Экология: Снижение углеродного следа на 4.2 тонны CO2 в год с одной станции"
         ],
@@ -3943,7 +3944,7 @@ export default function App() {
                   </div>
                   <div>
                     <h4 className="text-xs uppercase tracking-widest font-bold text-white font-mono">Бесплатный тарифный план</h4>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mt-1">На скачанных PPTX слайдах нанесен водяной знак «AI Generated». Уберите водяной знак, чтобы получить готовый для фондов PPTX-архив.</p>
+                    <p className="text-[11px] text-slate-400 leading-relaxed mt-1">На скачанных слайдах внизу стоит водяной знак с логотипом Decksy и подписью made decksy.ru. Уберите водяной знак, чтобы получить готовый для фондов архив.</p>
                   </div>
                 </div>
                 <button
@@ -4108,7 +4109,7 @@ export default function App() {
                         <span>СЛАЙД {activeSlideIndex + 1} ИЗ {deck.slides.length}</span>
                       </div>
 
-                      <div className="my-auto relative z-10 h-[78%] flex flex-col justify-stretch min-h-0">
+                      <div className="relative z-10 flex-1 min-h-0 py-2 flex flex-col justify-stretch">
                         <SlideConstructor
                           enabled={constructorMode}
                           onToggle={setConstructorMode}
@@ -4137,10 +4138,14 @@ export default function App() {
                       {/* Footer bar */}
                       <div className={frame.footerClass}>
                         <span>© {deck.title} • Seed Round</span>
-                        <span className="flex items-center gap-1">
-                          <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                          {isWatermarkRemoved ? `Проект: ${deck.title}` : "Сгенерировано Decksy.ai"}
-                        </span>
+                        {isWatermarkRemoved ? (
+                          <span className="flex items-center gap-1">
+                            <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                            {`Проект: ${deck.title}`}
+                          </span>
+                        ) : (
+                          <DeckWatermark forExport={exportState !== null} />
+                        )}
                       </div>
                     </div>
                   );
@@ -4504,13 +4509,13 @@ export default function App() {
                       <span>Поделиться ссылкой с инвестором</span>
                     </button>
 
-                    {/* JPEG ZIP trigger */}
+                    {/* PNG ZIP trigger */}
                     <button
                       id="download-jpeg-zip-btn"
                       onClick={handleDownloadZIP}
                       className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
                     >
-                      <span>Скачать архив JPEG-картинок (ZIP)</span>
+                      <span>Скачать архив PNG-картинок (ZIP)</span>
                       <span className="text-[8px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold">100% Reliable</span>
                     </button>
 
@@ -4788,16 +4793,20 @@ export default function App() {
                   <span>СЛАЙД {exportSlideIndex + 1} ИЗ {deck.slides.length}</span>
                 </div>
 
-                <div className="my-auto relative z-10 h-[78%] flex flex-col justify-stretch">
+                <div className="relative z-10 flex-1 min-h-0 py-5 flex flex-col justify-stretch">
                   {renderSlideContent(deck.slides[exportSlideIndex], exportSlideIndex, true)}
                 </div>
 
                 <div className={frame.footerClass}>
                   <span>© {deck.title} • Seed Round</span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-1 w-1 rounded-full bg-emerald-500" />
-                    {isWatermarkRemoved ? `Проект: ${deck.title}` : "Сгенерировано Decksy.ai"}
-                  </span>
+                  {isWatermarkRemoved ? (
+                    <span className="flex items-center gap-1">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                      {`Проект: ${deck.title}`}
+                    </span>
+                  ) : (
+                    <DeckWatermark forExport />
+                  )}
                 </div>
               </div>
             </div>

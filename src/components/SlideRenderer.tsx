@@ -103,6 +103,30 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
       <Tag className={className}>{text}</Tag>
     );
 
+  const L = (
+    text: string,
+    bulletIndex: number,
+    className: string,
+    Tag: React.ElementType = "span"
+  ) =>
+    editable ? (
+      <EditableText
+        value={text}
+        className={className}
+        as={Tag}
+        onSave={(v) => {
+          const next = [...content];
+          const current = next[bulletIndex] || "";
+          const parsed = parseBullet(current);
+          const detail = parsed.detail || current || text;
+          next[bulletIndex] = `${v.trim() || text}: ${detail}`;
+          onUpdate!({ content: next });
+        }}
+      />
+    ) : (
+      <Tag className={className}>{text}</Tag>
+    );
+
   // Helper to parse double part labels like "TAM: $40B" or "Key - Value"
   const parseBullet = (str: string) => {
     const splitters = [": ", " — ", " - "];
@@ -181,6 +205,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         parseBullet={parseBullet}
         extractNumber={extractNumber}
         renderBullet={(text, i, className) => B(text, i, className)}
+        renderLabel={(text, i, className, Tag = "span") => L(text, i, className, Tag)}
         forExport={forExport}
       />
     );

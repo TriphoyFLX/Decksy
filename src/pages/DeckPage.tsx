@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Slide, PitchDeck } from "../types";
 import { SlideRenderer } from "../components/SlideRenderer";
+import { DeckWatermark } from "../components/DeckWatermark";
 
 interface DeckPageProps {
   deck: PitchDeck;
@@ -139,7 +140,7 @@ export const DeckPage: React.FC<DeckPageProps> = ({
             </div>
             <div>
               <h4 className="text-xs uppercase tracking-widest font-bold text-white font-mono">Бесплатный тарифный план</h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed mt-1">На скачанных PPTX слайдах нанесен водяной знак «AI Generated». Уберите водяной знак, чтобы получить готовый для фондов PPTX-архив.</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed mt-1">На скачанных слайдах внизу стоит водяной знак с логотипом Decksy и подписью made decksy.ru. Уберите водяной знак, чтобы получить готовый для фондов архив.</p>
             </div>
           </div>
           <button
@@ -262,10 +263,14 @@ export const DeckPage: React.FC<DeckPageProps> = ({
             {/* Footer bar */}
             <div className={footerClass}>
               <span>© {deck.title} • Seedsdfsdf Round</span>
-              <span className="flex items-center gap-1">
-                <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                {isWatermarkRemoved ? `Проект: ${deck.title}` : "Сгенерировано Decksy.ai"}
-              </span>
+              {isWatermarkRemoved ? (
+                <span className="flex items-center gap-1">
+                  <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                  {`Проект: ${deck.title}`}
+                </span>
+              ) : (
+                <DeckWatermark />
+              )}
             </div>
           </div>
 
@@ -592,7 +597,7 @@ export const DeckPage: React.FC<DeckPageProps> = ({
                 onClick={handleDownloadZIP}
                 className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
               >
-                <span>Скачать архив JPEG-картинок (ZIP)</span>
+                <span>Скачать архив PNG-картинок (ZIP)</span>
                 <span className="text-[8px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold">100% Reliable</span>
               </button>
 
