@@ -236,8 +236,9 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       desc: "Для базового ознакомления",
       features: [
         "1 презентация в месяц",
+        "1 экспорт презентации (PDF/PPTX/ZIP)",
         "Редактирование текста слайдов",
-        "Экспорт PPTX/PDF с водяным знаком",
+        "Экспорт с водяным знаком made decksy.ru",
         "Сохранение проектов в аккаунте",
       ],
       color: "border-white/10 text-slate-400 bg-white/[0.01]",

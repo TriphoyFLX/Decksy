@@ -200,6 +200,12 @@ function getPlanPriceRub(plan: PaidPlanId): number {
   return PLAN_CONFIG[plan].priceRub;
 }
 
+function canUserExportPresentation(user: { role?: string | null; plan?: string | null; freeExportUsed?: boolean | null }) {
+  if (user.role === "admin") return true;
+  if ((user.plan || "Free") !== "Free") return true;
+  return !user.freeExportUsed;
+}
+
 function getUserResponse(user: any) {
   return {
     id: user.id,
@@ -214,6 +220,8 @@ function getUserResponse(user: any) {
     monthlyDeckCount: user.monthlyDeckCount,
     monthlyDeckResetAt: user.monthlyDeckResetAt,
     monthlyDeckLimit: getPlanLimit(user.plan, user.role),
+    freeExportUsed: Boolean(user.freeExportUsed),
+    canExportPresentation: canUserExportPresentation(user),
   };
 }
 
@@ -2105,6 +2113,43 @@ app.get("/api/decks", authenticateToken, async (req: any, res) => {
 });
 
 // 0.5 API: Save, create, or update a pitch deck
+app.post("/api/deck/consume-export", authenticateToken, async (req: any, res) => {
+  try {
+    let user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден." });
+    }
+
+    user = await normalizeUserEntitlements(user);
+
+    if (!canUserExportPresentation(user)) {
+      return res.status(403).json({
+        error: "На бесплатном тарифе доступен только 1 экспорт презентации. Подключите тариф, чтобы скачивать без ограничений.",
+        freeExportUsed: true,
+        canExportPresentation: false,
+      });
+    }
+
+    if ((user.plan || "Free") === "Free" && user.role !== "admin") {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { freeExportUsed: true },
+      });
+    }
+
+    res.json({
+      success: true,
+      user: getUserResponse(user),
+    });
+  } catch (err: any) {
+    console.error("Consume export error:", err);
+    res.status(500).json({ error: "Не удалось зафиксировать экспорт презентации." });
+  }
+});
+
 app.post("/api/decks", authenticateToken, async (req: any, res) => {
   try {
     const { id, title, subtitle, idea, mode, slides, roast, canvas } = req.body;

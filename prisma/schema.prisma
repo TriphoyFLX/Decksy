@@ -23,6 +23,7 @@ model User {
   planExpiresAt       DateTime?
   monthlyDeckCount    Int         @default(0)
   monthlyDeckResetAt  DateTime?
+  freeExportUsed      Boolean     @default(false)
   tokenVersion        Int         @default(0)
   createdAt           DateTime    @default(now())
   decks               PitchDeck[]

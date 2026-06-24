@@ -322,6 +322,8 @@ const EXAMPLE_DECKS = [
   }
 ];
 
+const FREE_EXPORT_USED_KEY = "decksy_free_export_used";
+
 export default function App() {
   // Screen views: 'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
   const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans' | 'word'>('intro');
@@ -384,6 +386,8 @@ export default function App() {
     monthlyDeckCount?: number,
     monthlyDeckLimit?: number,
     monthlyDeckResetAt?: string | null,
+    freeExportUsed?: boolean,
+    canExportPresentation?: boolean,
   } | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem("decksy_token"));
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -1638,58 +1642,84 @@ export default function App() {
     return images;
   };
 
-  // Gorgeous PDF Exporter (exactly matching visual design)
-  const handleDownloadPDF = async () => {
-    if (!deck) return;
-    
+  const isFreeExportBlocked = () => {
+    if (user?.role === "admin") return false;
+    if (user && (user.plan || "Free") !== "Free") return false;
+    if (user) return Boolean(user.freeExportUsed);
+    return localStorage.getItem(FREE_EXPORT_USED_KEY) === "1";
+  };
+
+  const blockFreeExport = () => {
+    setLimitMessage("На бесплатном тарифе доступен только 1 экспорт презентации. Подключите тариф, чтобы скачивать без ограничений.");
+    setShowLimitModal(true);
+  };
+
+  const markFreeExportUsed = async () => {
+    if (user?.role === "admin") return;
+    if (user && (user.plan || "Free") !== "Free") return;
+
+    if (!user) {
+      localStorage.setItem(FREE_EXPORT_USED_KEY, "1");
+      return;
+    }
+
+    const token = localStorage.getItem("decksy_token");
+    if (!token) return;
+
     try {
-      const images = await performSequentialCapture('pdf');
-      if (images.length > 0) {
-        exportImagesToPDF(images, deck.title);
+      const response = await fetch("/api/deck/consume-export", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.user) {
+        setUser(data.user);
       }
     } catch (err) {
-      console.error("Failed to export PDF:", err);
-      alert("Не удалось сгенерировать PDF: " + err);
+      console.warn("Failed to mark presentation export as used", err);
+    }
+  };
+
+  const runPresentationExport = async (
+    captureType: "pdf" | "pptx",
+    onImages: (images: string[]) => void | Promise<void>
+  ) => {
+    if (!deck) return;
+    if (isFreeExportBlocked()) {
+      blockFreeExport();
+      return;
+    }
+
+    try {
+      const images = await performSequentialCapture(captureType);
+      if (images.length > 0) {
+        await onImages(images);
+        await markFreeExportUsed();
+      }
+    } catch (err) {
+      console.error("Failed to export presentation:", err);
+      alert("Не удалось экспортировать презентацию: " + err);
     } finally {
       setExportState(null);
       setExportSlideIndex(null);
     }
+  };
+
+  // Gorgeous PDF Exporter (exactly matching visual design)
+  const handleDownloadPDF = async () => {
+    await runPresentationExport("pdf", (images) => exportImagesToPDF(images, deck!.title));
   };
 
   // Gorgeous PPTX Exporter (snapshot based, 100% exact design)
   const handleDownloadPPTX = async () => {
-    if (!deck) return;
-    
-    try {
-      const images = await performSequentialCapture('pptx');
-      if (images.length > 0) {
-        exportImagesToPPTX(images, deck.title);
-      }
-    } catch (err) {
-      console.error("Failed to export PPTX:", err);
-      alert("Не удалось экспортировать PPTX в визуальном качестве. Попробуйте PDF или ZIP.");
-    } finally {
-      setExportState(null);
-      setExportSlideIndex(null);
-    }
+    await runPresentationExport("pptx", (images) => exportImagesToPPTX(images, deck!.title));
   };
 
-  // 100% reliable alternative format: Download JPEGs inside a ZIP file
+  // 100% reliable alternative format: Download PNGs inside a ZIP file
   const handleDownloadZIP = async () => {
-    if (!deck) return;
-    
-    try {
-      const images = await performSequentialCapture('pptx'); // uses high-fidelity capture
-      if (images.length > 0) {
-        await downloadSlidesAsZIP(images, deck.title);
-      }
-    } catch (err) {
-      console.error("Failed to export ZIP:", err);
-      alert("Не удалось сгенерировать ZIP архив картинок: " + err);
-    } finally {
-      setExportState(null);
-      setExportSlideIndex(null);
-    }
+    await runPresentationExport("pptx", (images) => downloadSlidesAsZIP(images, deck!.title));
   };
 
   // Download runnable python-pptx presentation generation code
@@ -4484,7 +4514,12 @@ export default function App() {
                     <button
                       id="export-pptx-btn"
                       onClick={handleDownloadPPTX}
-                      className="w-full bg-white text-black hover:bg-slate-200 font-extrabold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between cursor-pointer transition-all"
+                      disabled={isFreeExportBlocked()}
+                      className={`w-full font-extrabold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between transition-all ${
+                        isFreeExportBlocked()
+                          ? "bg-white/10 text-slate-500 cursor-not-allowed"
+                          : "bg-white text-black hover:bg-slate-200 cursor-pointer"
+                      }`}
                     >
                       <span>Скачать презентацию PPTX (Widescreen)</span>
                       {!isWatermarkRemoved && <span className="text-[8px] bg-amber-500/20 text-amber-500 border border-amber-500/30 px-1 rounded uppercase font-bold">Watermark</span>}
@@ -4494,7 +4529,12 @@ export default function App() {
                     <button
                       id="print-pdf-btn"
                       onClick={handleDownloadPDF}
-                      className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
+                      disabled={isFreeExportBlocked()}
+                      className={`w-full border font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between transition-all ${
+                        isFreeExportBlocked()
+                          ? "bg-[#121214] border-white/5 text-slate-500 cursor-not-allowed"
+                          : "bg-[#161618] hover:bg-white/5 border-white/10 text-slate-200 cursor-pointer"
+                      }`}
                     >
                       <span>Скачать презентацию PDF</span>
                       {!isWatermarkRemoved && <span className="text-[8px] bg-amber-500/20 text-amber-500 border border-amber-500/30 px-1 rounded uppercase font-bold">Watermark</span>}
@@ -4513,11 +4553,22 @@ export default function App() {
                     <button
                       id="download-jpeg-zip-btn"
                       onClick={handleDownloadZIP}
-                      className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
+                      disabled={isFreeExportBlocked()}
+                      className={`w-full border font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between transition-all ${
+                        isFreeExportBlocked()
+                          ? "bg-[#121214] border-white/5 text-slate-500 cursor-not-allowed"
+                          : "bg-[#161618] hover:bg-white/5 border-white/10 text-slate-200 cursor-pointer"
+                      }`}
                     >
                       <span>Скачать архив PNG-картинок (ZIP)</span>
                       <span className="text-[8px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold">100% Reliable</span>
                     </button>
+
+                    {isFreeExportBlocked() && (
+                      <p className="text-[10px] text-amber-400/90 leading-relaxed">
+                        На бесплатном тарифе экспорт презентации доступен только 1 раз. Подключите тариф, чтобы скачивать без ограничений.
+                      </p>
+                    )}
 
                     {/* Python pptx script download */}
                     <button
