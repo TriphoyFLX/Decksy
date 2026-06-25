@@ -18,7 +18,7 @@ import type { Slide, SlideVisualData } from "../types";
 import { PremiumImage } from "./slideVisuals";
 import { getConstructorStyle } from "../components/SlideConstructor";
 import type { SlideConstructorLayout } from "../types";
-import { TEMPLATE_CATALOG, type DeckTemplateId } from "./deckTheme";
+import { TEMPLATE_CATALOG, type DeckTemplateId, type StyleKey } from "./deckTheme";
 
 const APEX_BLUE = "#0071e3";
 const APEX_GREEN = "#30d158";
@@ -38,38 +38,49 @@ export type GlassSurface = {
   danger: string;
 };
 
-export function getGlassSurface(slide: Slide, forExport = false): GlassSurface {
-  const deckTemplate = slide.visualData?.deckTemplate;
-  const templateAccent = deckTemplate ? TEMPLATE_CATALOG[deckTemplate as DeckTemplateId]?.accent : undefined;
-  const accent = templateAccent || APEX_BLUE;
-  const isLight = deckTemplate === "ember";
+export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-dark", forExport = false): GlassSurface {
+  const deckTemplate = slide.visualData?.deckTemplate as DeckTemplateId | undefined;
+  const templateEntry = deckTemplate ? TEMPLATE_CATALOG[deckTemplate] : undefined;
+  const templateAccent = templateEntry?.accent;
+  const isLight = Boolean(templateEntry?.isLightBackground) || selectedStyle === "clean-light";
   const hasImageBg =
     deckTemplate === "titanium" || deckTemplate === "midnight" || deckTemplate === "ember";
+  const accent =
+    templateAccent ||
+    (isLight ? "#0d9488" : selectedStyle === "cosmic-dark" ? "#34d399" : APEX_BLUE);
   return {
     isLight,
     hasImageBg,
-    titleClass: isLight ? "text-neutral-900" : "text-white",
-    bodyClass: isLight ? "text-neutral-700" : hasImageBg ? "text-white/90" : "text-white/80",
-    mutedClass: isLight ? "text-neutral-600" : hasImageBg ? "text-white/70" : "text-white/60",
+    titleClass: isLight ? "text-slate-950" : "text-white",
+    bodyClass: isLight ? "text-slate-700" : hasImageBg ? "text-white/90" : "text-slate-200",
+    mutedClass: isLight ? "text-slate-500" : hasImageBg ? "text-white/70" : "text-slate-400",
     labelColor: accent,
     accent,
-    secondary: deckTemplate === "titanium" ? "#7dd3fc" : deckTemplate === "ember" ? "#f97316" : "#5e5ce6",
-    success: deckTemplate === "ember" ? "#16a34a" : APEX_GREEN,
-    warning: deckTemplate === "titanium" ? "#f0a050" : "#ffb340",
-    danger: "#ff6b6b",
+    secondary: isLight
+      ? "#0ea5e9"
+      : deckTemplate === "titanium"
+        ? "#7dd3fc"
+        : deckTemplate === "ember"
+          ? "#f97316"
+          : "#38bdf8",
+    success: isLight ? "#059669" : deckTemplate === "ember" ? "#16a34a" : APEX_GREEN,
+    warning: deckTemplate === "titanium" ? "#f0a050" : "#fbbf24",
+    danger: "#f87171",
   };
 }
 
 export function glassCardStyle(glass: GlassSurface, forExport = false): React.CSSProperties {
   if (glass.isLight) {
     return {
-      background: forExport ? "rgba(255,255,255,0.94)" : "rgba(255,255,255,0.78)",
-      borderColor: "rgba(255,255,255,0.72)",
+      background: forExport
+        ? "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.94))"
+        : "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(248,250,252,0.86))",
+      borderColor: "rgba(15, 23, 42, 0.08)",
       boxShadow: forExport
-        ? "0 4px 24px rgba(0,0,0,0.08)"
-        : "0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.85)",
-      backdropFilter: forExport ? undefined : "blur(24px)",
-      WebkitBackdropFilter: forExport ? undefined : "blur(24px)",
+        ? "0 8px 28px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.95)"
+        : "0 12px 36px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.95)",
+      backdropFilter: forExport ? undefined : "blur(20px)",
+      WebkitBackdropFilter: forExport ? undefined : "blur(20px)",
     };
   }
   if (glass.hasImageBg) {
@@ -84,11 +95,13 @@ export function glassCardStyle(glass: GlassSurface, forExport = false): React.CS
     };
   }
   return {
-    background: forExport ? "rgba(18,18,22,0.88)" : "rgba(255,255,255,0.08)",
-    borderColor: "rgba(255,255,255,0.2)",
+    background: forExport
+      ? "linear-gradient(145deg, rgba(30,41,59,0.94), rgba(15,23,42,0.9))"
+      : "linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))",
+    borderColor: "rgba(148, 163, 184, 0.18)",
     boxShadow: forExport
-      ? "0 4px 24px rgba(0,0,0,0.35)"
-      : "0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.14)",
+      ? "0 10px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)"
+      : "0 12px 36px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.1)",
     backdropFilter: forExport ? undefined : "blur(20px)",
     WebkitBackdropFilter: forExport ? undefined : "blur(20px)",
   };
@@ -225,11 +238,22 @@ export const ApexHero: React.FC<{
             </div>
           ) : (
             <div
-              className={`${logoSize} rounded-2xl flex flex-col items-center justify-center font-bold text-white shrink-0 border border-dashed border-white/20`}
-              style={{
-                background: "linear-gradient(145deg, #1d6bf3, #0040c8)",
-                boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 16px 32px rgba(0,100,255,0.2)",
-              }}
+              className={`${logoSize} rounded-2xl flex flex-col items-center justify-center font-bold shrink-0 border`}
+              style={
+                glass?.isLight
+                  ? {
+                      background: "linear-gradient(145deg, #0ea5e9, #0d9488)",
+                      borderColor: "rgba(15,23,42,0.08)",
+                      color: "#ffffff",
+                      boxShadow: "0 12px 28px rgba(14,165,233,0.22), inset 0 1px 0 rgba(255,255,255,0.35)",
+                    }
+                  : {
+                      background: "linear-gradient(145deg, #1d6bf3, #0040c8)",
+                      borderColor: "rgba(255,255,255,0.12)",
+                      color: "#ffffff",
+                      boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 16px 32px rgba(0,100,255,0.2)",
+                    }
+              }
             >
               <span className="text-2xl sm:text-3xl">{firstLetter}</span>
               <span className="text-[6px] text-white/40 uppercase tracking-widest mt-0.5 flex items-center gap-0.5">
@@ -369,7 +393,10 @@ export const ApexPainGrid: React.FC<{
           ) : (
             <div
               className="h-12 rounded-xl border border-dashed flex flex-col items-center justify-center gap-0.5 shrink-0"
-              style={{ borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.02)" }}
+              style={{
+                borderColor: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.12)",
+                background: glass.isLight ? "rgba(15,23,42,0.03)" : "rgba(255,255,255,0.02)",
+              }}
             >
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -377,7 +404,7 @@ export const ApexPainGrid: React.FC<{
               >
                 <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
               </div>
-              <span className="text-[6px] text-white/25 uppercase tracking-wider flex items-center gap-0.5">
+              <span className={`text-[6px] uppercase tracking-wider flex items-center gap-0.5 ${glass.isLight ? "text-slate-400" : "text-white/25"}`}>
                 <ImagePlus className="h-2.5 w-2.5" />
                 фото
               </span>
@@ -394,7 +421,7 @@ export const ApexPainGrid: React.FC<{
               {metric}
             </div>
           ) : (
-            <div className="text-[7px] text-white/25 mt-auto line-clamp-1 italic">
+            <div className={`text-[7px] mt-auto line-clamp-1 italic ${glass.isLight ? "text-slate-400" : "text-white/25"}`}>
               {shortInsight(detail) || "Ключевая боль"}
             </div>
           )}
@@ -801,7 +828,10 @@ export const SwissProblemGrid: React.FC<{
           ) : (
             <div
               className="h-11 rounded-xl border border-dashed flex flex-col items-center justify-center gap-0.5 shrink-0"
-              style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.02)" }}
+              style={{
+                borderColor: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
+                background: glass.isLight ? "rgba(15,23,42,0.03)" : "rgba(255,255,255,0.02)",
+              }}
             >
               <div
                 className="w-7 h-7 rounded-xl flex items-center justify-center"
@@ -809,7 +839,7 @@ export const SwissProblemGrid: React.FC<{
               >
                 <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
               </div>
-              <span className="text-[6px] text-white/25 uppercase tracking-wider flex items-center gap-0.5">
+              <span className={`text-[6px] uppercase tracking-wider flex items-center gap-0.5 ${glass.isLight ? "text-slate-400" : "text-white/25"}`}>
                 <ImagePlus className="h-2.5 w-2.5" />
                 фото
               </span>
@@ -1250,6 +1280,7 @@ export const ApexSlideContent: React.FC<{
   extractNumber: (s: string) => string;
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   renderLabel?: InlineRenderer;
+  selectedStyle?: StyleKey;
   forExport?: boolean;
 }> = ({
   slide,
@@ -1263,12 +1294,13 @@ export const ApexSlideContent: React.FC<{
   extractNumber,
   renderBullet,
   renderLabel,
+  selectedStyle = "cosmic-dark",
   forExport,
 }) => {
   const type = slide.type;
   const variant = slide.visualData?.variant || "";
   const swiss = isSwissTemplate(slide);
-  const glass = getGlassSurface(slide, forExport);
+  const glass = getGlassSurface(slide, (selectedStyle || "cosmic-dark") as StyleKey, forExport);
 
   return (
     <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">

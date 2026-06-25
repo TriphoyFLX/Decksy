@@ -206,6 +206,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         extractNumber={extractNumber}
         renderBullet={(text, i, className) => B(text, i, className)}
         renderLabel={(text, i, className, Tag = "span") => L(text, i, className, Tag)}
+        selectedStyle={selectedStyle}
         forExport={forExport}
       />
     );

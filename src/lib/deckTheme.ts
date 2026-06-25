@@ -29,10 +29,10 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     name: "Apex",
     source: "Teamplate.html",
     description: "Apple-style: чёрный фон, синие акценты, hero-центр",
-    frameGradient: "linear-gradient(to bottom, #000000, #050505)",
+    frameGradient: "linear-gradient(165deg, #0a0a0f 0%, #0f172a 42%, #09090b 100%)",
     gridBg:
-      "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
-    accent: "#0071e3",
+      "linear-gradient(rgba(148,163,184,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.07) 1px, transparent 1px)",
+    accent: "#38bdf8",
     selectedStyle: "cosmic-dark",
     layoutEngine: "apex",
   },
@@ -41,10 +41,10 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     name: "Swiss Pro",
     source: "Teamplate2.html",
     description: "Структурированные карточки, метрики, roadmap",
-    frameGradient: "linear-gradient(to bottom, #050505, #0a0a0a)",
+    frameGradient: "linear-gradient(165deg, #08080c 0%, #111827 45%, #09090b 100%)",
     gridBg:
-      "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)",
-    accent: "#0071e3",
+      "linear-gradient(rgba(52,211,153,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(52,211,153,0.06) 1px, transparent 1px)",
+    accent: "#34d399",
     selectedStyle: "cosmic-dark",
     layoutEngine: "swiss",
   },
@@ -97,6 +97,11 @@ export function resolveLayoutEngine(templateId: DeckTemplateId): DeckLayoutEngin
   return TEMPLATE_CATALOG[templateId]?.layoutEngine ?? "apex";
 }
 
+export interface AmbientLayer {
+  className?: string;
+  style: React.CSSProperties;
+}
+
 export interface TemplateFrameAppearance {
   frameStyle: React.CSSProperties;
   headerClass: string;
@@ -107,6 +112,7 @@ export interface TemplateFrameAppearance {
   frameBorderClass: string;
   showGlowBlobs: boolean;
   overlayStyle?: React.CSSProperties;
+  ambientLayers?: AmbientLayer[];
 }
 
 export function getTemplateFrameAppearance(
@@ -128,6 +134,7 @@ export function getTemplateFrameAppearance(
   let titleHeaderClass = "text-white uppercase tracking-widest font-bold";
   let showGlowBlobs = false;
   let overlayStyle: React.CSSProperties | undefined;
+  let ambientLayers: AmbientLayer[] | undefined;
 
   if (isThemeCobalt) {
     if (isTitleSlide) {
@@ -172,21 +179,70 @@ export function getTemplateFrameAppearance(
       }
     }
   } else if (isThemeLight) {
-    frameBorderClass = "border-neutral-200/95";
-    frameStyle = { background: "linear-gradient(to bottom, #ffffff, #fafafa)" };
-    headerClass += "border-neutral-200/60 text-neutral-400";
-    footerClass += "border-neutral-200/60 text-neutral-400";
-    titleHeaderClass = "text-neutral-900 uppercase tracking-widest font-bold";
+    frameBorderClass = "border-slate-200/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]";
+    frameStyle = { background: "linear-gradient(165deg, #ffffff 0%, #f8fafc 36%, #f1f5f9 72%, #eef2ff 100%)" };
+    headerClass += "border-slate-200/70 text-slate-500";
+    footerClass += "border-slate-200/70 text-slate-500";
+    titleHeaderClass = "text-slate-900 uppercase tracking-widest font-bold";
     gridBg =
-      "linear-gradient(rgba(0,0,0,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.015) 1px, transparent 1px)";
-    gridBgSize = "30px 30px";
+      "linear-gradient(rgba(15,23,42,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.045) 1px, transparent 1px)";
+    gridBgSize = "36px 36px";
+    ambientLayers = [
+      {
+        className: "z-[1]",
+        style: {
+          background:
+            "radial-gradient(ellipse 80% 55% at 100% 0%, rgba(14,165,233,0.14), transparent 58%)",
+        },
+      },
+      {
+        className: "z-[1]",
+        style: {
+          background:
+            "radial-gradient(ellipse 70% 50% at 0% 100%, rgba(16,185,129,0.12), transparent 52%)",
+        },
+      },
+      {
+        className: "z-[1]",
+        style: {
+          background:
+            "radial-gradient(ellipse 42% 36% at 52% 48%, rgba(251,146,60,0.1), transparent 62%)",
+        },
+      },
+    ];
   } else {
-    frameBorderClass = "border-white/5 hover:border-white/8";
+    frameBorderClass = "border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
     frameStyle = { background: tpl.frameGradient };
-    headerClass += "border-white/5 text-slate-500";
-    footerClass += "border-white/5 text-slate-500";
+    headerClass += "border-white/10 text-slate-400";
+    footerClass += "border-white/10 text-slate-400";
     titleHeaderClass = "text-white uppercase tracking-widest font-bold";
+    gridBgSize = "48px 48px";
     showGlowBlobs = !tpl.backgroundImage;
+    if (!tpl.backgroundImage) {
+      ambientLayers = [
+        {
+          className: "z-[1]",
+          style: {
+            background:
+              "radial-gradient(ellipse 58% 48% at 12% 18%, rgba(52,211,153,0.16), transparent 62%)",
+          },
+        },
+        {
+          className: "z-[1]",
+          style: {
+            background:
+              "radial-gradient(ellipse 52% 42% at 88% 78%, rgba(56,189,248,0.14), transparent 58%)",
+          },
+        },
+        {
+          className: "z-[1]",
+          style: {
+            background:
+              "radial-gradient(ellipse 34% 28% at 72% 12%, rgba(139,92,246,0.1), transparent 55%)",
+          },
+        },
+      ];
+    }
   }
 
   return {
@@ -199,6 +255,7 @@ export function getTemplateFrameAppearance(
     frameBorderClass,
     showGlowBlobs,
     overlayStyle,
+    ambientLayers,
   };
 }
 
@@ -225,24 +282,24 @@ export const DEFAULT_CUSTOM_THEMES: Record<StyleKey, DeckThemeCustom> = {
     borderColor: "rgba(0, 77, 230, 0.12)",
   },
   "clean-light": {
-    primary: "#004de6",
-    accent: "#10b981",
+    primary: "#0d9488",
+    accent: "#0ea5e9",
     background: "#ffffff",
-    surface: "#f8fafc",
-    text: "#171717",
+    surface: "#f1f5f9",
+    text: "#0f172a",
     textMuted: "#64748b",
-    frameGradient: "linear-gradient(to bottom, #ffffff, #fafafa)",
-    borderColor: "#e2e8f0",
+    frameGradient: "linear-gradient(165deg, #ffffff 0%, #f8fafc 50%, #eef2ff 100%)",
+    borderColor: "rgba(15, 23, 42, 0.08)",
   },
   "cosmic-dark": {
-    primary: "#10b981",
-    accent: "#3b82f6",
-    background: "#09090b",
-    surface: "rgba(255,255,255,0.04)",
+    primary: "#34d399",
+    accent: "#38bdf8",
+    background: "#0a0a0f",
+    surface: "rgba(255,255,255,0.06)",
     text: "#f8fafc",
     textMuted: "#94a3b8",
-    frameGradient: "linear-gradient(to bottom, #09090b, #040405)",
-    borderColor: "rgba(255,255,255,0.08)",
+    frameGradient: "linear-gradient(165deg, #0a0a0f 0%, #0f172a 45%, #09090b 100%)",
+    borderColor: "rgba(148, 163, 184, 0.14)",
   },
 };
 
@@ -357,12 +414,14 @@ export function resolveSlideTheme(
       titleClass: "text-neutral-950",
       bodyClass: "text-neutral-700",
       mutedClass: "text-neutral-500",
-      cardClass: "bg-white/90 border border-neutral-200/80 text-neutral-800 backdrop-blur-sm",
-      innerCardBg: "bg-white/90 border border-neutral-200/80 text-neutral-800 shadow-sm backdrop-blur-sm",
-      titleColor: "text-neutral-950",
-      bulletTextColor: "text-neutral-600",
-      subtitleColor: "text-neutral-500",
-      accentText: "text-orange-600",
+      cardClass:
+        "bg-white/95 border border-slate-200/90 text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm",
+      innerCardBg:
+        "bg-white/95 border border-slate-200/90 text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm",
+      titleColor: "text-slate-950",
+      bulletTextColor: "text-slate-600",
+      subtitleColor: "text-slate-500",
+      accentText: "text-teal-600",
       footerTextColor: "#64748b",
       dotColor: base.accent,
     };
@@ -384,12 +443,14 @@ export function resolveSlideTheme(
     titleClass: "text-white",
     bodyClass: "text-slate-300",
     mutedClass: "text-slate-400",
-    cardClass: "bg-white/[0.06] border border-white/10 text-slate-200 backdrop-blur-sm",
-    innerCardBg: "bg-white/[0.06] border border-white/10 text-slate-200 backdrop-blur-sm",
+    cardClass:
+      "bg-gradient-to-br from-white/[0.09] to-white/[0.03] border border-slate-400/20 text-slate-100 shadow-[0_12px_36px_rgba(0,0,0,0.35)] backdrop-blur-sm",
+    innerCardBg:
+      "bg-gradient-to-br from-white/[0.09] to-white/[0.03] border border-slate-400/20 text-slate-100 shadow-[0_12px_36px_rgba(0,0,0,0.35)] backdrop-blur-sm",
     titleColor: "text-white",
-    bulletTextColor: "text-slate-300",
+    bulletTextColor: "text-slate-200",
     subtitleColor: "text-slate-400",
-    accentText: "text-cyan-400",
+    accentText: "text-emerald-400",
     footerTextColor: "#64748b",
     dotColor: base.primary,
   };

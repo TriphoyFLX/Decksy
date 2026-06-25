@@ -22,20 +22,20 @@ export function getStyleSlice(selectedStyle: StyleKey): ThemeSlice {
   return {
     isLight,
     isCobalt,
-    accent: isLight ? "#004de6" : isCobalt ? "#0071e3" : "#10b981",
+    accent: isLight ? "#0d9488" : isCobalt ? "#0071e3" : "#34d399",
     muted: isLight ? "#64748b" : "#94a3b8",
     cardBg: isLight
-      ? "rgba(255,255,255,0.92)"
+      ? "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(248,250,252,0.9))"
       : isCobalt
         ? "rgba(255,255,255,0.94)"
-        : "rgba(255,255,255,0.04)",
+        : "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
     cardBorder: isLight
-      ? "rgba(0,0,0,0.08)"
+      ? "rgba(15,23,42,0.08)"
       : isCobalt
         ? "rgba(0,77,230,0.12)"
-        : "rgba(255,255,255,0.08)",
-    titleClass: isLight ? "text-neutral-950" : isCobalt ? "text-slate-950" : "text-white",
-    textClass: isLight ? "text-neutral-600" : isCobalt ? "text-slate-600" : "text-slate-300",
+        : "rgba(148,163,184,0.16)",
+    titleClass: isLight ? "text-slate-950" : isCobalt ? "text-slate-950" : "text-white",
+    textClass: isLight ? "text-slate-600" : isCobalt ? "text-slate-600" : "text-slate-200",
     isDark: selectedStyle === "cosmic-dark",
   };
 }
@@ -64,7 +64,7 @@ export const SlideSectionHeader: React.FC<{
         </div>
       </div>
       {subtitle && (
-        <div className={`shrink-0 max-w-[45%] text-[7px] sm:text-[8px] font-mono py-1 px-2 rounded-full uppercase tracking-wider border line-clamp-2 ${s.isLight ? "bg-neutral-50 text-neutral-600 border-neutral-200" : s.isDark ? "bg-white/5 text-slate-300 border-white/10" : "bg-blue-50 text-blue-700 border-blue-100"}`}>
+        <div className={`shrink-0 max-w-[45%] text-[7px] sm:text-[8px] font-mono py-1 px-2 rounded-full uppercase tracking-wider border line-clamp-2 ${s.isLight ? "bg-white/80 text-slate-600 border-slate-200/80 shadow-sm" : s.isDark ? "bg-white/[0.06] text-slate-200 border-slate-400/20" : "bg-blue-50 text-blue-700 border-blue-100"}`}>
           {subtitle}
         </div>
       )}

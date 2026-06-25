@@ -66,7 +66,7 @@ import {
 import { generatePythonPPTXCode } from "./lib/pythonGenerator";
 import { DeckCustomizer } from "./components/DeckCustomizer";
 import { SlideConstructor } from "./components/SlideConstructor";
-import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, getTemplateFrameAppearance, type DeckTemplateId } from "./lib/deckTheme";
+import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, getTemplateFrameAppearance, type DeckTemplateId, type TemplateFrameAppearance } from "./lib/deckTheme";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide, DeckThemeCustom, ProjectBranding } from "./types";
 import { normalizeDeck, generateLocalDeck, SLIDE_TYPES } from "./lib/deckBuilder";
 import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, mergeBrandingFromInterview } from "./lib/projectBranding";
@@ -323,6 +323,36 @@ const EXAMPLE_DECKS = [
 ];
 
 const FREE_EXPORT_USED_KEY = "decksy_free_export_used";
+
+function SlideFrameDecorations({ frame }: { frame: TemplateFrameAppearance }) {
+  return (
+    <>
+      {frame.ambientLayers?.map((layer, index) => (
+        <div
+          key={`ambient-${index}`}
+          className={`absolute inset-0 pointer-events-none ${layer.className || "z-[1]"}`}
+          style={layer.style}
+        />
+      ))}
+      {frame.gridBg && (
+        <div
+          className="absolute inset-0 pointer-events-none z-[2]"
+          style={{
+            backgroundImage: frame.gridBg,
+            backgroundSize: frame.gridBgSize,
+          }}
+        />
+      )}
+      {frame.showGlowBlobs && (
+        <>
+          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/12 blur-[90px] pointer-events-none z-[2]" />
+          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-sky-500/10 blur-[90px] pointer-events-none z-[2]" />
+          <div className="absolute top-1/2 left-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/7 blur-[100px] pointer-events-none z-[2]" />
+        </>
+      )}
+    </>
+  );
+}
 
 export default function App() {
   // Screen views: 'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
@@ -4117,22 +4147,7 @@ export default function App() {
                       {frame.overlayStyle && (
                         <div className="absolute inset-0 pointer-events-none z-[1]" style={frame.overlayStyle} />
                       )}
-                      {frame.gridBg && (
-                        <div
-                          className="absolute inset-0 pointer-events-none z-[2]"
-                          style={{
-                            backgroundImage: frame.gridBg,
-                            backgroundSize: frame.gridBgSize,
-                          }}
-                        />
-                      )}
-
-                      {frame.showGlowBlobs && !exportState && (
-                        <>
-                          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px] pointer-events-none z-[2]" />
-                          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/8 blur-[80px] pointer-events-none z-[2]" />
-                        </>
-                      )}
+                      <SlideFrameDecorations frame={frame} />
 
                       <div className={frame.headerClass}>
                         <span className={frame.titleHeaderClass}>{deck.title}</span>
@@ -4834,10 +4849,7 @@ export default function App() {
                 {frame.overlayStyle && (
                   <div className="absolute inset-0 pointer-events-none z-[1]" style={frame.overlayStyle} />
                 )}
-                <div
-                  className="absolute inset-0 pointer-events-none z-[2]"
-                  style={{ backgroundImage: frame.gridBg, backgroundSize: frame.gridBgSize }}
-                />
+                <SlideFrameDecorations frame={frame} />
 
                 <div className={frame.headerClass}>
                   <span className={frame.titleHeaderClass}>{deck.title}</span>
