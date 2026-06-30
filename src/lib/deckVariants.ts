@@ -1,22 +1,23 @@
 import type { PitchDeck, Slide } from "../types";
+import type { DeckDesignPlan } from "./designPlan";
 import { type DeckTemplateId, resolveLayoutEngine } from "./deckTheme";
 
 export type DeckTemplate = DeckTemplateId;
 
 const SLIDE_VARIANTS: Record<string, string[]> = {
   title: ["hero-centered", "hero-bold", "hero-minimal"],
-  problem: ["stats-grid", "pain-stack", "split-quote"],
-  solution: ["product-split", "feature-columns", "demo-hero"],
+  problem: ["big-stat", "quote-poster", "stats-grid", "pain-stack", "split-quote"],
+  solution: ["product-split", "feature-columns", "demo-hero", "quote-poster"],
   product: ["product-split", "feature-columns", "demo-hero"],
-  market: ["metric-row", "chart-focus", "tam-bento"],
+  market: ["big-stat", "metric-row", "chart-focus", "tam-bento"],
   pricing: ["price-tiers", "unit-economics", "revenue-ladder"],
-  traction: ["traction-metrics", "growth-timeline", "proof-board"],
+  traction: ["big-stat", "traction-metrics", "growth-timeline", "proof-board"],
   sauce: ["team-grid", "moat-tech", "ip-stack"],
   competition: ["matrix-2x2", "compare-table", "positioning"],
   launch: ["roadmap", "milestone-track", "gtm-funnel"],
   risks: ["risk-cards", "mitigation-grid", "scenario-split"],
-  ask: ["cta-center", "funding-split", "contact-row"],
-  vision: ["vision-map", "future-state", "north-star"],
+  ask: ["funding-split", "big-stat", "cta-center", "contact-row"],
+  vision: ["quote-poster", "vision-map", "future-state", "north-star"],
 };
 
 function hashSeed(...parts: (string | number)[]): number {
@@ -34,17 +35,21 @@ export function assignDeckVariants(
   deck: PitchDeck,
   idea: string,
   userId?: number,
-  forceTemplate?: DeckTemplateId
+  forceTemplate?: DeckTemplateId,
+  designPlan?: DeckDesignPlan | null
 ): DeckTemplateId {
   const seed = hashSeed(idea, userId ?? 0, deck.title ?? "");
-  const templates: DeckTemplateId[] = ["apex", "titanium", "ember", "midnight", "swiss"];
-  const templateId = forceTemplate ?? pick(templates, seed, 3);
+  const templates: DeckTemplateId[] = ["studio", "apex", "titanium", "ember", "midnight", "swiss"];
+  const templateId = forceTemplate ?? designPlan?.recommendedTemplate ?? pick(templates, seed, 3);
   const layoutEngine = resolveLayoutEngine(templateId);
 
   deck.slides.forEach((slide, index) => {
     const type = slide.type || "title";
     const variants = SLIDE_VARIANTS[type] || SLIDE_VARIANTS.title;
-    const variant = pick(variants, seed, index * 7 + 1);
+    const planned = designPlan?.slidePlans?.find((p) => p.slideIndex === index);
+    const plannedVariant =
+      planned?.layoutIntent && variants.includes(planned.layoutIntent) ? planned.layoutIntent : null;
+    const variant = plannedVariant || pick(variants, seed, index * 7 + 1);
     slide.visualData = {
       ...(slide.visualData || {}),
       template: layoutEngine,
@@ -52,6 +57,10 @@ export function assignDeckVariants(
       variant,
     };
   });
+
+  if (designPlan) {
+    deck.designPlan = designPlan;
+  }
 
   return templateId;
 }

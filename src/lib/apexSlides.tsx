@@ -611,6 +611,90 @@ export const ApexStatsGrid: React.FC<{
   );
 };
 
+export const ApexBigStat: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, extractNumber, renderBullet, renderLabel, glass, forExport }) => {
+  const primary = content[0] || "Ключевая метрика";
+  const parsed = parseBullet(primary);
+  const stat =
+    extractNumber(primary) ||
+    parsed.detail.match(/[\d$₽€%млнмлрдтысkKMB+\-↑↓]+/i)?.[0] ||
+    parsed.label;
+  const label = parsed.label && parsed.label !== stat ? parsed.label : "Главная цифра";
+  const statSize = forExport ? "text-[4.5rem]" : "text-4xl sm:text-5xl";
+
+  return (
+    <div className="flex flex-col items-center justify-center text-center my-auto min-h-0 flex-1 px-4 sm:px-8 gap-3">
+      <span
+        className="text-[8px] sm:text-[9px] uppercase tracking-[0.22em] font-bold"
+        style={{ color: glass.accent }}
+      >
+        {renderLabel ? renderLabel(label, 0, "") : label}
+      </span>
+      <div className={`${statSize} font-black leading-none tracking-tight ${glass.titleClass}`}>{stat}</div>
+      {parsed.detail && parsed.detail !== stat && (
+        <p className={`text-[10px] sm:text-xs max-w-md leading-relaxed line-clamp-3 ${glass.bodyClass}`}>
+          {renderBullet(parsed.detail, 0, "")}
+        </p>
+      )}
+      {content.length > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+          {content.slice(1, 3).map((item, i) => (
+            <span
+              key={i}
+              className={`text-[8px] px-2.5 py-1 rounded-full border ${glass.isLight ? "bg-white/80 border-slate-200 text-slate-600" : "bg-white/[0.06] border-white/10 text-slate-300"}`}
+            >
+              {renderBullet(item, i + 1, "")}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const ApexQuotePoster: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const primary = content[0] || "Главная мысль слайда";
+  const parsed = parseBullet(primary);
+  const quote = parsed.detail || primary;
+  const attribution = parsed.label || "Ключевой инсайт";
+  const quoteSize = forExport ? "text-3xl" : "text-lg sm:text-2xl";
+
+  return (
+    <div className="relative flex flex-col items-center justify-center text-center my-auto min-h-0 flex-1 px-5 sm:px-10 py-4">
+      <div
+        className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-24 rounded-full blur-3xl pointer-events-none opacity-60"
+        style={{ background: alpha(glass.accent, "22") }}
+      />
+      <span className="text-4xl sm:text-5xl leading-none mb-2 opacity-30" style={{ color: glass.accent }}>
+        “
+      </span>
+      <blockquote className={`${quoteSize} font-semibold leading-tight tracking-tight max-w-2xl ${glass.titleClass}`}>
+        {renderBullet(quote, 0, "")}
+      </blockquote>
+      <div className={`mt-4 text-[9px] uppercase tracking-[0.18em] font-bold ${glass.mutedClass}`}>
+        {renderLabel ? renderLabel(attribution, 0, "") : attribution}
+      </div>
+      {content[1] && (
+        <p className={`mt-3 text-[9px] max-w-lg line-clamp-2 ${glass.bodyClass}`}>{renderBullet(content[1], 1, "")}</p>
+      )}
+    </div>
+  );
+};
+
 export const ApexProductSplit: React.FC<{
   content: string[];
   image?: string;
@@ -1332,7 +1416,26 @@ export const ApexSlideContent: React.FC<{
         )}
 
         {type === "problem" &&
-          (variant === "pain-stack" ? (
+          (variant === "big-stat" ? (
+            <ApexBigStat
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "quote-poster" ? (
+            <ApexQuotePoster
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "pain-stack" ? (
             <ApexPainStack
               content={content}
               parseBullet={parseBullet}
@@ -1375,7 +1478,17 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "market" &&
-          (variant === "chart-focus" ? (
+          (variant === "big-stat" ? (
+            <ApexBigStat
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "chart-focus" ? (
             <ApexChartFocus
               content={content}
               metrics={slide.visualData?.metrics}
@@ -1408,7 +1521,16 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {(type === "solution" || type === "product") &&
-          (variant === "feature-columns" ? (
+          (variant === "quote-poster" ? (
+            <ApexQuotePoster
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "feature-columns" ? (
             <ApexFeatureColumns
               content={content}
               parseBullet={parseBullet}
@@ -1453,7 +1575,17 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "traction" && (
-          variant === "growth-timeline" ? (
+          variant === "big-stat" ? (
+            <ApexBigStat
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "growth-timeline" ? (
             <ApexRoadmap content={content} timeline={slide.visualData?.timeline} parseBullet={parseBullet} renderLabel={renderLabel} glass={glass} forExport={forExport} />
           ) : variant === "proof-board" ? (
             <ApexFeatureColumns
@@ -1525,7 +1657,17 @@ export const ApexSlideContent: React.FC<{
         )}
 
         {type === "ask" && (
-          variant === "funding-split" ? (
+          variant === "big-stat" ? (
+            <ApexBigStat
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "funding-split" ? (
             <ApexFundingSplit
               title={title}
               content={content}
@@ -1548,16 +1690,26 @@ export const ApexSlideContent: React.FC<{
           )
         )}
 
-        {type === "vision" && (
-          <ApexVisionMap
-            content={content}
-            parseBullet={parseBullet}
-            renderBullet={renderBullet}
-            renderLabel={renderLabel}
-            glass={glass}
-            forExport={forExport}
-          />
-        )}
+        {type === "vision" &&
+          (variant === "quote-poster" ? (
+            <ApexQuotePoster
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : (
+            <ApexVisionMap
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ))}
 
         {type === "sauce" && !slide.visualData?.teamMembers?.length && (
           <ApexPainGrid

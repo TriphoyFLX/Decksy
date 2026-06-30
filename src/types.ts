@@ -46,7 +46,7 @@ export interface SlideConstructorLayout {
 
 export interface SlideVisualData {
   template?: 'apex' | 'swiss';
-  deckTemplate?: 'apex' | 'swiss' | 'titanium' | 'ember' | 'midnight';
+  deckTemplate?: 'apex' | 'swiss' | 'titanium' | 'ember' | 'midnight' | 'studio';
   variant?: string;
   layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics' | 'timeline' | 'pricing' | 'matrix';
   teamMembers?: { name: string; role: string; image: string }[];
@@ -86,6 +86,8 @@ export interface ProjectBranding {
   slideNotes?: string;
 }
 
+import type { DeckDesignPlan } from "./lib/designPlan";
+
 export interface PitchDeck {
   id: string;
   title: string;
@@ -101,6 +103,7 @@ export interface PitchDeck {
     weakSpots: string[]; // List of specific vulnerabilities
     recommendations: string[]; // How to fix them
   };
+  designPlan?: DeckDesignPlan;
 }
 
 export interface DeckThemeCustom {

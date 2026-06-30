@@ -1,6 +1,6 @@
 import type React from "react";
 
-export type DeckTemplateId = "apex" | "swiss" | "titanium" | "ember" | "midnight";
+export type DeckTemplateId = "apex" | "swiss" | "titanium" | "ember" | "midnight" | "studio";
 
 export type DeckLayoutEngine = "apex" | "swiss";
 
@@ -90,6 +90,18 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     selectedStyle: "cosmic-dark",
     layoutEngine: "apex",
     overlayOpacity: 0.34,
+  },
+  studio: {
+    id: "studio",
+    name: "Studio",
+    source: "Behance / Apple / Stripe",
+    description: "Постерный pitch: slate-фон, один зелёный акцент, крупная типографика",
+    frameGradient: "linear-gradient(165deg, #0f172a 0%, #020617 48%, #0b1120 100%)",
+    gridBg:
+      "linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+    accent: "#22c55e",
+    selectedStyle: "cosmic-dark",
+    layoutEngine: "apex",
   },
 };
 

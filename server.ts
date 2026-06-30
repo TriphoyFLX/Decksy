@@ -19,6 +19,12 @@ import { businessPromptForAI } from "./src/lib/businessSlides";
 import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
 import { assignDeckVariants } from "./src/lib/deckVariants";
 import {
+  designPlanPromptBlock,
+  getDefaultDesignPlan,
+  normalizeDesignPlan,
+  type DeckDesignPlan,
+} from "./src/lib/designPlan";
+import {
   extractWordPromptTopic,
   isWordGenerationPrompt,
   resolveWordGenerationMode,
@@ -896,6 +902,44 @@ ${businessPromptForAI()}
   return generateLocalOutline(idea, mode, branding || undefined);
 }
 
+async function generateDesignPlanWithAI(
+  idea: string,
+  mode: string,
+  branding: any = null,
+  outline: any = null
+): Promise<DeckDesignPlan> {
+  const brandingCtx = brandingContextForAI(branding);
+  try {
+    const result = await callLLM(
+      `You are a presentation design director for investor pitch decks (Behance/Apple/Stripe level).
+Return JSON only:
+{
+  "theme": "short theme name",
+  "visualStyle": "Apple + Stripe + Behance",
+  "palette": { "background": "#0F172A", "accent": "#22C55E", "text": "#FFFFFF", "surface": "rgba(255,255,255,0.06)" },
+  "layoutRules": { "maxWordsPerSlide": 35, "whitespace": 0.7, "accentColor": "#22C55E" },
+  "recommendedTemplate": "studio",
+  "recommendedStyle": "cosmic-dark",
+  "slidePlans": [
+    { "slideIndex": 0, "type": "title", "layoutIntent": "hero-bold", "maxWords": 18, "emphasis": "one line value", "contentFormat": "headline" }
+  ]
+}
+Rules:
+- Exactly 12 slidePlans for slideIndex 0..11 matching types: title, problem, solution, product, market, competition, pricing, traction, launch, sauce, ask, vision
+- layoutIntent must vary: use big-stat, quote-poster, stats-grid, product-split, matrix-2x2, price-tiers, roadmap, team-grid, funding-split, vision-map etc.
+- Adjacent slides MUST NOT share the same layoutIntent
+- ONE accent color only. Dark poster style unless idea clearly needs light theme (then recommendedStyle=clean-light, recommendedTemplate=ember)
+- recommendedTemplate one of: studio, apex, swiss, titanium, ember, midnight`,
+      `Startup idea: ${idea}\nMode: ${mode}\n${brandingCtx}\n${outline?.title ? `Outline title: ${outline.title}` : ""}\nCreate design plan.`,
+      1800
+    );
+    return normalizeDesignPlan(result, idea);
+  } catch (err: any) {
+    console.warn("Design plan AI failed, using defaults:", err.message?.slice(0, 120));
+    return getDefaultDesignPlan(idea);
+  }
+}
+
 async function generateDeckWithAI(
   idea: string,
   mode: string,
@@ -904,7 +948,8 @@ async function generateDeckWithAI(
   isFastGeneration: boolean,
   sessionImages: any[] = [],
   outline: any = null,
-  branding: any = null
+  branding: any = null,
+  designPlan: DeckDesignPlan | null = null
 ): Promise<any | null> {
   const slideTypeList = SLIDE_TYPES.map((t, i) => `${i + 1}. type="${t}"`).join("\n");
 
@@ -930,6 +975,8 @@ If an image is assigned to a slide, you MUST write "speechScript" addressing or 
   }
 
   const brandingCtx = brandingContextForAI(branding);
+  const plan = designPlan || getDefaultDesignPlan(idea);
+  const designBlock = designPlanPromptBlock(plan);
 
   const outlineContext = outline?.slides?.length
     ? `\nAPPROVED PRESENTATION OUTLINE (follow this structure — expand bullets into full slide content):\n${outlineToDeckContext(outline)}\n`
@@ -943,6 +990,7 @@ ${isFastGeneration ? "FAST GENERATION: Create a complete detailed pitch deck fro
 ${!isFastGeneration ? `Conversation:\n${messages.map((m: any) => `${m.sender}: ${m.text}`).join("\n")}\n\nCanvas:\n${JSON.stringify(canvas, null, 2)}` : ""}
 ${outlineContext}
 ${imageContext}
+${designBlock}
 `;
 
   // Strategy 1: full deck in one call (when credits allow)
@@ -992,6 +1040,9 @@ Rules:
 - Конкуренты: почему пользователь уйдёт с Avito/аналогов — конкретный механизм, не "нет доверия"
 - traction slide: if no metrics — say "Early stage", list validation signals, do NOT invent revenue
 - vision slide: 3-5 year horizon, why it can be big — realistic not fantasy
+- POSTER RULES: max ${plan.layoutRules.maxWordsPerSlide} words per slide total across title+content; one idea per slide; no walls of text
+- Prefer 1-2 bullets for big-stat/quote-poster layouts, 3 bullets max for card layouts
+- Bad: "Мы стремимся развивать инновации". Good: "Запустили продукт за 14 дней" or "250 000 пользователей за первый год"
 - Пиши что делает пользователь за 10 секунд, а не абстрактные "инновации"`,
       `${baseContext}\nGenerate the complete 12-slide pitch deck.`,
       8000
@@ -2997,6 +3048,18 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
 
   const isFastGeneration = messages.length <= 1 || Boolean(outline?.slides?.length);
   let aiDeck: any = null;
+  let designPlan: DeckDesignPlan = getDefaultDesignPlan(idea);
+
+  try {
+    designPlan = await generateDesignPlanWithAI(
+      idea,
+      mode,
+      branding || parseBrandingFromCanvas(canvas),
+      outline
+    );
+  } catch (err: any) {
+    console.warn("Design plan step skipped:", err.message?.slice(0, 120));
+  }
 
   try {
     aiDeck = await generateDeckWithAI(
@@ -3007,7 +3070,8 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
       isFastGeneration,
       sessionImages,
       outline,
-      branding || parseBrandingFromCanvas(canvas)
+      branding || parseBrandingFromCanvas(canvas),
+      designPlan
     );
   } catch (err: any) {
     console.error("API Error in /api/generate_deck (using local generator):", err.message?.slice(0, 200));
@@ -3022,7 +3086,8 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
 
   // Map session images systematically
   enrichSlidesWithVisuals(deck.slides, sessionImages);
-  assignDeckVariants(deck, idea, (req as any).user?.userId, templateId || undefined);
+  assignDeckVariants(deck, idea, (req as any).user?.userId, templateId || undefined, designPlan);
+  deck.designPlan = designPlan;
 
   const updatedUser = await recordDeckGeneration((req as any).user.userId);
 
