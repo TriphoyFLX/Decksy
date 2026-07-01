@@ -33,7 +33,9 @@ import {
   getPlanTokenAllowance,
   getRequiredBlockCount,
   isInterviewComplete,
+  createInitialCanvas,
 } from "./src/lib/interviewFlow";
+import { extractBriefDocuments } from "./src/lib/briefParser";
 import {
   extractWordPromptTopic,
   isWordGenerationPrompt,
@@ -736,7 +738,7 @@ app.use("/api/auth/register", createRateLimiter("auth-register", {
   max: 10,
   message: "Слишком много регистраций с этого IP. Попробуйте позже.",
 }));
-app.use(["/api/interview", "/api/generate_deck", "/api/generate_outline", "/api/rewrite_slide", "/api/generate_word"], createRateLimiter("ai", {
+app.use(["/api/interview", "/api/import_brief", "/api/generate_deck", "/api/generate_outline", "/api/rewrite_slide", "/api/generate_word"], createRateLimiter("ai", {
   windowMs: 60 * 60 * 1000,
   max: 40,
   message: "Слишком много ИИ-запросов за короткое время. Попробуйте позже.",
@@ -2498,6 +2500,113 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
   } catch (err: any) {
     console.error("API Error in /api/interview (falling back to mock):", err);
     res.json(getMockInterviewResponse(req.body.messages || [], req.body.mode || "investor", req.body.idea, req.body.canvas));
+  }
+});
+
+function canImportBrief(user: { role?: string | null; plan?: string | null }) {
+  return user.role === "admin" || user.plan === "Pro";
+}
+
+app.post("/api/import_brief", authenticateToken, async (req: any, res) => {
+  try {
+    const dbUser = await getUserWithFreshDeckWindow(req.user.userId);
+    if (!dbUser) {
+      return res.status(404).json({ error: "Пользователь не найден." });
+    }
+    if (!canImportBrief(dbUser)) {
+      return res.status(403).json({ error: "Импорт документов доступен на тарифе Pro." });
+    }
+
+    const { idea, mode, docxBase64, xlsxBase64, pdfBase64 } = req.body;
+    if (!idea || typeof idea !== "string") {
+      return res.status(400).json({ error: "Укажите идею проекта." });
+    }
+    if (!docxBase64 && !xlsxBase64 && !pdfBase64) {
+      return res.status(400).json({ error: "Загрузите Word (.docx), PDF или Excel (.xlsx)." });
+    }
+
+    const deckMode = (mode as "quick" | "investor" | "shark") || "investor";
+    const briefText = await extractBriefDocuments(docxBase64, xlsxBase64, pdfBase64);
+    if (!briefText || briefText.length < 40) {
+      return res.status(400).json({
+        error: "Не удалось извлечь текст из файлов. Проверьте формат .docx / .pdf / .xlsx (PDF должен быть с текстом, не скан).",
+      });
+    }
+
+    const requiredBlocks = getInterviewBlocksForMode(deckMode);
+    const blockSpecText = requiredBlocks
+      .map((b, i) => `${i + 1}. ${b.key} — ${b.question}`)
+      .join("\n");
+
+    const systemInstruction = `
+      You extract structured pitch-deck facts from uploaded business documents (Russian).
+      Map content into interview canvas blocks. Mark "compiled" ONLY when document has enough specific info.
+      If block is missing or too vague — status "locked" or "thinking", do NOT invent numbers.
+
+      Return JSON:
+      {
+        "summary": "1 sentence what was extracted",
+        "canvasUpdates": { /* all block keys with title, summary, bullets[], status */ },
+        "missingBlockKeys": ["problemProof", "ask"]
+      }
+
+      Required blocks for mode:
+      ${blockSpecText}
+    `;
+
+    const prompt = `
+      Startup idea: "${idea}"
+      Mode: ${deckMode}
+
+      Uploaded documents text:
+      ${briefText.slice(0, 18000)}
+    `;
+
+    let canvasUpdates: Record<string, any> = {};
+    let missingBlockKeys: string[] = requiredBlocks.map((b) => b.key);
+    let summary = "Документы обработаны.";
+
+    try {
+      const result = await callLLM(systemInstruction, prompt, 2500);
+      canvasUpdates = result.canvasUpdates || {};
+      if (Array.isArray(result.missingBlockKeys)) {
+        missingBlockKeys = result.missingBlockKeys;
+      }
+      if (result.summary) summary = result.summary;
+    } catch (err: any) {
+      console.warn("import_brief LLM failed:", err.message?.slice(0, 120));
+    }
+
+    const baseCanvas = createInitialCanvas();
+    const mergedCanvas = { ...baseCanvas, ...canvasUpdates };
+    const compiled = countCompiledBlocks(mergedCanvas, deckMode);
+    const total = requiredBlocks.length;
+    const nextBlock = getNextInterviewBlock(mergedCanvas, deckMode);
+    const interviewComplete = requiredBlocks.every((b) => mergedCanvas[b.key]?.status === "compiled");
+
+    let nextQuestion = "";
+    if (interviewComplete) {
+      nextQuestion =
+        "Отлично! Из Word/Excel достаточно данных для питч-дека. Сейчас автоматически соберу план презентации...";
+    } else if (nextBlock) {
+      nextQuestion = `Разобрал ваши файлы (${compiled}/${total} блоков). ${buildInterviewQuestion(nextBlock, idea, deckMode)}`;
+    } else {
+      nextQuestion = buildInterviewQuestion(requiredBlocks[0], idea, deckMode);
+    }
+
+    res.json({
+      summary,
+      canvasUpdates: mergedCanvas,
+      missingBlockKeys,
+      nextQuestion,
+      interviewComplete,
+      interviewProgress: { compiled, total, userTurns: 0 },
+      investorSentiment: compiled >= total / 2 ? "intrigued" : "skeptical",
+      underlyingThoughts: `Из документов заполнено ${compiled} из ${total} блоков.`,
+    });
+  } catch (err: any) {
+    console.error("import_brief error:", err);
+    res.status(500).json({ error: "Не удалось разобрать загруженные файлы." });
   }
 });
 

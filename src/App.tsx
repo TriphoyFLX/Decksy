@@ -381,6 +381,8 @@ export default function App() {
   const [roasted, setRoasted] = useState(false);
   
   const [isWatermarkRemoved, setIsWatermarkRemoved] = useState(false);
+  const [briefImported, setBriefImported] = useState(false);
+  const [briefImportError, setBriefImportError] = useState("");
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [sessionImages, setSessionImages] = useState<{ id: string; image: string; description: string }[]>(() => loadSessionImages());
   const [showImagePromptModal, setShowImagePromptModal] = useState(false);
@@ -1084,6 +1086,8 @@ export default function App() {
     setProjectBranding(EMPTY_PROJECT_BRANDING);
     setDeck(null);
     clearChatSession();
+    setBriefImported(false);
+    setBriefImportError("");
     setIsLoading(true);
     setScreen("interview");
     setCanvas(INITIAL_CANVAS);
@@ -1103,6 +1107,115 @@ export default function App() {
 
     setMessages([welcomeMsg]);
     setIsLoading(false);
+  };
+
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImportBrief = async (planFile: File | null, xlsxFile: File | null) => {
+    setBriefImportError("");
+    if (!idea.trim() || idea.trim().length < 15) {
+      setBriefImportError("Сначала опишите идею проекта (минимум 15 символов).");
+      return;
+    }
+    if (!planFile && !xlsxFile) {
+      setBriefImportError("Загрузите бизнес-план (.docx / .pdf) и/или Excel (.xlsx).");
+      return;
+    }
+    if (!authToken || !user) {
+      setAuthError("Войдите или зарегистрируйтесь, чтобы создавать презентации.");
+      setAuthTab("login");
+      setShowAuthModal(true);
+      return;
+    }
+    if (!isWatermarkRemoved && user.role !== "admin") {
+      setLimitMessage("Импорт документов доступен на тарифе Pro.");
+      setShowLimitModal(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let docxBase64: string | undefined;
+      let pdfBase64: string | undefined;
+      if (planFile) {
+        const planData = await readFileAsBase64(planFile);
+        if (/\.pdf$/i.test(planFile.name)) {
+          pdfBase64 = planData;
+        } else {
+          docxBase64 = planData;
+        }
+      }
+      const xlsxBase64 = xlsxFile ? await readFileAsBase64(xlsxFile) : undefined;
+
+      const response = await fetch("/api/import_brief", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          idea: idea.trim(),
+          mode,
+          docxBase64,
+          pdfBase64,
+          xlsxBase64,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Не удалось разобрать загруженные файлы.");
+      }
+
+      setPresentationOutline(null);
+      setProjectBranding(EMPTY_PROJECT_BRANDING);
+      setDeck(null);
+      clearChatSession();
+      setBriefImported(true);
+      setScreen("interview");
+      setSessionImages([]);
+      setCurrentQuestionIndex(1);
+
+      const mergedCanvas = data.canvasUpdates || INITIAL_CANVAS;
+      setCanvas(mergedCanvas);
+      setInvestorSentiment(data.investorSentiment || "intrigued");
+      setUnderlyingThoughts(data.underlyingThoughts || "Данные из документов загружены.");
+
+      const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const introMsg: Message = {
+        id: "import-summary",
+        sender: "investor",
+        text: `📄 ${data.summary || "Документы обработаны."}`,
+        timestamp: ts,
+      };
+      const questionMsg: Message = {
+        id: "import-question",
+        sender: "investor",
+        text: data.nextQuestion,
+        timestamp: ts,
+      };
+      setMessages([introMsg, questionMsg]);
+
+      const interviewDone =
+        data.interviewComplete === true &&
+        isInterviewComplete(mergedCanvas, mode, 0, { skipTurnCheck: true });
+
+      if (interviewDone) {
+        setTimeout(() => {
+          handleProceedToGeneration();
+        }, 1500);
+      }
+    } catch (err: any) {
+      setBriefImportError(err.message || "Не удалось разобрать загруженные файлы.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openAgentChat = () => {
@@ -1412,7 +1525,7 @@ export default function App() {
       const mergedCanvas = data.canvasUpdates ? { ...canvas, ...data.canvasUpdates } : canvas;
       const interviewDone =
         data.interviewComplete === true &&
-        isInterviewComplete(mergedCanvas, mode, userAnswers);
+        isInterviewComplete(mergedCanvas, mode, userAnswers, { skipTurnCheck: briefImported });
 
       if (!deck && interviewDone) {
         setInputMessage("");
@@ -3062,8 +3175,32 @@ export default function App() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             
+            {user && (
+              <button
+                type="button"
+                onClick={() => setScreen("plans")}
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border text-[10px] font-mono tracking-wide transition-colors cursor-pointer shrink-0 ${
+                  user.role === "admin" || (user.tokenBalance ?? 0) >= DECK_GENERATION_TOKEN_COST
+                    ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    : "bg-amber-950/30 border-amber-500/35 text-amber-200 hover:bg-amber-950/45"
+                }`}
+                title={`Остаток токенов. Генерация деки = ${DECK_GENERATION_TOKEN_COST} токенов.`}
+              >
+                <Sparkles className="h-3 w-3 shrink-0 text-[#F59E0B]" />
+                {user.role === "admin" ? (
+                  <span className="uppercase font-bold">∞</span>
+                ) : (
+                  <span>
+                    <strong className="text-white">{user.tokenBalance ?? 0}</strong>
+                    <span className="text-slate-500"> / {user.tokenAllowance ?? DECK_GENERATION_TOKEN_COST}</span>
+                    <span className="hidden sm:inline text-slate-500"> ток.</span>
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* BUY SUBSCRIPTION BUTTON IF NOT BOUGHT */}
             {!isWatermarkRemoved ? (
               <button 
@@ -3877,6 +4014,9 @@ export default function App() {
             suggestions={suggestions}
             isLoading={isLoading}
             handleStartInterview={handleStartInterview}
+            handleImportBrief={handleImportBrief}
+            isPro={isWatermarkRemoved || user?.role === "admin"}
+            importError={briefImportError}
             userName={user?.name || user?.email?.split("@")[0]}
             activeAds={activeAds}
           />

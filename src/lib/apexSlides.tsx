@@ -736,20 +736,39 @@ export const ApexProductSplit: React.FC<{
       </div>
     ) : (
       <div
-        className={`${glassCardClass} aspect-square flex items-center justify-center relative overflow-hidden`}
+        className={`${glassCardClass} p-3 flex flex-col justify-center min-h-0 overflow-hidden`}
         style={glassCardStyle(glass, forExport)}
       >
-        <div
-          className={`w-[80%] rounded-2xl border p-4 space-y-2 ${glass.isLight ? "border-neutral-200/80 bg-white/50" : "border-white/15 bg-white/[0.06]"}`}
-        >
-          <div className="flex gap-1.5 mb-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-          </div>
-          {[100, 80, 60, 45, 100, 75].map((w, idx) => (
-            <div key={idx} className={`h-1.5 rounded-full ${glass.isLight ? "bg-neutral-300/60" : "bg-white/10"}`} style={{ width: `${w}%`, opacity: 1 - idx * 0.08 }} />
-          ))}
+        <span className={`text-[8px] uppercase tracking-widest font-bold mb-2.5 ${glass.mutedClass}`}>
+          Как работает продукт
+        </span>
+        <div className="space-y-2">
+          {content.slice(0, 3).map((item, i) => {
+            const p = parseBullet(item);
+            return (
+              <div
+                key={i}
+                className={`flex gap-2.5 items-start rounded-xl p-2 border ${glass.isLight ? "border-white/60 bg-white/35" : "border-white/10 bg-white/[0.04]"}`}
+              >
+                <div
+                  className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: alpha(glass.accent, "24"), color: glass.accent }}
+                >
+                  {i + 1}
+                </div>
+                <div className="min-w-0 text-left">
+                  {p.label && (
+                    <h3 className={`text-[9px] font-semibold mb-0.5 line-clamp-1 ${glass.titleClass}`}>
+                      {renderLabel ? renderLabel(p.label, i, "") : p.label}
+                    </h3>
+                  )}
+                  <p className={`text-[8.5px] leading-relaxed line-clamp-3 ${glass.bodyClass}`}>
+                    {renderBullet(p.detail || item, i, "")}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     )}
@@ -1266,15 +1285,31 @@ export const ApexGtmFunnel: React.FC<{
   glass: GlassSurface;
   forExport?: boolean;
 }> = ({ content, parseBullet, renderLabel, glass, forExport }) => {
-  const items = parseItems(content, parseBullet).slice(0, 4);
+  const items = parseItems(content, parseBullet).slice(0, 3);
+  const icons = ["📣", "🎯", "🚀"];
   return (
-    <div className="flex flex-col justify-center gap-1.5 my-auto min-h-0 flex-1 overflow-hidden">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-auto min-h-0 flex-1 overflow-hidden">
       {items.map((item, i) => (
-        <div key={i} className="mx-auto" style={{ width: `${100 - i * 13}%` }}>
-          <div className={`${glassCardClass} px-4 py-1.5 text-center overflow-hidden`} style={{ ...glassCardStyle(glass, forExport), borderColor: alpha(glass.accent, i === 0 ? "66" : "33") }}>
-            <span className="text-[7px] uppercase tracking-widest font-bold line-clamp-1" style={{ color: glass.accent }}>{renderLabel ? renderLabel(item.label, i, "") : item.label}</span>
-            <p className={`text-[8.5px] line-clamp-2 ${glass.bodyClass}`}>{item.detail}</p>
+        <div
+          key={i}
+          className={`${glassCardClass} p-3 flex flex-col text-left min-h-0`}
+          style={{
+            ...glassCardStyle(glass, forExport),
+            borderColor: alpha(glass.accent, i === 0 ? "55" : "28"),
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
+              style={{ background: alpha(glass.accent, "18") }}
+            >
+              {icons[i] || "•"}
+            </span>
+            <span className="text-[8px] uppercase tracking-widest font-bold line-clamp-2 leading-tight" style={{ color: glass.accent }}>
+              {renderLabel ? renderLabel(item.label, i, "") : item.label}
+            </span>
           </div>
+          <p className={`text-[9px] leading-relaxed line-clamp-5 flex-1 ${glass.bodyClass}`}>{item.detail}</p>
         </div>
       ))}
     </div>

@@ -214,11 +214,17 @@ export function getNextInterviewBlock(canvas: PitchCanvas, mode: Mode): Intervie
   return blocks.find((block) => canvas[block.key]?.status !== "compiled") || null;
 }
 
-export function isInterviewComplete(canvas: PitchCanvas, mode: Mode, userTurns: number): boolean {
+export function isInterviewComplete(
+  canvas: PitchCanvas,
+  mode: Mode,
+  userTurns: number,
+  options?: { skipTurnCheck?: boolean },
+): boolean {
   const blocks = getInterviewBlocksForMode(mode);
-  const minTurns = blocks.length;
-  if (userTurns < minTurns) return false;
-  return blocks.every((block) => canvas[block.key]?.status === "compiled");
+  const allCompiled = blocks.every((block) => canvas[block.key]?.status === "compiled");
+  if (!allCompiled) return false;
+  if (options?.skipTurnCheck) return true;
+  return userTurns >= blocks.length;
 }
 
 export function buildInterviewQuestion(block: InterviewBlockSpec, idea: string, mode: Mode): string {

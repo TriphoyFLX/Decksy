@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from "react";
-import { ArrowUp } from "lucide-react";
+import React, { useRef, useEffect, useState } from "react";
+import { ArrowUp, FileSpreadsheet, FileText, Upload } from "lucide-react";
 import { motion } from "motion/react";
 
 interface IntroPageProps {
@@ -8,6 +8,9 @@ interface IntroPageProps {
   suggestions: string[];
   isLoading: boolean;
   handleStartInterview: () => void;
+  handleImportBrief?: (planFile: File | null, xlsxFile: File | null) => void;
+  isPro?: boolean;
+  importError?: string;
   userName?: string | null;
   activeAds: any[];
 }
@@ -18,12 +21,21 @@ export const IntroPage: React.FC<IntroPageProps> = ({
   suggestions,
   isLoading,
   handleStartInterview,
+  handleImportBrief,
+  isPro,
+  importError,
   userName,
   activeAds,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const planInputRef = useRef<HTMLInputElement>(null);
+  const xlsxInputRef = useRef<HTMLInputElement>(null);
+  const [planFile, setPlanFile] = useState<File | null>(null);
+  const [xlsxFile, setXlsxFile] = useState<File | null>(null);
 
   const displayName = userName?.trim() || null;
+  const canImport = Boolean(isPro && handleImportBrief);
+  const ideaReady = idea.trim().length >= 15;
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -42,6 +54,27 @@ export const IntroPage: React.FC<IntroPageProps> = ({
       e.preventDefault();
       handleSubmit();
     }
+  };
+
+  const handlePlanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && !/\.(docx|pdf)$/i.test(file.name)) {
+      return;
+    }
+    setPlanFile(file);
+  };
+
+  const handleXlsxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && !/\.xlsx$/i.test(file.name)) {
+      return;
+    }
+    setXlsxFile(file);
+  };
+
+  const handleImportClick = () => {
+    if (!handleImportBrief || isLoading) return;
+    handleImportBrief(planFile, xlsxFile);
   };
 
   return (
@@ -95,6 +128,87 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
+
+        {canImport && (
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 space-y-3">
+            <div className="flex items-start gap-3 text-left">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                <Upload className="h-4 w-4 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-emerald-200">Pro: бриф из документов</p>
+                <p className="text-[12px] text-slate-400 mt-1 leading-relaxed">
+                  Загрузите бизнес-план (.docx или .pdf) и финмодель (.xlsx) — ИИ заполнит структуру деки и доспрашивает только недостающее.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => planInputRef.current?.click()}
+                disabled={isLoading}
+                className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-left hover:bg-white/[0.04] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <FileText className="h-4 w-4 text-sky-400 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[11px] text-slate-300 truncate">
+                    {planFile ? planFile.name : "Word / PDF"}
+                  </span>
+                  <span className="block text-[10px] text-slate-500">Бизнес-план (.docx, .pdf)</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => xlsxInputRef.current?.click()}
+                disabled={isLoading}
+                className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-left hover:bg-white/[0.04] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[11px] text-slate-300 truncate">
+                    {xlsxFile ? xlsxFile.name : "Excel (.xlsx)"}
+                  </span>
+                  <span className="block text-[10px] text-slate-500">Юнит-экономика, P&amp;L</span>
+                </span>
+              </button>
+            </div>
+
+            <input
+              ref={planInputRef}
+              type="file"
+              accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+              className="hidden"
+              onChange={handlePlanChange}
+            />
+            <input
+              ref={xlsxInputRef}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={handleXlsxChange}
+            />
+
+            <button
+              type="button"
+              onClick={handleImportClick}
+              disabled={isLoading || !ideaReady || (!planFile && !xlsxFile)}
+              className="w-full rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-black text-[11px] font-bold uppercase tracking-widest py-2.5 transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer border-none"
+            >
+              Собрать из документов
+            </button>
+
+            {!ideaReady && (planFile || xlsxFile) && (
+              <p className="text-[11px] text-amber-400/90 text-center">
+                Добавьте краткое описание идеи выше (минимум 15 символов).
+              </p>
+            )}
+
+            {importError && (
+              <p className="text-[11px] text-red-400 text-center">{importError}</p>
+            )}
+          </div>
+        )}
 
         {suggestions.length > 0 && (
           <div className="flex flex-wrap justify-center gap-2">
