@@ -23,6 +23,8 @@ model User {
   planExpiresAt       DateTime?
   monthlyDeckCount    Int         @default(0)
   monthlyDeckResetAt  DateTime?
+  tokenBalance        Int         @default(100)
+  tokenResetAt        DateTime?
   freeExportUsed      Boolean     @default(false)
   tokenVersion        Int         @default(0)
   createdAt           DateTime    @default(now())

@@ -15,14 +15,21 @@ export interface CanvasSection {
 }
 
 export interface PitchCanvas {
+  branding: CanvasSection;
   problem: CanvasSection;
+  problemProof: CanvasSection;
   solution: CanvasSection;
+  product: CanvasSection;
+  whyNow: CanvasSection;
   market: CanvasSection;
+  team: CanvasSection;
+  traction: CanvasSection;
   moneyModel: CanvasSection;
   competitors: CanvasSection;
   goToMarket: CanvasSection;
+  roadmap: CanvasSection;
+  ask: CanvasSection;
   risks: CanvasSection;
-  branding: CanvasSection;
   _deckTheme?: DeckThemeCustom;
 }
 

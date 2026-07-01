@@ -22,6 +22,7 @@ import {
   Loader2,
   RefreshCw
 } from "lucide-react";
+import { DECK_GENERATION_TOKEN_COST } from "../lib/interviewFlow";
 import { motion, AnimatePresence } from "motion/react";
 
 interface UserProfile {
@@ -35,6 +36,10 @@ interface UserProfile {
   monthlyDeckCount?: number;
   monthlyDeckLimit?: number;
   monthlyDeckResetAt?: string | null;
+  tokenBalance?: number;
+  tokenAllowance?: number;
+  tokenResetAt?: string | null;
+  deckGenerationCost?: number;
 }
 
 interface SubscriptionPlansProps {
@@ -235,7 +240,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       perMonth: "",
       desc: "Для базового ознакомления",
       features: [
-        "1 презентация в месяц",
+        "100 токенов/мес (~1 презентация)",
         "1 экспорт презентации (PDF/PPTX/ZIP)",
         "Редактирование текста слайдов",
         "Экспорт с водяным знаком made decksy.ru",
@@ -251,7 +256,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       perMonth: "/мес",
       desc: "Оптимален для точечной работы",
       features: [
-        "До 5 презентаций в месяц",
+        "500 токенов/мес (~5 презентаций)",
         "Редактирование текста и пунктов слайдов",
         "Экспорт PPTX/PDF с водяным знаком",
         "Сохранение проектов в аккаунте",
@@ -266,7 +271,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       perMonth: "/мес",
       desc: "Полноценный контент и экспорт",
       features: [
-        "До 15 презентаций в месяц",
+        "1500 токенов/мес (~15 презентаций)",
         "Экспорт PPTX/PDF без водяного знака",
         "Редактирование слайдов и speaker notes",
         "Брендинг, изображения и конструктор слайда",
@@ -283,7 +288,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
       perMonth: "/мес",
       desc: "Для серийных стартаперов",
       features: [
-        "До 30 презентаций в месяц",
+        "3000 токенов/мес (~30 презентаций)",
         "Экспорт PPTX/PDF без водяного знака",
         "Брендинг, изображения и конструктор слайда",
         "Расширенное редактирование структуры слайдов",
@@ -363,7 +368,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             Выберите мощность агента
           </h2>
           <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Платные тарифы открывают больше генераций, редактор, экспорт без водяного знака и расширенные возможности Decksy Agent.
+            Токены расходуются на генерацию презентаций: одна сборка = {DECK_GENERATION_TOKEN_COST} токенов. Интервью и план слайдов — бесплатно.
           </p>
         </div>
 
@@ -389,7 +394,7 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             <div className="bg-[#111113] p-5 rounded-[28px] border border-white/10 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
               <div className="space-y-1 max-w-2xl">
                 <p className="text-xs text-slate-350 leading-relaxed">
-                  Decksy Agent активирует тариф сразу после подтверждения оплаты: лимиты генераций обновляются в аккаунте, а доступ к функциям сохраняется на оплаченный период.
+                  Decksy Agent активирует тариф после оплаты: токены зачисляются на баланс, интервью не списывает токены — только финальная генерация деки ({DECK_GENERATION_TOKEN_COST} токенов).
                 </p>
                 {user ? (
                   <div className="space-y-1 text-xs text-sky-400 font-mono mt-1 pt-1">
@@ -398,11 +403,13 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
                       <span>Agent status: <strong className="text-white bg-white/8 border border-white/10 px-2 py-0.5 rounded-full uppercase text-[10px]">{user.plan || "Free"}</strong></span>
                     </div>
                     <div className="text-[10px] text-slate-400">
-                      Генерации: <strong className="text-slate-200">{user.monthlyDeckCount ?? 0}</strong>
+                      Токены: <strong className="text-slate-200">{user.tokenBalance ?? 0}</strong>
                       {" / "}
-                      <strong className="text-slate-200">{Number.isFinite(user.monthlyDeckLimit) ? user.monthlyDeckLimit : "∞"}</strong>
-                      {user.monthlyDeckResetAt && (
-                        <span> · сброс {new Date(user.monthlyDeckResetAt).toLocaleDateString("ru")}</span>
+                      <strong className="text-slate-200">{user.tokenAllowance ?? DECK_GENERATION_TOKEN_COST}</strong>
+                      {" · "}
+                      генерация {DECK_GENERATION_TOKEN_COST} токенов
+                      {user.tokenResetAt && (
+                        <span> · сброс {new Date(user.tokenResetAt).toLocaleDateString("ru")}</span>
                       )}
                       {user.planExpiresAt && (
                         <span> · тариф до {new Date(user.planExpiresAt).toLocaleDateString("ru")}</span>
@@ -506,9 +513,12 @@ export function SubscriptionPlans({ user, onUpdateUser, onOpenAuth, onBackToGene
             <div className="p-3.5 bg-white/[0.03] border border-white/8 rounded-2xl flex items-start space-x-2">
               <AlertTriangle className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
               <p className="text-[11px] text-slate-400 leading-normal">
-                При повышении тарифа новый месячный лимит презентаций зачисляется после подтверждения оплаты. Понижение тарифа недоступно из интерфейса и API; для изменения подписки обратитесь в поддержку.
+                При повышении тарифа новый месячный пакет токенов зачисляется после подтверждения оплаты. Понижение тарифа недоступно из интерфейса и API; для изменения подписки обратитесь в поддержку.
               </p>
             </div>
+            <p className="text-[9px] text-slate-500 leading-relaxed px-1">
+              Экспорт PDF и PPTX сохраняет слайды как изображения (PNG внутри файла) — в PowerPoint текст не редактируется отдельно, зато файл выглядит как в редакторе Decksy.
+            </p>
           </motion.div>
         )}
 

@@ -50,9 +50,7 @@ import { TemplatePickerPage } from "./pages/TemplatePickerPage";
 import { GeneratingPage } from "./pages/GeneratingPage";
 import { InterviewPage } from "./pages/InterviewPage";
 import { WordGeneratorPage } from "./pages/WordGeneratorPage";
-import { DeckPage } from "./pages/DeckPage";
 import { LegalPage, LegalPageId } from "./pages/LegalPage";
-import { exportToPPTX } from "./lib/pptxExport";
 import html2canvas from "html2canvas";
 import {
   exportImagesToPDF,
@@ -63,12 +61,19 @@ import {
   EXPORT_BASE_WIDTH,
   EXPORT_BASE_HEIGHT,
 } from "./lib/exportUtils";
-import { generatePythonPPTXCode } from "./lib/pythonGenerator";
 import { DeckCustomizer } from "./components/DeckCustomizer";
 import { SlideConstructor } from "./components/SlideConstructor";
 import { DEFAULT_CUSTOM_THEMES, TEMPLATE_CATALOG, getTemplateFrameAppearance, type DeckTemplateId, type TemplateFrameAppearance } from "./lib/deckTheme";
 import { Mode, Message, PitchCanvas, PitchDeck, Slide, DeckThemeCustom, ProjectBranding } from "./types";
 import { normalizeDeck, generateLocalDeck, SLIDE_TYPES } from "./lib/deckBuilder";
+import {
+  canAffordDeckGeneration,
+  createInitialCanvas,
+  buildInitialBrandingQuestion,
+  DECK_GENERATION_TOKEN_COST,
+  getRequiredBlockCount,
+  isInterviewComplete,
+} from "./lib/interviewFlow";
 import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, mergeBrandingFromInterview } from "./lib/projectBranding";
 import { enrichSlidesWithVisuals, fixMisplacedTeamLayout } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
@@ -91,16 +96,7 @@ import { isWordGenerationPrompt } from "./lib/wordPromptUtils";
 import decksyLogo from "./images/logo.png";
 import { DeckWatermark } from "./components/DeckWatermark";
 
-const INITIAL_CANVAS: PitchCanvas = {
-  problem: { title: "🧩 Проблема", summary: "Ожидание более детальных ответов на вопросы инвестора...", bullets: [], status: "locked" },
-  solution: { title: "⚙️ Решение", summary: "Формулируется по ходу диалога...", bullets: [], status: "locked" },
-  market: { title: "👥 Клиент и Рынок", summary: "Определяем TAM/SAM/SOM...", bullets: [], status: "locked" },
-  moneyModel: { title: "💵 Модель Монетизации", summary: "Разрабатываем юнит-экономику...", bullets: [], status: "locked" },
-  competitors: { title: "🥊 Конкуренты и Moat", summary: "Анализируем рыночные барьеры...", bullets: [], status: "locked" },
-  goToMarket: { title: "🚀 Выход на Рынок (GTM)", summary: "Построение вирусных воронок...", bullets: [], status: "locked" },
-  risks: { title: "⚡ Критические Риски", summary: "Аудит уязвимостей startup...", bullets: [], status: "locked" },
-  branding: { title: "✨ Брендинг и Стиль", summary: "Определяем логотип, цвета и позиционирование...", bullets: [], status: "locked" }
-};
+const INITIAL_CANVAS = createInitialCanvas();
 
 const legalPagesByPath: Record<string, LegalPageId> = {
   "/offer": "offer",
@@ -392,7 +388,6 @@ export default function App() {
   const [rewriteError, setRewriteError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedSpeechSlide, setCopiedSpeechSlide] = useState<number | null>(null);
-  const [shareSuccess, setShareSuccess] = useState(false);
   const [exportState, setExportState] = useState<{ type: 'pdf' | 'pptx', current: number, total: number } | null>(null);
   const [exportSlideIndex, setExportSlideIndex] = useState<number | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -416,6 +411,10 @@ export default function App() {
     monthlyDeckCount?: number,
     monthlyDeckLimit?: number,
     monthlyDeckResetAt?: string | null,
+    tokenBalance?: number,
+    tokenAllowance?: number,
+    tokenResetAt?: string | null,
+    deckGenerationCost?: number,
     freeExportUsed?: boolean,
     canExportPresentation?: boolean,
   } | null>(null);
@@ -980,12 +979,19 @@ export default function App() {
     return () => clearInterval(interval);
   }, [screen]);
 
-  // Max questions based on mode
-  const getMaxQuestions = () => {
-    if (mode === 'quick') return 3;
-    if (mode === 'shark') return 6;
-    return 5;
+  // Interview block count by mode (full pitch-deck questionnaire)
+  const getRequiredQuestions = () => getRequiredBlockCount(mode);
+
+  const getGenerationLimitMessage = (profile = user) => {
+    if (!profile || profile.role === "admin") return "";
+    const cost = profile.deckGenerationCost ?? DECK_GENERATION_TOKEN_COST;
+    const balance = profile.tokenBalance ?? 0;
+    const allowance = profile.tokenAllowance ?? cost;
+    return `Недостаточно токенов: ${balance} из ${cost} на генерацию. На тарифе «${profile.plan || "Free"}» — ${allowance} токенов/мес (~${Math.floor(allowance / cost)} презентаций).`;
   };
+
+  const canStartDeckGeneration = (profile = user) =>
+    canAffordDeckGeneration(profile?.tokenBalance, profile?.role);
 
   // Shared deck finalization after API response
   const finalizeDeckFromPayload = async (
@@ -1086,13 +1092,7 @@ export default function App() {
     setInvestorSentiment("skeptical");
     setUnderlyingThoughts("Собираю данные о бренде и бизнесе — задам несколько коротких вопросов.");
 
-    const initialGreeting = `Привет! Идея: "${idea}". Сначала брендинг — ответьте по пунктам (•):
-• Точное название компании/проекта
-• Слоган или цитата для титульного слайда
-• Ваше имя и роль (основатель, CEO)
-• Пожелания по слайдам (например: «на слайде команды — фото основателя»)
-
-Загрузите лого и фото через кнопку «Фото» внизу чата.`;
+    const initialGreeting = buildInitialBrandingQuestion(idea.trim());
 
     const welcomeMsg: Message = {
       id: "init-question",
@@ -1194,14 +1194,10 @@ export default function App() {
       setShowAuthModal(true);
       return;
     }
-    if (user.role !== "admin") {
-      const limit = user.monthlyDeckLimit ?? 1;
-      const count = user.monthlyDeckCount ?? 0;
-      if (count >= limit) {
-        setLimitMessage(`Месячный лимит тарифа «${user.plan || "Free"}» исчерпан: ${count}/${limit} презентаций.`);
-        setShowLimitModal(true);
-        return;
-      }
+    if (!canStartDeckGeneration()) {
+      setLimitMessage(getGenerationLimitMessage());
+      setShowLimitModal(true);
+      return;
     }
     setIsLoading(true);
     setScreen("generating");
@@ -1238,7 +1234,7 @@ export default function App() {
 
       if (response.status === 429) {
         const data = await response.json().catch(() => ({}));
-        setLimitMessage(data.error || "Месячный лимит презентаций исчерпан.");
+        setLimitMessage(data.error || getGenerationLimitMessage());
         setShowLimitModal(true);
         setScreen("templates");
         return;
@@ -1251,7 +1247,7 @@ export default function App() {
       const payload = await response.json();
       if (payload.usage) {
         setUser((prev: any) =>
-          prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev
+          prev ? { ...prev, ...payload.usage } : prev
         );
       }
       const deckData = await finalizeDeckFromPayload(payload, idea.trim(), mode, canvas, sessionImages);
@@ -1281,14 +1277,10 @@ export default function App() {
       setShowAuthModal(true);
       return;
     }
-    if (user.role !== "admin") {
-      const limit = user.monthlyDeckLimit ?? 1;
-      const count = user.monthlyDeckCount ?? 0;
-      if (count >= limit) {
-        setLimitMessage(`Месячный лимит тарифа «${user.plan || "Free"}» исчерпан: ${count}/${limit} презентаций.`);
-        setShowLimitModal(true);
-        return;
-      }
+    if (!canStartDeckGeneration()) {
+      setLimitMessage(getGenerationLimitMessage());
+      setShowLimitModal(true);
+      return;
     }
     const finalIdea = targetIdea.trim() || suggestions[1];
     setIdea(finalIdea);
@@ -1319,7 +1311,7 @@ export default function App() {
 
       if (response.status === 429) {
         const data = await response.json().catch(() => ({}));
-        setLimitMessage(data.error || "Месячный лимит презентаций исчерпан.");
+        setLimitMessage(data.error || getGenerationLimitMessage());
         setShowLimitModal(true);
         setScreen("intro");
         return;
@@ -1331,7 +1323,7 @@ export default function App() {
 
       const payload = await response.json();
       if (payload.usage) {
-        setUser((prev: any) => prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev);
+        setUser((prev: any) => prev ? { ...prev, ...payload.usage } : prev);
       }
       const deckData = await finalizeDeckFromPayload(payload, finalIdea, mode, INITIAL_CANVAS, images);
       setScreen('deck');
@@ -1403,7 +1395,7 @@ export default function App() {
       setMessages(prev => [...prev, investorMsg]);
       
       if (data.canvasUpdates) {
-        setCanvas(data.canvasUpdates);
+        setCanvas((prev) => ({ ...prev, ...data.canvasUpdates }));
       }
       
       if (data.investorSentiment) {
@@ -1417,10 +1409,10 @@ export default function App() {
       setCurrentQuestionIndex(prev => prev + 1);
 
       const userAnswers = newMessages.filter((m) => m.sender === "user").length;
+      const mergedCanvas = data.canvasUpdates ? { ...canvas, ...data.canvasUpdates } : canvas;
       const interviewDone =
-        data.interviewComplete === true ||
-        userAnswers >= getMaxQuestions() ||
-        isInterviewDoneMessage(data.nextQuestion || "");
+        data.interviewComplete === true &&
+        isInterviewComplete(mergedCanvas, mode, userAnswers);
 
       if (!deck && interviewDone) {
         setInputMessage("");
@@ -1444,18 +1436,11 @@ export default function App() {
     }
   };
 
-  const isInterviewDoneMessage = (text: string) =>
-    /достаточно|автоматически соберу|соберу план|соберу презентацию|интервью заверш|скачать файл pptx|поделиться ссылкой|разнести мой pitch/i.test(text);
-
   const runGenerateDeck = async () => {
-    if (user && user.role !== "admin") {
-      const limit = user.monthlyDeckLimit ?? 1;
-      const count = user.monthlyDeckCount ?? 0;
-      if (count >= limit) {
-        setLimitMessage(`Месячный лимит тарифа «${user.plan || "Free"}» исчерпан: ${count}/${limit} презентаций.`);
-        setShowLimitModal(true);
-        return;
-      }
+    if (!canStartDeckGeneration()) {
+      setLimitMessage(getGenerationLimitMessage());
+      setShowLimitModal(true);
+      return;
     }
     setIsLoading(true);
     setScreen("generating");
@@ -1480,7 +1465,7 @@ export default function App() {
 
       if (response.status === 429) {
         const data = await response.json().catch(() => ({}));
-        setLimitMessage(data.error || "Месячный лимит презентаций исчерпан.");
+        setLimitMessage(data.error || getGenerationLimitMessage());
         setShowLimitModal(true);
         setScreen("interview");
         return;
@@ -1492,7 +1477,7 @@ export default function App() {
 
       const payload = await response.json();
       if (payload.usage) {
-        setUser((prev: any) => prev ? { ...prev, ...payload.usage, monthlyDeckLimit: payload.usage.monthlyDeckLimit } : prev);
+        setUser((prev: any) => prev ? { ...prev, ...payload.usage } : prev);
       }
       let deckData = await finalizeDeckFromPayload(payload, idea, mode, canvas, compressedImages);
       if (deckData.theme) {
@@ -1752,36 +1737,6 @@ export default function App() {
     await runPresentationExport("pptx", (images) => downloadSlidesAsZIP(images, deck!.title));
   };
 
-  // Download runnable python-pptx presentation generation code
-  const handleDownloadPythonScript = () => {
-    if (!deck) return;
-    try {
-      const pythonCode = generatePythonPPTXCode(deck);
-      const blob = new Blob([pythonCode], { type: "text/x-python;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "generate_pitch_presentation.py";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Failed to generate Python script:", err);
-      alert("Не удалось сгенерировать Python скрипт: " + err);
-    }
-  };
-
-  // Share Pitch Dialog
-  const handleShareDeck = () => {
-    setShareSuccess(true);
-    navigator.clipboard.writeText(window.location.href);
-    setTimeout(() => {
-      setShareSuccess(false);
-    }, 4000);
-  };
-
-  // Reset states to restart
   const handleReset = () => {
     setScreen('intro');
     setIdea("");
@@ -4555,15 +4510,6 @@ export default function App() {
                       {!isWatermarkRemoved && <span className="text-[8px] bg-amber-500/20 text-amber-500 border border-amber-500/30 px-1 rounded uppercase font-bold">Watermark</span>}
                     </button>
 
-                    {/* Link developer sharing button with alert feedback */}
-                    <button
-                      id="share-deck-link-btn"
-                      onClick={handleShareDeck}
-                      className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
-                    >
-                      <span>Поделиться ссылкой с инвестором</span>
-                    </button>
-
                     {/* PNG ZIP trigger */}
                     <button
                       id="download-jpeg-zip-btn"
@@ -4585,23 +4531,7 @@ export default function App() {
                       </p>
                     )}
 
-                    {/* Python pptx script download */}
-                    <button
-                      id="download-python-script-btn"
-                      onClick={handleDownloadPythonScript}
-                      className="w-full bg-[#161618] hover:bg-slate-900 border border-[#3b82f6]/20 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-blue-400 cursor-pointer transition-all"
-                    >
-                      <span>Получить код Python (python-pptx)</span>
-                      <span className="text-[8px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded uppercase font-bold">Python Code</span>
-                    </button>
-
                   </div>
-
-                  {shareSuccess && (
-                     <div className="p-2.5 bg-green-950/20 border border-green-500/30 rounded text-[10px] text-green-400 font-mono text-center uppercase tracking-wider">
-                       Ссылка скопирована в буфер обмена!
-                     </div>
-                  )}
                 </div>
 
                 {/* THE VC ROAST BUTTON PANEL (Очень важная фича) */}
@@ -4787,12 +4717,14 @@ export default function App() {
               className="bg-[#161618] border border-amber-500/30 rounded-xl p-6 max-w-md w-full text-center space-y-4"
             >
               <AlertTriangle className="h-10 w-10 text-amber-400 mx-auto" />
-              <h3 className="text-white font-bold text-sm uppercase tracking-wider">Лимит презентаций</h3>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider">Недостаточно токенов</h3>
               <p className="text-slate-400 text-sm leading-relaxed">{limitMessage}</p>
               <p className="text-[11px] text-slate-500">
-                Бесплатный тариф: <strong className="text-white">1 презентация в месяц</strong>.
+                Генерация презентации стоит <strong className="text-white">{user?.deckGenerationCost ?? DECK_GENERATION_TOKEN_COST} токенов</strong>.
                 {user && (
-                  <> Использовано: <strong className="text-amber-400">{user.monthlyDeckCount ?? 0}</strong> / {user.monthlyDeckLimit ?? 1}</>
+                  <> Баланс: <strong className="text-amber-400">{user.tokenBalance ?? 0}</strong>
+                  {" / "}
+                  <strong className="text-slate-300">{user.tokenAllowance ?? DECK_GENERATION_TOKEN_COST}</strong> токенов/мес</>
                 )}
               </p>
               <div className="flex gap-2 justify-center">

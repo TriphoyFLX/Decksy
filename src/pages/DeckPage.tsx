@@ -35,10 +35,7 @@ interface DeckPageProps {
   lastSavedDeckId: string | null;
   handleDownloadPPTX: () => void;
   handleDownloadPDF: () => void;
-  handleShareDeck: () => void;
   handleDownloadZIP: () => void;
-  handleDownloadPythonScript: () => void;
-  shareSuccess: boolean;
   roastActive: boolean;
   setRoastActive: (v: boolean) => void;
   setRoasted: (v: boolean) => void;
@@ -65,10 +62,7 @@ export const DeckPage: React.FC<DeckPageProps> = ({
   lastSavedDeckId,
   handleDownloadPPTX,
   handleDownloadPDF,
-  handleShareDeck,
   handleDownloadZIP,
-  handleDownloadPythonScript,
-  shareSuccess,
   roastActive,
   setRoastActive,
   setRoasted,
@@ -585,14 +579,6 @@ export const DeckPage: React.FC<DeckPageProps> = ({
               </button>
 
               <button
-                id="share-deck-link-btn"
-                onClick={handleShareDeck}
-                className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
-              >
-                <span>Поделиться ссылкой с инвестором</span>
-              </button>
-
-              <button
                 id="download-jpeg-zip-btn"
                 onClick={handleDownloadZIP}
                 className="w-full bg-[#161618] hover:bg-white/5 border border-white/10 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-slate-200 cursor-pointer transition-all"
@@ -601,22 +587,7 @@ export const DeckPage: React.FC<DeckPageProps> = ({
                 <span className="text-[8px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold">100% Reliable</span>
               </button>
 
-              <button
-                id="download-python-script-btn"
-                onClick={handleDownloadPythonScript}
-                className="w-full bg-[#161618] hover:bg-slate-900 border border-[#3b82f6]/20 font-bold uppercase tracking-widest text-[9px] py-3.5 px-4 rounded-sm flex items-center justify-between text-blue-400 cursor-pointer transition-all"
-              >
-                <span>Получить код Python (python-pptx)</span>
-                <span className="text-[8px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded uppercase font-bold">Python Code</span>
-              </button>
-
             </div>
-
-            {shareSuccess && (
-               <div className="p-2.5 bg-green-950/20 border border-green-500/30 rounded text-[10px] text-green-400 font-mono text-center uppercase tracking-wider animate-fade-in">
-                 Ссылка скопирована в буфер обмена!
-               </div>
-            )}
           </div>
 
           {/* THE VC ROAST BUTTON PANEL */}

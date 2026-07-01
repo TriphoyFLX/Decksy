@@ -25,6 +25,16 @@ import {
   type DeckDesignPlan,
 } from "./src/lib/designPlan";
 import {
+  DECK_GENERATION_TOKEN_COST,
+  buildInterviewQuestion,
+  countCompiledBlocks,
+  getInterviewBlocksForMode,
+  getNextInterviewBlock,
+  getPlanTokenAllowance,
+  getRequiredBlockCount,
+  isInterviewComplete,
+} from "./src/lib/interviewFlow";
+import {
   extractWordPromptTopic,
   isWordGenerationPrompt,
   resolveWordGenerationMode,
@@ -71,10 +81,10 @@ app.set("trust proxy", 1);
 const APP_URL = getConfiguredEnv("APP_URL") || "http://localhost:3000";
 
 const PLAN_CONFIG = {
-  Free: { rank: 0, priceRub: 0, monthlyDeckLimit: 1, premium: false },
-  Base: { rank: 1, priceRub: 149, monthlyDeckLimit: 5, premium: false },
-  Middle: { rank: 2, priceRub: 299, monthlyDeckLimit: 15, premium: true },
-  Pro: { rank: 3, priceRub: 499, monthlyDeckLimit: 30, premium: true },
+  Free: { rank: 0, priceRub: 0, monthlyTokenAllowance: 100, premium: false },
+  Base: { rank: 1, priceRub: 149, monthlyTokenAllowance: 500, premium: false },
+  Middle: { rank: 2, priceRub: 299, monthlyTokenAllowance: 1500, premium: true },
+  Pro: { rank: 3, priceRub: 499, monthlyTokenAllowance: 3000, premium: true },
 } as const;
 
 type PlanId = keyof typeof PLAN_CONFIG;
@@ -197,9 +207,16 @@ function addMonths(date: Date, months: number): Date {
   return next;
 }
 
-function getPlanLimit(plan: string | null | undefined, role?: string): number {
+function getPlanTokenLimit(plan: string | null | undefined, role?: string): number {
   if (role === "admin") return Number.POSITIVE_INFINITY;
-  return isPlanId(plan) ? PLAN_CONFIG[plan].monthlyDeckLimit : PLAN_CONFIG.Free.monthlyDeckLimit;
+  return isPlanId(plan) ? PLAN_CONFIG[plan].monthlyTokenAllowance : PLAN_CONFIG.Free.monthlyTokenAllowance;
+}
+
+/** @deprecated use getPlanTokenLimit — kept for legacy responses */
+function getPlanLimit(plan: string | null | undefined, role?: string): number {
+  const tokens = getPlanTokenLimit(plan, role);
+  if (!Number.isFinite(tokens)) return Number.POSITIVE_INFINITY;
+  return Math.max(1, Math.floor(tokens / DECK_GENERATION_TOKEN_COST));
 }
 
 function getPlanPriceRub(plan: PaidPlanId): number {
@@ -213,6 +230,7 @@ function canUserExportPresentation(user: { role?: string | null; plan?: string |
 }
 
 function getUserResponse(user: any) {
+  const tokenAllowance = getPlanTokenLimit(user.plan, user.role);
   return {
     id: user.id,
     email: user.email,
@@ -226,6 +244,10 @@ function getUserResponse(user: any) {
     monthlyDeckCount: user.monthlyDeckCount,
     monthlyDeckResetAt: user.monthlyDeckResetAt,
     monthlyDeckLimit: getPlanLimit(user.plan, user.role),
+    tokenBalance: user.tokenBalance ?? tokenAllowance,
+    tokenAllowance,
+    tokenResetAt: user.tokenResetAt,
+    deckGenerationCost: DECK_GENERATION_TOKEN_COST,
     freeExportUsed: Boolean(user.freeExportUsed),
     canExportPresentation: canUserExportPresentation(user),
   };
@@ -253,9 +275,15 @@ async function normalizeUserEntitlements(user: any) {
     data.isPro = hasPremiumFeatures(user.plan);
   }
 
-  if (!user.monthlyDeckResetAt || user.monthlyDeckResetAt <= now) {
+  if (!user.tokenResetAt || user.tokenResetAt <= now) {
+    const allowance = getPlanTokenLimit(user.plan, user.role);
+    data.tokenBalance = Number.isFinite(allowance) ? allowance : 999999;
+    data.tokenResetAt = addMonths(now, 1);
     data.monthlyDeckCount = 0;
     data.monthlyDeckResetAt = addMonths(now, 1);
+  } else if (!user.monthlyDeckResetAt || user.monthlyDeckResetAt <= now) {
+    data.monthlyDeckCount = 0;
+    data.monthlyDeckResetAt = user.tokenResetAt;
   }
 
   if (Object.keys(data).length === 0) return user;
@@ -596,6 +624,8 @@ async function findOrCreateOAuthUser(provider: OAuthProviderId, profile: any) {
       planExpiresAt: null,
       monthlyDeckCount: 0,
       monthlyDeckResetAt: addMonths(now, 1),
+      tokenBalance: getPlanTokenAllowance(isConfiguredAdmin ? "Pro" : "Free"),
+      tokenResetAt: addMonths(now, 1),
       oauthAccounts: {
         create: {
           provider,
@@ -628,28 +658,39 @@ async function assertDeckGenerationAllowed(userId: number) {
     };
   }
 
-  const monthlyLimit = getPlanLimit(user.plan, user.role);
-  if (Number.isFinite(monthlyLimit) && user.monthlyDeckCount >= monthlyLimit) {
+  if (user.role === "admin") {
+    return { ok: true as const, user, tokenAllowance: Number.POSITIVE_INFINITY };
+  }
+
+  const tokenAllowance = getPlanTokenLimit(user.plan, user.role);
+  const tokenBalance = user.tokenBalance ?? 0;
+  if (tokenBalance < DECK_GENERATION_TOKEN_COST) {
+    const decksLeft = Math.floor(tokenBalance / DECK_GENERATION_TOKEN_COST);
     return {
       ok: false as const,
       status: 429,
       payload: {
-        error: `Месячный лимит тарифа «${user.plan}» исчерпан: ${user.monthlyDeckCount}/${monthlyLimit} презентаций.`,
+        error: `Недостаточно токенов: ${tokenBalance} из ${DECK_GENERATION_TOKEN_COST} на генерацию. На тарифе «${user.plan}» доступно ${tokenAllowance} токенов/мес (~${Math.floor(tokenAllowance / DECK_GENERATION_TOKEN_COST)} презентаций).`,
         plan: user.plan,
+        tokenBalance,
+        tokenAllowance,
+        deckGenerationCost: DECK_GENERATION_TOKEN_COST,
+        tokenResetAt: user.tokenResetAt,
         monthlyDeckCount: user.monthlyDeckCount,
-        monthlyDeckLimit: monthlyLimit,
-        monthlyDeckResetAt: user.monthlyDeckResetAt,
+        monthlyDeckLimit: getPlanLimit(user.plan, user.role),
+        decksLeft,
       },
     };
   }
 
-  return { ok: true as const, user, monthlyLimit };
+  return { ok: true as const, user, tokenAllowance };
 }
 
 async function recordDeckGeneration(userId: number) {
   return prisma.user.update({
     where: { id: userId },
     data: {
+      tokenBalance: { decrement: DECK_GENERATION_TOKEN_COST },
       monthlyDeckCount: { increment: 1 },
     },
   });
@@ -1295,6 +1336,8 @@ app.post("/api/auth/register", async (req, res) => {
         planExpiresAt: null,
         monthlyDeckCount: 0,
         monthlyDeckResetAt: addMonths(now, 1),
+        tokenBalance: getPlanTokenAllowance(userPlan, userRole),
+        tokenResetAt: addMonths(now, 1),
       }
     });
 
@@ -1731,6 +1774,10 @@ app.get("/api/yookassa/check-payment/:id", authenticateToken, async (req: any, r
             isPro: hasPremiumFeatures(payment.tariffId),
             planStartedAt: activatedAt,
             planExpiresAt: addMonths(activatedAt, 1),
+            tokenBalance: getPlanTokenAllowance(payment.tariffId),
+            tokenResetAt: addMonths(activatedAt, 1),
+            monthlyDeckCount: 0,
+            monthlyDeckResetAt: addMonths(activatedAt, 1),
           }
         });
 
@@ -1818,6 +1865,10 @@ async function processYooKassaWebhook(body: any) {
           isPro: hasPremiumFeatures(tariffId),
           planStartedAt: new Date(),
           planExpiresAt: addMonths(new Date(), 1),
+          tokenBalance: getPlanTokenAllowance(tariffId),
+          tokenResetAt: addMonths(new Date(), 1),
+          monthlyDeckCount: 0,
+          monthlyDeckResetAt: addMonths(new Date(), 1),
         }
       });
 
@@ -2318,82 +2369,96 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "No startup idea provided." });
     }
 
+    const deckMode = (mode as "quick" | "investor" | "shark") || "investor";
     const userMessages = messages.filter((m: any) => m.sender === "user" || m.sender === "Founder");
     const lastUserMsg = userMessages[userMessages.length - 1]?.text || "";
+    const userTurns = userMessages.length;
+    const requiredBlocks = getInterviewBlocksForMode(deckMode);
+    const minTurns = requiredBlocks.length;
+
     if (userMessages.length > 0 && isGibberish(lastUserMsg)) {
       const validUserMessages = userMessages.filter((m: any) => !isGibberish(m.text));
       const turnIndex = validUserMessages.length;
-      const nextQuestion = getClarificationQuestion(turnIndex, idea);
-      
+      const nextBlock = getNextInterviewBlock(canvas || {}, deckMode);
+      const nextQuestion = nextBlock
+        ? buildInterviewQuestion(nextBlock, idea, deckMode).replace(/^Следующий блок — /, "Не совсем понял ответ. ")
+        : getClarificationQuestion(turnIndex, idea);
+
       return res.json({
         nextQuestion,
         interviewComplete: false,
         investorSentiment: "skeptical",
-        underlyingThoughts: "Пользователь ввел бессмысленный или пустой ответ. Прошу уточнить детали.",
-        canvasUpdates: {}
+        underlyingThoughts: "Нужен содержательный ответ по текущему блоку интервью.",
+        canvasUpdates: {},
+        interviewProgress: {
+          compiled: countCompiledBlocks(canvas || {}, deckMode),
+          total: minTurns,
+          userTurns,
+        },
       });
     }
 
-    const modeLimits = { quick: 3, investor: 5, shark: 6 }[mode as "quick" | "investor" | "shark"] || 5;
-    const userTurns = messages.filter((m: any) => m.sender === "user").length;
-
     const modeInstructions = {
-      quick: "Быстрый режим: максимум 3 вопроса за всё интервью. Только ключевые пробелы.",
-      investor: "Режим инвестора: максимум 5 вопросов за всё интервью. Спокойный, деловой тон.",
-      shark: "Режим акулы: максимум 6 вопросов. Жёстко оспаривай ТОЛЬКО слабые или пустые ответы — не придирайся к нормальным.",
-    }[mode as "quick" | "investor" | "shark"] || "Режим инвестора: максимум 5 вопросов.";
+      quick: `Быстрый режим: ${minTurns} обязательных блоков. Без лишних уточнений.`,
+      investor: `Режим инвестора: ${minTurns} блоков по структуре сильного питч-дека. Спокойный деловой тон.`,
+      shark: `Режим акулы: ${minTurns} блоков. Оспаривай только пустые или явно слабые ответы.`,
+    }[deckMode];
+
+    const blockOrderText = requiredBlocks
+      .map((b, i) => `${i + 1}. ${b.key} — ${b.articleRef}: ${b.question}`)
+      .join("\n");
 
     const chatContext = messages.map((m: any) => `${m.sender === 'user' ? 'Founder' : 'Investor'}: ${m.text}`).join("\n");
 
     const systemInstruction = `
-      You are a VC partner helping compile a pitch deck. Tone: calm, concise, respectful — NOT an interrogator.
-      Each API call costs money — minimize unnecessary follow-ups.
+      You are a VC partner compiling facts for an investor pitch deck (Russian startup market).
+      Follow the canonical pitch-deck interview from professional practice:
+      cover, problem + validation, solution, product flow, why now, market, team, traction,
+      business model + unit economics, competitors, GTM, roadmap, funding ask, risks.
 
       User's idea: "${idea}"
-      Mode: ${mode.toUpperCase()} — ${modeInstructions}
-      User answers so far: ${userTurns}. Hard limit: ${modeLimits} investor questions total.
+      Mode: ${deckMode.toUpperCase()} — ${modeInstructions}
+      Founder answers so far: ${userTurns}. Required blocks: ${minTurns}.
 
-      QUESTION ORDER (follow canvas blocks in this priority):
-      1. branding — FIRST: exact company name, tagline/quote, founder name and role, logo if any
-      2. problem — paying customer and pain
-      3. solution — how product works
-      4. market — TAM/SAM, target segment
-      5. moneyModel — pricing, unit economics
-      6. competitors — differentiation
-      7. goToMarket — first 100 customers
-      8. risks — main risks and mitigation
+      STRICT BLOCK ORDER (one block per turn — mark compiled ONLY after a substantive answer):
+      ${blockOrderText}
 
       CORE RULES:
-      1. If the founder's last answer is reasonable and covers the topic — briefly acknowledge ("Понял, фиксирую." / "Ок, записал.") and move to the NEXT unfilled canvas block. Do NOT dig deeper.
-      2. If the founder's last answer is gibberish, off-topic, empty, or nonsense (e.g., "пкпкер", "фигня", meaningless keys, or random text without real content):
-         - Do NOT acknowledge it as recorded. Do NOT say "Ок, записал" or "Понял, фиксирую".
-         - Do NOT move to the next canvas block.
-         - Do NOT set any updates to "compiled" for the current slot; keep or change its status to "thinking".
-         - Politely ask the founder to answer the actual question again or clarify (e.g., "Кажется, это не совсем относится к нашему вопросу. Давайте вернемся к...", "Не совсем понял ответ. Расскажите подробнее о...").
-      3. Ask a follow-up or challenge ONLY when: answer is empty/vague, contradicts itself, or has an obvious red flag you disagree with.
-      4. ONE question per turn maximum. Max 2 short sentences total in nextQuestion.
-      5. Always ask the founder to reply in bullet points: end with "Ответьте по пунктам (• ...)" when asking something new.
-      6. If all canvas blocks are "compiled" OR userTurns >= ${modeLimits}: set interviewComplete=true and nextQuestion = "Отлично, данных достаточно! Сейчас автоматически соберу план презентации..." — do NOT mention PPTX/PDF buttons.
+      1. Work on the FIRST block that is not yet "compiled" in canvas.
+      2. If the last answer reasonably covers the block — briefly acknowledge and ask the NEXT block only.
+      3. Do NOT mark a block "compiled" for gibberish, one-word, or off-topic answers.
+      4. Do NOT finish the interview early — even if some blocks look filled, keep going until all ${minTurns} required blocks are compiled.
+      5. ONE question per turn. Max 2 short sentences + bullet prompt.
+      6. Always end new questions with "Ответьте по пунктам (•)."
+      7. Use numbers ONLY if the founder provided them; otherwise write "требует валидации".
+      8. Traction block: if pre-seed with no metrics, compiled is OK when founder explicitly says no traction yet.
 
       Return JSON:
       {
         "nextQuestion": "Russian. Brief ack + one question OR completion message.",
         "interviewComplete": false,
         "investorSentiment": "skeptical" | "bored" | "intrigued" | "impressed" | "combative",
-        "underlyingThoughts": "Max 1 short sentence. Neutral unless real concern.",
+        "underlyingThoughts": "Max 1 short sentence.",
         "canvasUpdates": {
-          "problem": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "solution": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "market": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "moneyModel": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "competitors": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "goToMarket": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "risks": { "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
-          "branding": { "summary": "Company name | tagline | founder", "bullets": ["Название: ...", "Слоган: ...", "Основатель: ..."], "status": "locked" | "thinking" | "compiled" }
+          "branding": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "problem": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "problemProof": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "solution": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "product": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "whyNow": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "market": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "team": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "traction": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "moneyModel": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "competitors": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "goToMarket": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "roadmap": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "ask": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" },
+          "risks": { "title": "...", "summary": "...", "bullets": [], "status": "locked" | "thinking" | "compiled" }
         }
       }
 
-      All text in Russian. Mark section "compiled" when founder gave enough info — do not re-ask.
+      All text in Russian.
     `;
 
     const prompt = `
@@ -2403,30 +2468,36 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
       Canvas:
       ${JSON.stringify(canvas, null, 2)}
 
-      Update canvas from founder's answers. Reply with nextQuestion — acknowledge if ok, challenge only if needed.
+      Update canvas from founder's answers. Ask the next unfilled block — do not skip blocks.
     `;
 
-    const result = await callLLM(systemInstruction, prompt, 1500);
+    const result = await callLLM(systemInstruction, prompt, 1800);
     const mergedCanvas = { ...canvas, ...(result.canvasUpdates || {}) };
-    const compiledCount = Object.values(mergedCanvas).filter(
-      (c: any) => c?.status === "compiled"
-    ).length;
-    const interviewComplete =
-      result.interviewComplete === true ||
-      userTurns >= modeLimits ||
-      compiledCount >= 6;
+    const complete = isInterviewComplete(mergedCanvas, deckMode, userTurns);
 
-    if (interviewComplete) {
+    if (complete) {
       result.interviewComplete = true;
       result.nextQuestion =
-        "Отлично, данных достаточно! Сейчас автоматически соберу план презентации...";
-      result.underlyingThoughts = "Интервью завершено — формирую план слайдов.";
+        "Отлично, все ключевые блоки собраны! Сейчас автоматически соберу план презентации по структуре инвесторского питч-дека...";
+      result.underlyingThoughts = "Интервью завершено — формирую outline слайдов.";
+    } else {
+      result.interviewComplete = false;
+      const nextBlock = getNextInterviewBlock(mergedCanvas, deckMode);
+      if (nextBlock && (!result.nextQuestion || /достаточно|соберу план/i.test(result.nextQuestion))) {
+        result.nextQuestion = buildInterviewQuestion(nextBlock, idea, deckMode);
+      }
     }
+
+    result.interviewProgress = {
+      compiled: countCompiledBlocks(mergedCanvas, deckMode),
+      total: minTurns,
+      userTurns,
+    };
 
     res.json(result);
   } catch (err: any) {
     console.error("API Error in /api/interview (falling back to mock):", err);
-    res.json(getMockInterviewResponse(req.body.messages || [], req.body.mode || "investor", req.body.idea));
+    res.json(getMockInterviewResponse(req.body.messages || [], req.body.mode || "investor", req.body.idea, req.body.canvas));
   }
 });
 
@@ -3097,6 +3168,10 @@ app.post("/api/generate_deck", authenticateToken, async (req, res) => {
     imagesApplied: deck.slides.filter((s) => s.image || s.visualData?.teamMembers?.length).length,
     usage: {
       plan: updatedUser.plan,
+      tokenBalance: updatedUser.tokenBalance,
+      tokenAllowance: getPlanTokenLimit(updatedUser.plan, updatedUser.role),
+      tokenResetAt: updatedUser.tokenResetAt,
+      deckGenerationCost: DECK_GENERATION_TOKEN_COST,
       monthlyDeckCount: updatedUser.monthlyDeckCount,
       monthlyDeckLimit: getPlanLimit(updatedUser.plan, updatedUser.role),
       monthlyDeckResetAt: updatedUser.monthlyDeckResetAt,
@@ -3218,144 +3293,60 @@ function getClarificationQuestion(turnIndex: number, idea: string): string {
 }
 
 // Helper for Mock Interview Response
-function getMockInterviewResponse(messages: any[], mode: string, idea: string) {
-  // We calculate user replies by finding how many 'user' (founder) messages are in the history
-  const userMessages = messages.filter((m: any) => m.sender === 'user' || m.sender === 'Founder');
+function getMockInterviewResponse(messages: any[], mode: string, idea: string, canvas: any = {}) {
+  const deckMode = (mode as "quick" | "investor" | "shark") || "investor";
+  const userMessages = messages.filter((m: any) => m.sender === "user" || m.sender === "Founder");
   const lastUserMessage = userMessages[userMessages.length - 1]?.text || "";
   const isLastGibberish = lastUserMessage ? isGibberish(lastUserMessage) : false;
-
   const validUserMessages = userMessages.filter((m: any) => !isGibberish(m.text));
-  const turnIndex = validUserMessages.length; // 0, 1, 2, 3, 4, 5, 6...
+  const userTurns = validUserMessages.length;
+  const requiredBlocks = getInterviewBlocksForMode(deckMode);
+  const minTurns = requiredBlocks.length;
 
-  // Define a complete sequential list of professional VC questions tailored to the 10 slides and the canvas:
-  const maxTurns = mode === "quick" ? 3 : mode === "shark" ? 6 : 5;
+  const canvasUpdates: Record<string, any> = {};
+  requiredBlocks.forEach((block, index) => {
+    canvasUpdates[block.key] = {
+      title: block.canvasTitle,
+      summary: canvas?.[block.key]?.summary || `Блок «${block.canvasTitle}»`,
+      bullets: canvas?.[block.key]?.bullets || [],
+      status: userTurns > index && !isLastGibberish ? "compiled" : index === userTurns ? "thinking" : "locked",
+    };
+  });
 
-  const questions = [
-    `Понял, фиксирую. Следующий блок — решение: как работает продукт и почему купят в первые минуты? Ответьте по пунктам (•).`,
-    `Ок, записал. Рынок: кто клиент, TAM/SAM, откуда цифры? Ответьте по пунктам (•).`,
-    `Принято. Монетизация: модель, цена, LTV/CAC если есть. Ответьте по пунктам (•).`,
-    `Понял. GTM: как получите первых 100 клиентов? Ответьте по пунктам (•).`,
-    `Ок. Конкуренты и ваше отличие — что конкретно делает продукт лучше аналогов? Ответьте по пунктам (•).`,
-    `Последний блок: главные риски и сколько инвестиций ищете? Ответьте по пунктам (•).`,
-  ];
+  const mergedCanvas = { ...canvas, ...canvasUpdates };
+  const complete = !isLastGibberish && isInterviewComplete(mergedCanvas, deckMode, userTurns);
+  const nextBlock = getNextInterviewBlock(mergedCanvas, deckMode);
 
   let nextQuestion = "";
   if (isLastGibberish) {
-    nextQuestion = getClarificationQuestion(turnIndex, idea);
+    nextQuestion = nextBlock
+      ? buildInterviewQuestion(nextBlock, idea, deckMode).replace(/^Следующий блок — /, "Не совсем понял ответ. ")
+      : getClarificationQuestion(userTurns, idea);
+  } else if (complete) {
+    nextQuestion =
+      "Отлично, все ключевые блоки собраны! Сейчас автоматически соберу план презентации по структуре инвесторского питч-дека...";
+  } else if (nextBlock) {
+    nextQuestion =
+      userTurns === 0
+        ? buildInterviewQuestion(nextBlock, idea, deckMode)
+        : `Понял, фиксирую. ${buildInterviewQuestion(nextBlock, idea, deckMode)}`;
   } else {
-    if (turnIndex === 0) {
-      nextQuestion = `Идея: "${idea}". Первый блок — брендинг и владелец:
-• Точное название компании/проекта
-• Слоган или цитата для титульного слайда
-• Ваше имя и роль (основатель, CEO)
-• Пожелания по слайдам (что хотите на конкретных слайдах)
-Ответьте по пунктам (•).`;
-    } else if (turnIndex === 1) {
-      nextQuestion = `Ок, брендинг записал. Теперь клиент и проблема: кто платит и какую боль решаете? Ответьте по пунктам (•).`;
-    } else if (turnIndex < maxTurns) {
-      nextQuestion = questions[turnIndex - 2] || questions[questions.length - 1];
-    } else {
-      nextQuestion = `Отлично, данных достаточно! Сейчас автоматически соберу план презентации...`;
-    }
-  }
-
-  const interviewComplete = turnIndex >= maxTurns;
-
-  const sentiments = ["skeptical", "intrigued", "intrigued", "impressed", "impressed", "impressed"] as const;
-  const thoughtsList = [
-    "Собираю факты по блокам, без лишних уточнений.",
-    "Ответ по проблеме принят, двигаемся дальше.",
-    "Картина проясняется, экономика пока без красных флагов.",
-    "Хороший темп — хватает для черновика деки.",
-    "Почти всё на месте, можно генерировать.",
-    "Готово к сборке презентации.",
-  ];
-  const sentiment = isLastGibberish ? "skeptical" : sentiments[Math.min(turnIndex, sentiments.length - 1)];
-  const thoughts = isLastGibberish ? "Пользователь дал пустой или бессмысленный ответ. Требуется уточнение." : thoughtsList[Math.min(turnIndex, thoughtsList.length - 1)];
-
-  if (!isLastGibberish && mode === "shark" && turnIndex > 0 && turnIndex < maxTurns && turnIndex % 2 === 0) {
-    nextQuestion = `Уточню один момент — ${nextQuestion.replace(/^Понял[^?]*\.\s*|^Ок[^?]*\.\s*|^Принято\.\s*/i, "")}`;
+    nextQuestion = buildInterviewQuestion(requiredBlocks[0], idea, deckMode);
   }
 
   return {
     nextQuestion,
-    interviewComplete,
-    investorSentiment: sentiment,
-    underlyingThoughts: interviewComplete ? "Интервью завершено — формирую план слайдов." : thoughts,
-    canvasUpdates: {
-      branding: {
-        summary: "Брендинг и основатель",
-        bullets: [
-          "Название: уточните у пользователя",
-          "Слоган: уточните у пользователя",
-          "Основатель: уточните у пользователя",
-        ],
-        status: turnIndex >= 1 ? "compiled" : "thinking",
-      },
-      problem: {
-        summary: `Фокусированная боль рынка в контексте: "${idea}"`,
-        bullets: [
-          "Клиенты тратят часы на ручные, неэкологичные или дорогие решения",
-          "Существующие инструменты создают сильное трение и высокий отток в нише",
-          "Проблема подтверждена прямыми опросами целевой аудитории"
-        ],
-        status: turnIndex >= 1 ? "compiled" : "thinking"
-      },
-      solution: {
-        summary: "Интеллектуальное и автоматизированное решение",
-        bullets: [
-          "Моментальное закрытие боли без лишних барьеров настройки",
-          "Встроенный ИИ-помощник минимизирует время выполнения задач",
-          "Простота использования и мгновенный wow-эффект для пользователя"
-        ],
-        status: turnIndex >= 3 ? "compiled" : "thinking"
-      },
-      market: {
-        summary: "Растущий рынок цифровых B2B/B2C услуг",
-        bullets: [
-          "Выход на глобальный рынок профессионалов и фрилансеров",
-          "Потенциальная аудитория оценивается в миллионы активных пользователей",
-          "Целевой сегмент (SOM) готов к немедленному пилотному тестированию"
-        ],
-        status: turnIndex >= 3 ? "compiled" : "locked"
-      },
-      moneyModel: {
-        summary: "SaaS Модель + плата за объем использования",
-        bullets: [
-          "Базовая доступная подписка на сервис с гибким триалом",
-          "Корпоративный тариф для команд с глубокой кастомизацией под ключ",
-          "Транзакционные сборы или комиссии за экстра-объем"
-        ],
-        status: turnIndex >= 4 ? "compiled" : "locked"
-      },
-      competitors: {
-        summary: "Слабая локальная автоматизация и дорогие агентства",
-        bullets: [
-          "Существующие гиганты неповоротливы и не имеют узкого фокуса",
-          "Альтернативные решения — ручной труд или сложные конструкторы",
-          "Преимущество продукта: высокая скорость и нулевая кривая обучения"
-        ],
-        status: turnIndex >= 5 ? "compiled" : "locked"
-      },
-      goToMarket: {
-        summary: "Прямые партнерства и вирусный продукт-маркетинг",
-        bullets: [
-          "Вирусные публикации на профильных ресурсах для фаундеров",
-          "Интеграции с лидерами мнений и закрытые партнерские сети",
-          "Прямые холодные продажи первым 100 корпоративным клиентам"
-        ],
-        status: turnIndex >= 6 ? "compiled" : "locked"
-      },
-      risks: {
-        summary: "Низкий порог входа и копирование крупными игроками",
-        bullets: [
-          "Риск копирования (нивелируется скоростью обновлений и комьюнити)",
-          "Недоверие к качеству ИИ на старте (решается прозрачным тест-драйвом)",
-          "Высокий CAC на зрелых стадиях (решается сильным реферальным циклом)"
-        ],
-        status: turnIndex >= 7 ? "compiled" : "locked"
-      }
-    }
+    interviewComplete: complete,
+    investorSentiment: isLastGibberish ? "skeptical" : complete ? "impressed" : "intrigued",
+    underlyingThoughts: complete
+      ? "Интервью завершено — формирую план слайдов."
+      : "Собираю факты по блокам питч-дека — без преждевременного завершения.",
+    canvasUpdates,
+    interviewProgress: {
+      compiled: countCompiledBlocks(mergedCanvas, deckMode),
+      total: minTurns,
+      userTurns,
+    },
   };
 }
 

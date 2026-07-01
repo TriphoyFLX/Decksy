@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ArrowUp, Brain, CheckCircle2, ChevronDown, ChevronUp, ImagePlus, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Message, PitchCanvas, Mode } from "../types";
+import { countCompiledBlocks, getRequiredBlockCount, isCanvasSection } from "../lib/interviewFlow";
 
 interface InterviewPageProps {
   mode: Mode;
@@ -44,10 +45,8 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const compiledCount = Object.values(canvas).filter(
-    (c): c is PitchCanvas[keyof PitchCanvas] & { status: "compiled" } =>
-      Boolean(c && typeof c === "object" && "status" in c && c.status === "compiled")
-  ).length;
+  const compiledCount = countCompiledBlocks(canvas, mode);
+  const totalBlocks = getRequiredBlockCount(mode);
 
   return (
     <motion.div
@@ -75,7 +74,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
             className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 transition-colors cursor-pointer bg-transparent"
           >
             <Brain className="h-3.5 w-3.5" />
-            Память {compiledCount}/8
+            Память {compiledCount}/{totalBlocks}
             {showMemory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
           <span className={`text-[10px] border px-2.5 py-1 rounded-full font-mono hidden sm:inline ${currentSentiment.bg}`}>
@@ -94,7 +93,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
             className="overflow-hidden shrink-0 mb-3"
           >
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-2xl border border-white/10 bg-white/[0.03] max-h-48 overflow-y-auto">
-              {(Object.entries(canvas) as [string, any][]).map(([key, item]) => (
+              {(Object.entries(canvas) as [string, any][]).filter(([, item]) => isCanvasSection(item)).map(([key, item]) => (
                 <div
                   key={key}
                   className={`rounded-xl p-2.5 border text-left ${
