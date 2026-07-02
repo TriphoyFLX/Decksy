@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<!-- Design reference for Decksy template «Cream Glass» (Teamplate3) -->
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pitch Deck — Cream Glass Reference</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #08090b;
+    --cream: #f5f3ee;
+    --muted: rgba(245,243,238,.62);
+    --muted-2: rgba(245,243,238,.4);
+    --glass-bg: rgba(255,255,255,.045);
+    --glass-bg-strong: rgba(255,255,255,.08);
+    --glass-border: rgba(255,255,255,.14);
+    --amber: #c9793c;
+    --teal: #3c6b74;
+    --rust: #8a3b2b;
+    --gold: #d9a441;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background: var(--bg);
+    color: var(--cream);
+    font-family:'Inter', sans-serif;
+    margin:0;
+  }
+  .font-display{ font-family:'Manrope', sans-serif; }
+  .font-mono{ font-family:'JetBrains Mono', monospace; }
+
+  .slide{
+    position:relative;
+    width:100%;
+    min-height:100vh;
+    overflow:hidden;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    display:flex;
+    flex-direction:column;
+    padding: 56px 88px;
+  }
+  @media (max-width:900px){
+    .slide{ padding: 32px 24px; min-height:auto; }
+  }
+
+  .blob{
+    position:absolute;
+    border-radius:9999px;
+    filter: blur(120px);
+    opacity:.55;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .glass{
+    background: var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 24px;
+  }
+  .glass-strong{
+    background: var(--glass-bg-strong);
+    border:1px solid var(--glass-border);
+    backdrop-filter: blur(18px);
+    border-radius: 20px;
+  }
+
+  .topbar{
+    position:relative; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom: 28px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,.09);
+  }
+  .logo-dot{
+    width:34px;height:34px;border-radius:9999px;
+    background: linear-gradient(135deg,#eae6db,#b9b2a1);
+    flex-shrink:0;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color: var(--muted);
+  }
+  .slide-index{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; letter-spacing:.1em; color: var(--muted-2);
+  }
+  .content{ position:relative; z-index:10; flex:1; display:flex; flex-direction:column; }
+
+  .img-slot{
+    position:relative;
+    border-radius:24px;
+    background: linear-gradient(150deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+    border:1px solid var(--glass-border);
+    display:flex; align-items:center; justify-content:center;
+    color: rgba(245,243,238,.35);
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px; letter-spacing:.12em; text-transform:uppercase;
+    overflow:hidden;
+  }
+  .img-slot::before{
+    content:'';
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity:.5;
+  }
+  .img-slot span{ position:relative; z-index:1; }
+
+  .stat-num{ font-family:'Manrope', sans-serif; font-weight:800; letter-spacing:-.02em; }
+
+  .hairline{ height:1px; background: rgba(255,255,255,.1); border:none; }
+
+  .chip{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    padding: 5px 11px; border-radius:999px;
+    border:1px solid var(--glass-border);
+    color: var(--muted);
+    display:inline-flex; align-items:center; gap:6px;
+  }
+
+  ::selection{ background: var(--amber); color:#101010; }
+
+  @media print{
+    .slide{ min-height:100vh; page-break-after:always; break-after:page; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ SLIDE 00 — COVER ============ -->
+<section class="slide" style="background:#07080a;">
+  <div class="blob" style="width:640px;height:640px; left:-160px; top:-120px; background:radial-gradient(circle, var(--teal), transparent 70%);"></div>
+  <div class="blob" style="width:560px;height:560px; right:-140px; bottom:-160px; background:radial-gradient(circle, var(--amber), transparent 70%); opacity:.45;"></div>
+
+  <div class="topbar">
+    <div class="flex items-center gap-3">
+      <div class="logo-dot"></div>
+      <span class="font-display font-bold text-lg tracking-tight">LOGO</span>
+    </div>
+    <span class="eyebrow">Pitch Deck</span>
+  </div>
+
+  <div class="content grid lg:grid-cols-2 gap-14 items-center">
+    <div>
+      <h1 class="font-display font-extrabold leading-[0.95] tracking-tight" style="font-size:clamp(48px,7vw,96px);">
+        НАЗВАНИЕ<br>ПРОЕКТА
+      </h1>
+      <p class="mt-6 text-xl" style="color:var(--muted); max-width:520px;">
+        Слоган в одно предложение — что вы делаете и для кого.
+      </p>
+
+      <div class="mt-14 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full glass-strong flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <div>
+          <div class="font-medium">Имя Фамилия</div>
+          <div class="text-sm" style="color:var(--muted-2);">Founder &amp; CEO</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="img-slot aspect-square lg:aspect-[4/5]"><span>Изображение продукта</span></div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 01 — PROBLEM (STATEMENT) ============ -->
+<section class="slide" style="background:#0a0708;">
+  <div class="blob" style="width:700px;height:700px; left:20%; top:-260px; background:radial-gradient(circle, var(--rust), transparent 70%);"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">01 — Проблема</span>
+    <span class="slide-index">01 / 12</span>
+  </div>
+
+  <div class="content grid lg:grid-cols-5 gap-16 items-center">
+    <div class="lg:col-span-3">
+      <span class="chip">Проблема</span>
+      <h2 class="font-display font-extrabold leading-[1.02] tracking-tight mt-6" style="font-size:clamp(34px,4.6vw,58px); max-width:680px;">
+        Одно-два предложения о том, какую проблему вы решаете — понятно любому человеку без контекста.
+      </h2>
+      <p class="mt-6 text-lg" style="color:var(--muted); max-width:560px;">
+        Без технических подробностей. Объективно и валидируемо: почему это действительно проблема,
+        за решение которой готовы платить прямо сейчас.
+      </p>
+    </div>
+    <div class="lg:col-span-2 img-slot aspect-[4/5]"><span>Иллюстрация проблемы</span></div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 02 — PROBLEM (DATA) ============ -->
+<section class="slide" style="background:#0a0708;">
+  <div class="blob" style="width:640px;height:640px; right:-180px; top:10%; background:radial-gradient(circle, var(--rust), transparent 70%); opacity:.45;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">02 — Проблема в цифрах</span>
+    <span class="slide-index">02 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <p class="text-lg mb-10" style="color:var(--muted); max-width:640px;">
+      Статистика и источники, подтверждающие масштаб проблемы.
+    </p>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass p-8">
+        <div class="stat-num text-6xl">70%</div>
+        <p class="mt-4 text-sm" style="color:var(--muted);">Короткое описание, что означает эта цифра и почему она важна.</p>
+        <div class="hairline my-5"></div>
+        <span class="chip font-mono text-[10px]">Источник: Name, 2026</span>
+      </div>
+      <div class="glass p-8">
+        <div class="stat-num text-6xl">$1.2B</div>
+        <p class="mt-4 text-sm" style="color:var(--muted);">Короткое описание, что означает эта цифра и почему она важна.</p>
+        <div class="hairline my-5"></div>
+        <span class="chip font-mono text-[10px]">Источник: Name, 2026</span>
+      </div>
+      <div class="glass p-8">
+        <div class="stat-num text-6xl">3x</div>
+        <p class="mt-4 text-sm" style="color:var(--muted);">Короткое описание, что означает эта цифра и почему она важна.</p>
+        <div class="hairline my-5"></div>
+        <span class="chip font-mono text-[10px]">Источник: Name, 2026</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 03 — CONTEXT / WHY NOW ============ -->
+<section class="slide" style="background:#08090a;">
+  <div class="blob" style="width:680px;height:680px; left:-200px; bottom:-220px; background:radial-gradient(circle, var(--gold), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">03 — Почему сейчас</span>
+    <span class="slide-index">03 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-10" style="font-size:clamp(30px,3.6vw,44px); max-width:680px;">
+      Почему именно сейчас подходящий момент для запуска
+    </h2>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass-strong p-7">
+        <span class="chip mb-4">Драйвер 01</span>
+        <div class="stat-num text-4xl mt-3">29%</div>
+        <p class="mt-3 text-sm" style="color:var(--muted);">Описание тренда или изменения на рынке, создающего окно возможностей.</p>
+      </div>
+      <div class="glass-strong p-7">
+        <span class="chip mb-4">Драйвер 02</span>
+        <div class="stat-num text-4xl mt-3">+73%</div>
+        <p class="mt-3 text-sm" style="color:var(--muted);">Описание тренда или изменения на рынке, создающего окно возможностей.</p>
+      </div>
+      <div class="glass-strong p-7">
+        <span class="chip mb-4">Драйвер 03</span>
+        <div class="stat-num text-4xl mt-3">14%</div>
+        <p class="mt-3 text-sm" style="color:var(--muted);">Описание тренда или изменения на рынке, создающего окно возможностей.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 04 — PRODUCT / HOW IT WORKS ============ -->
+<section class="slide" style="background:#07090b;">
+  <div class="blob" style="width:700px;height:700px; right:-220px; top:-200px; background:radial-gradient(circle, var(--teal), transparent 70%);"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">04 — Продукт</span>
+    <span class="slide-index">04 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-3" style="font-size:clamp(30px,3.6vw,44px); max-width:700px;">
+      Как это работает — три шага
+    </h2>
+    <p class="text-lg mb-10" style="color:var(--muted); max-width:600px;">
+      Механика продукта глазами пользователя, без технических деталей.
+    </p>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div>
+        <div class="img-slot aspect-[4/5] mb-5"><span>Скриншот · Шаг 1</span></div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs" style="color:var(--muted-2);">01</span>
+          <h3 class="font-display font-semibold text-lg">Шаг первый</h3>
+        </div>
+        <p class="text-sm mt-2" style="color:var(--muted);">Что делает пользователь и что он получает на этом шаге.</p>
+      </div>
+      <div>
+        <div class="img-slot aspect-[4/5] mb-5"><span>Скриншот · Шаг 2</span></div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs" style="color:var(--muted-2);">02</span>
+          <h3 class="font-display font-semibold text-lg">Шаг второй</h3>
+        </div>
+        <p class="text-sm mt-2" style="color:var(--muted);">Что делает пользователь и что он получает на этом шаге.</p>
+      </div>
+      <div>
+        <div class="img-slot aspect-[4/5] mb-5"><span>Скриншот · Шаг 3</span></div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs" style="color:var(--muted-2);">03</span>
+          <h3 class="font-display font-semibold text-lg">Шаг третий</h3>
+        </div>
+        <p class="text-sm mt-2" style="color:var(--muted);">Что делает пользователь и что он получает на этом шаге.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 05 — KEY FEATURES ============ -->
+<section class="slide" style="background:#08090a;">
+  <div class="blob" style="width:640px;height:640px; left:-160px; top:20%; background:radial-gradient(circle, var(--teal), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">05 — Преимущества</span>
+    <span class="slide-index">05 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-10" style="font-size:clamp(30px,3.6vw,44px); max-width:700px;">
+      Почему мы в 10 раз лучше существующих альтернатив
+    </h2>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass p-8 flex flex-col">
+        <div class="w-11 h-11 rounded-xl glass-strong flex items-center justify-center mb-6">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-xl mb-2">Фича первая</h3>
+        <p class="text-sm" style="color:var(--muted);">Короткое объяснение конкретного преимущества, без технических подробностей.</p>
+      </div>
+      <div class="glass p-8 flex flex-col">
+        <div class="w-11 h-11 rounded-xl glass-strong flex items-center justify-center mb-6">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-xl mb-2">Фича вторая</h3>
+        <p class="text-sm" style="color:var(--muted);">Короткое объяснение конкретного преимущества, без технических подробностей.</p>
+      </div>
+      <div class="glass p-8 flex flex-col">
+        <div class="w-11 h-11 rounded-xl glass-strong flex items-center justify-center mb-6">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19h16M4 15l4-4 4 3 6-7"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-xl mb-2">Фича третья</h3>
+        <p class="text-sm" style="color:var(--muted);">Короткое объяснение конкретного преимущества, без технических подробностей.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 06 — MARKET ============ -->
+<section class="slide" style="background:#0a0906;">
+  <div class="blob" style="width:720px;height:720px; right:-220px; bottom:-240px; background:radial-gradient(circle, var(--gold), transparent 70%);"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">06 — Рынок</span>
+    <span class="slide-index">06 / 12</span>
+  </div>
+
+  <div class="content grid lg:grid-cols-5 gap-16 items-center">
+    <div class="lg:col-span-2 flex flex-col gap-5">
+      <div class="glass-strong p-6">
+        <span class="chip">TAM</span>
+        <div class="stat-num text-4xl mt-3">$X.X B</div>
+        <p class="text-sm mt-1" style="color:var(--muted);">Общий объём рынка</p>
+      </div>
+      <div class="glass-strong p-6">
+        <span class="chip">SAM</span>
+        <div class="stat-num text-4xl mt-3">$X.X B</div>
+        <p class="text-sm mt-1" style="color:var(--muted);">Достижимый рынок</p>
+      </div>
+      <div class="glass-strong p-6">
+        <span class="chip">SOM</span>
+        <div class="stat-num text-4xl mt-3">$X.X M</div>
+        <p class="text-sm mt-1" style="color:var(--muted);">Целевая доля на старте</p>
+      </div>
+    </div>
+
+    <div class="lg:col-span-3">
+      <h2 class="font-display font-extrabold tracking-tight mb-6" style="font-size:clamp(28px,3.4vw,40px);">
+        Большой и растущий рынок
+      </h2>
+      <div class="space-y-5">
+        <div class="flex items-start gap-4">
+          <span class="font-mono text-xs mt-1" style="color:var(--muted-2);">CAGR</span>
+          <p class="text-sm" style="color:var(--muted);">Ключевой драйвер роста рынка №1 — коротко, с цифрой.</p>
+        </div>
+        <hr class="hairline">
+        <div class="flex items-start gap-4">
+          <span class="font-mono text-xs mt-1" style="color:var(--muted-2);">РЕГ</span>
+          <p class="text-sm" style="color:var(--muted);">Ключевой драйвер роста рынка №2 — коротко, с цифрой.</p>
+        </div>
+        <hr class="hairline">
+        <div class="flex items-start gap-4">
+          <span class="font-mono text-xs mt-1" style="color:var(--muted-2);">ТЕХ</span>
+          <p class="text-sm" style="color:var(--muted);">Ключевой драйвер роста рынка №3 — коротко, с цифрой.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 07 — COMPETITIVE ANALYSIS ============ -->
+<section class="slide" style="background:#08090a;">
+  <div class="blob" style="width:600px;height:600px; left:10%; top:-240px; background:radial-gradient(circle, var(--teal), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">07 — Конкурентный анализ</span>
+    <span class="slide-index">07 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-2" style="font-size:clamp(28px,3.4vw,40px);">
+      Чем мы лучше существующих решений
+    </h2>
+    <p class="text-sm mb-8" style="color:var(--muted);">Сравнение по ключевым для клиента критериям.</p>
+
+    <div class="glass overflow-hidden">
+      <div class="grid grid-cols-4 text-sm">
+        <div class="p-5 font-mono text-xs uppercase tracking-wider" style="color:var(--muted-2);">Критерий</div>
+        <div class="p-5 font-display font-semibold text-center border-l" style="border-color:var(--glass-border); background:rgba(255,255,255,.05);">Мы</div>
+        <div class="p-5 text-center border-l" style="border-color:var(--glass-border); color:var(--muted);">Конкурент А</div>
+        <div class="p-5 text-center border-l" style="border-color:var(--glass-border); color:var(--muted);">Конкурент Б</div>
+
+        <div class="p-5 border-t" style="border-color:var(--glass-border); color:var(--muted);">Критерий 1</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); background:rgba(255,255,255,.05);">✓</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); color:var(--muted-2);">–</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); color:var(--muted-2);">✓</div>
+
+        <div class="p-5 border-t" style="border-color:var(--glass-border); color:var(--muted);">Критерий 2</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); background:rgba(255,255,255,.05);">✓</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); color:var(--muted-2);">✓</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); color:var(--muted-2);">–</div>
+
+        <div class="p-5 border-t" style="border-color:var(--glass-border); color:var(--muted);">Критерий 3</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); background:rgba(255,255,255,.05);">✓</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); color:var(--muted-2);">–</div>
+        <div class="p-5 text-center border-t border-l" style="border-color:var(--glass-border); color:var(--muted-2);">–</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 08 — BUSINESS MODEL + UNIT ECONOMICS ============ -->
+<section class="slide" style="background:#07080a;">
+  <div class="blob" style="width:680px;height:680px; right:-200px; top:0; background:radial-gradient(circle, var(--amber), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">08 — Бизнес-модель</span>
+    <span class="slide-index">08 / 12</span>
+  </div>
+
+  <div class="content grid lg:grid-cols-2 gap-14">
+    <div>
+      <h2 class="font-display font-extrabold tracking-tight mb-6" style="font-size:clamp(28px,3.4vw,40px);">
+        Как мы зарабатываем
+      </h2>
+      <div class="space-y-4">
+        <div class="glass-strong p-6 flex items-center justify-between">
+          <div>
+            <div class="font-display font-semibold">Поток выручки 1</div>
+            <div class="text-xs mt-1" style="color:var(--muted-2);">Описание модели монетизации</div>
+          </div>
+          <div class="stat-num text-2xl">60%</div>
+        </div>
+        <div class="glass-strong p-6 flex items-center justify-between">
+          <div>
+            <div class="font-display font-semibold">Поток выручки 2</div>
+            <div class="text-xs mt-1" style="color:var(--muted-2);">Описание модели монетизации</div>
+          </div>
+          <div class="stat-num text-2xl">30%</div>
+        </div>
+        <div class="glass-strong p-6 flex items-center justify-between">
+          <div>
+            <div class="font-display font-semibold">Поток выручки 3</div>
+            <div class="text-xs mt-1" style="color:var(--muted-2);">Описание модели монетизации</div>
+          </div>
+          <div class="stat-num text-2xl">10%</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2 class="font-display font-extrabold tracking-tight mb-6" style="font-size:clamp(28px,3.4vw,40px);">
+        Unit economics
+      </h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass p-6">
+          <span class="chip">LTV</span>
+          <div class="stat-num text-4xl mt-3">$XXX</div>
+        </div>
+        <div class="glass p-6">
+          <span class="chip">CAC</span>
+          <div class="stat-num text-4xl mt-3">$XX</div>
+        </div>
+        <div class="glass p-6">
+          <span class="chip">LTV : CAC</span>
+          <div class="stat-num text-4xl mt-3">3.0x</div>
+        </div>
+        <div class="glass p-6">
+          <span class="chip">Retention</span>
+          <div class="stat-num text-4xl mt-3">XX%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 09 — TRACTION ============ -->
+<section class="slide" style="background:#08090a;">
+  <div class="blob" style="width:640px;height:640px; left:-180px; bottom:-200px; background:radial-gradient(circle, var(--teal), transparent 70%);"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">09 — Метрики роста</span>
+    <span class="slide-index">09 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-8" style="font-size:clamp(28px,3.4vw,40px);">
+      Динамика по кварталам
+    </h2>
+
+    <div class="img-slot h-64 mb-8"><span>График выручки / пользователей по кварталам</span></div>
+
+    <div class="grid md:grid-cols-4 gap-6">
+      <div>
+        <div class="stat-num text-3xl">$XXK</div>
+        <div class="text-xs mt-2" style="color:var(--muted-2);">MRR</div>
+      </div>
+      <div>
+        <div class="stat-num text-3xl">XX K</div>
+        <div class="text-xs mt-2" style="color:var(--muted-2);">Пользователей</div>
+      </div>
+      <div>
+        <div class="stat-num text-3xl">+XX%</div>
+        <div class="text-xs mt-2" style="color:var(--muted-2);">Рост MoM</div>
+      </div>
+      <div>
+        <div class="stat-num text-3xl">XX</div>
+        <div class="text-xs mt-2" style="color:var(--muted-2);">Партнёров / клиентов</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 10 — TEAM ============ -->
+<section class="slide" style="background:#07080a;">
+  <div class="blob" style="width:600px;height:600px; right:-160px; top:10%; background:radial-gradient(circle, var(--rust), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">10 — Команда</span>
+    <span class="slide-index">10 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-10" style="font-size:clamp(28px,3.4vw,40px);">
+      Люди, которые это сделают
+    </h2>
+    <div class="grid md:grid-cols-4 gap-6">
+      <div class="glass p-6 text-center">
+        <div class="w-16 h-16 rounded-full glass-strong mx-auto mb-4"></div>
+        <div class="font-display font-semibold">Имя Фамилия</div>
+        <div class="text-xs mb-3" style="color:var(--muted-2);">CEO</div>
+        <p class="text-xs" style="color:var(--muted);">Релевантный опыт, результат в цифрах.</p>
+      </div>
+      <div class="glass p-6 text-center">
+        <div class="w-16 h-16 rounded-full glass-strong mx-auto mb-4"></div>
+        <div class="font-display font-semibold">Имя Фамилия</div>
+        <div class="text-xs mb-3" style="color:var(--muted-2);">CTO</div>
+        <p class="text-xs" style="color:var(--muted);">Релевантный опыт, результат в цифрах.</p>
+      </div>
+      <div class="glass p-6 text-center">
+        <div class="w-16 h-16 rounded-full glass-strong mx-auto mb-4"></div>
+        <div class="font-display font-semibold">Имя Фамилия</div>
+        <div class="text-xs mb-3" style="color:var(--muted-2);">COO</div>
+        <p class="text-xs" style="color:var(--muted);">Релевантный опыт, результат в цифрах.</p>
+      </div>
+      <div class="glass p-6 text-center">
+        <div class="w-16 h-16 rounded-full glass-strong mx-auto mb-4"></div>
+        <div class="font-display font-semibold">Имя Фамилия</div>
+        <div class="text-xs mb-3" style="color:var(--muted-2);">Advisor</div>
+        <p class="text-xs" style="color:var(--muted);">Релевантный опыт, результат в цифрах.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 11 — ROADMAP ============ -->
+<section class="slide" style="background:#08090a;">
+  <div class="blob" style="width:680px;height:680px; left:20%; bottom:-260px; background:radial-gradient(circle, var(--gold), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">11 — Roadmap</span>
+    <span class="slide-index">11 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <h2 class="font-display font-extrabold tracking-tight mb-12" style="font-size:clamp(28px,3.4vw,40px);">
+      Куда мы движемся дальше
+    </h2>
+    <div class="relative">
+      <div class="hairline absolute left-0 right-0 top-6"></div>
+      <div class="grid md:grid-cols-4 gap-8">
+        <div class="relative pt-12">
+          <div class="absolute left-0 top-4 w-3 h-3 rounded-full" style="background:var(--gold);"></div>
+          <span class="chip mb-3">Q1</span>
+          <p class="text-sm mt-3" style="color:var(--muted);">Ключевая цель квартала — коротко.</p>
+        </div>
+        <div class="relative pt-12">
+          <div class="absolute left-0 top-4 w-3 h-3 rounded-full" style="background:var(--gold);"></div>
+          <span class="chip mb-3">Q2</span>
+          <p class="text-sm mt-3" style="color:var(--muted);">Ключевая цель квартала — коротко.</p>
+        </div>
+        <div class="relative pt-12">
+          <div class="absolute left-0 top-4 w-3 h-3 rounded-full" style="background:var(--gold);"></div>
+          <span class="chip mb-3">Q3</span>
+          <p class="text-sm mt-3" style="color:var(--muted);">Ключевая цель квартала — коротко.</p>
+        </div>
+        <div class="relative pt-12">
+          <div class="absolute left-0 top-4 w-3 h-3 rounded-full" style="background:var(--gold);"></div>
+          <span class="chip mb-3">Q4</span>
+          <p class="text-sm mt-3" style="color:var(--muted);">Ключевая цель квартала — коротко.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 12 — THE ASK / CLOSING ============ -->
+<section class="slide" style="background:#07080a; border-bottom:none;">
+  <div class="blob" style="width:720px;height:720px; left:-200px; top:-220px; background:radial-gradient(circle, var(--teal), transparent 70%);"></div>
+  <div class="blob" style="width:600px;height:600px; right:-180px; bottom:-200px; background:radial-gradient(circle, var(--amber), transparent 70%); opacity:.4;"></div>
+
+  <div class="topbar">
+    <span class="eyebrow">12 — Раунд</span>
+    <span class="slide-index">12 / 12</span>
+  </div>
+
+  <div class="content flex flex-col justify-center">
+    <div class="grid lg:grid-cols-2 gap-14 items-start mb-14">
+      <div>
+        <h2 class="font-display font-extrabold leading-[1.02] tracking-tight" style="font-size:clamp(34px,4.4vw,56px);">
+          Привлекаем $X.XM<br>на XX месяцев роста
+        </h2>
+        <p class="mt-5 text-lg" style="color:var(--muted); max-width:480px;">
+          Раунд seed / Series A · закрытие в [месяц, год]
+        </p>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="glass p-5 text-center">
+          <div class="stat-num text-2xl">40%</div>
+          <div class="text-xs mt-2" style="color:var(--muted-2);">Продукт</div>
+        </div>
+        <div class="glass p-5 text-center">
+          <div class="stat-num text-2xl">35%</div>
+          <div class="text-xs mt-2" style="color:var(--muted-2);">Маркетинг</div>
+        </div>
+        <div class="glass p-5 text-center">
+          <div class="stat-num text-2xl">25%</div>
+          <div class="text-xs mt-2" style="color:var(--muted-2);">Команда</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="hairline mb-10">
+
+    <div class="flex flex-col md:flex-row items-start md:items-end justify-between gap-8">
+      <div>
+        <div class="font-display font-bold text-2xl">Имя Фамилия</div>
+        <div class="text-sm" style="color:var(--muted-2);">Founder &amp; CEO</div>
+        <div class="text-sm mt-2 font-mono" style="color:var(--muted);">name@company.com · +7 000 000 00 00</div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="logo-dot"></div>
+        <span class="font-display font-bold text-lg tracking-tight">LOGO</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

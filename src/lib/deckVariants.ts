@@ -39,9 +39,23 @@ export function assignDeckVariants(
   designPlan?: DeckDesignPlan | null
 ): DeckTemplateId {
   const seed = hashSeed(idea, userId ?? 0, deck.title ?? "");
-  const templates: DeckTemplateId[] = ["studio", "apex", "titanium", "ember", "midnight", "swiss"];
+  const templates: DeckTemplateId[] = ["studio", "cream", "apex", "titanium", "ember", "midnight", "swiss"];
   const templateId = forceTemplate ?? designPlan?.recommendedTemplate ?? pick(templates, seed, 3);
   const layoutEngine = resolveLayoutEngine(templateId);
+
+  const CREAM_VARIANT_BY_TYPE: Partial<Record<string, string>> = {
+    title: "hero-centered",
+    problem: "cream-statement",
+    solution: "cream-features",
+    product: "cream-steps",
+    market: "tam-bento",
+    competition: "compare-table",
+    pricing: "cream-biz",
+    traction: "cream-traction",
+    sauce: "cream-team",
+    launch: "roadmap",
+    ask: "funding-split",
+  };
 
   deck.slides.forEach((slide, index) => {
     const type = slide.type || "title";
@@ -49,7 +63,10 @@ export function assignDeckVariants(
     const planned = designPlan?.slidePlans?.find((p) => p.slideIndex === index);
     const plannedVariant =
       planned?.layoutIntent && variants.includes(planned.layoutIntent) ? planned.layoutIntent : null;
-    const variant = plannedVariant || pick(variants, seed, index * 7 + 1);
+    let variant = plannedVariant || pick(variants, seed, index * 7 + 1);
+    if (templateId === "cream" && CREAM_VARIANT_BY_TYPE[type]) {
+      variant = CREAM_VARIANT_BY_TYPE[type]!;
+    }
     slide.visualData = {
       ...(slide.visualData || {}),
       template: layoutEngine,

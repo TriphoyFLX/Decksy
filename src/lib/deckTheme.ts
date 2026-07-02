@@ -1,8 +1,8 @@
 import type React from "react";
 
-export type DeckTemplateId = "apex" | "swiss" | "titanium" | "ember" | "midnight" | "studio";
+export type DeckTemplateId = "apex" | "swiss" | "cream" | "titanium" | "ember" | "midnight" | "studio";
 
-export type DeckLayoutEngine = "apex" | "swiss";
+export type DeckLayoutEngine = "apex" | "swiss" | "cream";
 
 export type StyleKey = "cobalt" | "clean-light" | "cosmic-dark";
 
@@ -47,6 +47,18 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     accent: "#34d399",
     selectedStyle: "cosmic-dark",
     layoutEngine: "swiss",
+  },
+  cream: {
+    id: "cream",
+    name: "Cream Glass",
+    source: "Teamplate3.html",
+    description: "Investor pitch: кремовая типографика, glass-карточки, teal/amber glow",
+    frameGradient: "linear-gradient(165deg, #07080a 0%, #0a0708 42%, #08090b 100%)",
+    gridBg:
+      "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
+    accent: "#c9793c",
+    selectedStyle: "cosmic-dark",
+    layoutEngine: "cream",
   },
   titanium: {
     id: "titanium",
@@ -136,6 +148,44 @@ export function getTemplateFrameAppearance(
   const isThemeLight = selectedStyle === "clean-light" || tpl.isLightBackground;
   const isThemeCobalt = selectedStyle === "cobalt";
   const useImageBg = Boolean(tpl.backgroundImage) && !isThemeCobalt;
+
+  if (templateId === "cream" && !isThemeCobalt && !isThemeLight) {
+    return {
+      frameStyle: { background: tpl.frameGradient },
+      headerClass:
+        "flex items-center justify-between text-[8px] sm:text-[9px] font-mono pb-2 relative z-10 border-b border-white/[0.09] text-[#f5f3ee]/60",
+      footerClass:
+        "pt-2 flex items-center justify-between text-[7px] sm:text-[8px] font-mono uppercase tracking-[0.1em] relative z-10 border-t border-white/[0.09] text-[#f5f3ee]/40",
+      titleHeaderClass: "text-[#f5f3ee] uppercase tracking-[0.14em] font-bold",
+      gridBg: tpl.gridBg,
+      gridBgSize: "28px 28px",
+      frameBorderClass: "border-white/[0.09]",
+      showGlowBlobs: true,
+      ambientLayers: [
+        {
+          className: "z-[1] pointer-events-none",
+          style: {
+            background:
+              "radial-gradient(ellipse 55% 45% at 8% 12%, rgba(60,107,116,0.42), transparent 62%)",
+          },
+        },
+        {
+          className: "z-[1] pointer-events-none",
+          style: {
+            background:
+              "radial-gradient(ellipse 50% 42% at 92% 82%, rgba(201,121,60,0.32), transparent 58%)",
+          },
+        },
+        {
+          className: "z-[1] pointer-events-none",
+          style: {
+            background:
+              "radial-gradient(ellipse 38% 30% at 72% 18%, rgba(217,164,65,0.18), transparent 55%)",
+          },
+        },
+      ],
+    };
+  }
 
   let frameStyle: React.CSSProperties = {};
   let headerClass = "flex items-center justify-between text-[8px] sm:text-[9px] font-mono pb-2 relative z-10 border-b ";

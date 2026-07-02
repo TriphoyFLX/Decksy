@@ -89,7 +89,7 @@ export function getDefaultDesignPlan(idea: string): DeckDesignPlan {
 
 export function normalizeDesignPlan(raw: any, idea: string): DeckDesignPlan {
   const fallback = getDefaultDesignPlan(idea);
-  const allowedTemplates: DeckTemplateId[] = ["apex", "swiss", "titanium", "ember", "midnight", "studio"];
+  const allowedTemplates: DeckTemplateId[] = ["apex", "swiss", "cream", "titanium", "ember", "midnight", "studio"];
   const allowedStyles: StyleKey[] = ["cosmic-dark", "clean-light", "cobalt"];
 
   const recommendedTemplate = allowedTemplates.includes(raw?.recommendedTemplate)

@@ -19,6 +19,19 @@ import { PremiumImage } from "./slideVisuals";
 import { getConstructorStyle } from "../components/SlideConstructor";
 import type { SlideConstructorLayout } from "../types";
 import { TEMPLATE_CATALOG, type DeckTemplateId, type StyleKey } from "./deckTheme";
+import {
+  CreamHero,
+  CreamProblemStatement,
+  CreamStatTriplet,
+  CreamProductSteps,
+  CreamFeatureCards,
+  CreamMarketStack,
+  CreamCompareMatrix,
+  CreamBizSplit,
+  CreamTractionBoard,
+  CreamTeamRow,
+  CreamRoadmapTimeline,
+} from "./creamSlides";
 
 const APEX_BLUE = "#0071e3";
 const APEX_GREEN = "#30d158";
@@ -36,11 +49,28 @@ export type GlassSurface = {
   success: string;
   warning: string;
   danger: string;
+  creamGlass?: boolean;
 };
 
 export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-dark", forExport = false): GlassSurface {
   const deckTemplate = slide.visualData?.deckTemplate as DeckTemplateId | undefined;
   const templateEntry = deckTemplate ? TEMPLATE_CATALOG[deckTemplate] : undefined;
+  if (deckTemplate === "cream") {
+    return {
+      isLight: false,
+      hasImageBg: false,
+      creamGlass: true,
+      titleClass: "text-[#f5f3ee]",
+      bodyClass: "text-[#f5f3ee]/85",
+      mutedClass: "text-[#f5f3ee]/60",
+      labelColor: "#c9793c",
+      accent: "#c9793c",
+      secondary: "#3c6b74",
+      success: "#3c6b74",
+      warning: "#d9a441",
+      danger: "#8a3b2b",
+    };
+  }
   const templateAccent = templateEntry?.accent;
   const isLight = Boolean(templateEntry?.isLightBackground) || selectedStyle === "clean-light";
   const hasImageBg =
@@ -70,6 +100,15 @@ export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-
 }
 
 export function glassCardStyle(glass: GlassSurface, forExport = false): React.CSSProperties {
+  if (glass.creamGlass) {
+    return {
+      background: forExport ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.045)",
+      borderColor: "rgba(255,255,255,0.14)",
+      boxShadow: forExport ? undefined : "inset 0 1px 0 rgba(255,255,255,0.06)",
+      backdropFilter: forExport ? undefined : "blur(18px)",
+      WebkitBackdropFilter: forExport ? undefined : "blur(18px)",
+    };
+  }
   if (glass.isLight) {
     return {
       background: forExport
@@ -1380,11 +1419,16 @@ export const ApexVisionMap: React.FC<{
 };
 
 export function shouldUseApexLayout(slide: Slide): boolean {
-  return slide.visualData?.template === "apex" || slide.visualData?.template === "swiss";
+  const t = slide.visualData?.template;
+  return t === "apex" || t === "swiss" || t === "cream";
 }
 
 export function isSwissTemplate(slide: Slide): boolean {
   return slide.visualData?.template === "swiss";
+}
+
+export function isCreamTemplate(slide: Slide): boolean {
+  return slide.visualData?.template === "cream";
 }
 
 export const ApexSlideContent: React.FC<{
@@ -1419,13 +1463,14 @@ export const ApexSlideContent: React.FC<{
   const type = slide.type;
   const variant = slide.visualData?.variant || "";
   const swiss = isSwissTemplate(slide);
+  const cream = isCreamTemplate(slide);
   const glass = getGlassSurface(slide, (selectedStyle || "cosmic-dark") as StyleKey, forExport);
 
   return (
     <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">
     <div className="h-full flex flex-col py-0.5 relative min-h-0 overflow-hidden">
       <div className="relative z-10 flex flex-col h-full min-h-0">
-        {index !== 0 && type !== "title" && (
+        {index !== 0 && type !== "title" && !cream && (
           <div className="mb-2 text-left shrink-0">
             {sectionLabel && <ApexSectionLabel color={glass.accent}>{sectionLabel}</ApexSectionLabel>}
             <ApexTitle className={glass.titleClass}>{title}</ApexTitle>
@@ -1433,25 +1478,59 @@ export const ApexSlideContent: React.FC<{
           </div>
         )}
 
-        {(index === 0 || type === "title") && (
-          <ApexHero
-            title={title}
-            subtitle={subtitle}
-            badge={badge}
-            content={content}
-            image={slide.image}
-            founderName={slide.founderName}
-            founderRole={slide.founderRole}
-            brandQuote={slide.brandQuote}
-            renderBullet={renderBullet}
-            forExport={forExport}
-            constructorLayout={slide.visualData?.constructorLayout}
-            glass={glass}
-          />
-        )}
+        {(index === 0 || type === "title") &&
+          (cream ? (
+            <CreamHero
+              title={title}
+              subtitle={subtitle}
+              content={content}
+              image={slide.image}
+              founderName={slide.founderName}
+              founderRole={slide.founderRole}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : (
+            <ApexHero
+              title={title}
+              subtitle={subtitle}
+              badge={badge}
+              content={content}
+              image={slide.image}
+              founderName={slide.founderName}
+              founderRole={slide.founderRole}
+              brandQuote={slide.brandQuote}
+              renderBullet={renderBullet}
+              forExport={forExport}
+              constructorLayout={slide.visualData?.constructorLayout}
+              glass={glass}
+            />
+          ))}
 
         {type === "problem" &&
-          (variant === "big-stat" ? (
+          (cream ? (
+            variant === "big-stat" || variant === "stats-grid" ? (
+              <CreamStatTriplet
+                content={content}
+                parseBullet={parseBullet}
+                extractNumber={extractNumber}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            ) : (
+              <CreamProblemStatement
+                title={title}
+                content={content}
+                image={slide.image}
+                parseBullet={parseBullet}
+                renderBullet={renderBullet}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            )
+          ) : variant === "big-stat" ? (
             <ApexBigStat
               content={content}
               parseBullet={parseBullet}
@@ -1513,7 +1592,17 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "market" &&
-          (variant === "big-stat" ? (
+          (cream ? (
+            <CreamMarketStack
+              content={content}
+              metrics={slide.visualData?.metrics}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "big-stat" ? (
             <ApexBigStat
               content={content}
               parseBullet={parseBullet}
@@ -1556,7 +1645,28 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {(type === "solution" || type === "product") &&
-          (variant === "quote-poster" ? (
+          (cream ? (
+            type === "product" || variant === "cream-steps" ? (
+              <CreamProductSteps
+                content={content}
+                cardImages={slide.visualData?.images}
+                parseBullet={parseBullet}
+                renderBullet={renderBullet}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            ) : (
+              <CreamFeatureCards
+                content={content}
+                parseBullet={parseBullet}
+                renderBullet={renderBullet}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            )
+          ) : variant === "quote-poster" ? (
             <ApexQuotePoster
               content={content}
               parseBullet={parseBullet}
@@ -1609,8 +1719,17 @@ export const ApexSlideContent: React.FC<{
             />
           ))}
 
-        {type === "traction" && (
-          variant === "big-stat" ? (
+        {type === "traction" &&
+          (cream ? (
+            <CreamTractionBoard
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "big-stat" ? (
             <ApexBigStat
               content={content}
               parseBullet={parseBullet}
@@ -1644,9 +1763,19 @@ export const ApexSlideContent: React.FC<{
           )
         )}
 
-        {type === "competition" && (
-          variant === "compare-table" ? (
-            <ApexCompareTable content={content} competitors={slide.visualData?.competitors} parseBullet={parseBullet} glass={glass} forExport={forExport} />
+        {type === "competition" &&
+          (cream || variant === "compare-table" ? (
+            cream ? (
+              <CreamCompareMatrix
+                content={content}
+                competitors={slide.visualData?.competitors}
+                parseBullet={parseBullet}
+                glass={glass}
+                forExport={forExport}
+              />
+            ) : (
+              <ApexCompareTable content={content} competitors={slide.visualData?.competitors} parseBullet={parseBullet} glass={glass} forExport={forExport} />
+            )
           ) : variant === "positioning" || variant === "matrix-2x2" ? (
             <ApexPositioningMap content={content} competitors={slide.visualData?.competitors} parseBullet={parseBullet} glass={glass} forExport={forExport} />
           ) : (
@@ -1661,8 +1790,17 @@ export const ApexSlideContent: React.FC<{
           )
         )}
 
-        {type === "pricing" && (
-          variant === "revenue-ladder" || variant === "unit-economics" ? (
+        {type === "pricing" &&
+          (cream ? (
+            <CreamBizSplit
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "revenue-ladder" || variant === "unit-economics" ? (
             <ApexRevenueLadder
               content={content}
               parseBullet={parseBullet}
@@ -1683,8 +1821,17 @@ export const ApexSlideContent: React.FC<{
           )
         )}
 
-        {type === "launch" && (
-          variant === "gtm-funnel" ? (
+        {type === "launch" &&
+          (cream ? (
+            <CreamRoadmapTimeline
+              content={content}
+              timeline={slide.visualData?.timeline}
+              parseBullet={parseBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "gtm-funnel" ? (
             <ApexGtmFunnel content={content} parseBullet={parseBullet} renderLabel={renderLabel} glass={glass} forExport={forExport} />
           ) : (
             <ApexRoadmap content={content} timeline={slide.visualData?.timeline} parseBullet={parseBullet} renderLabel={renderLabel} glass={glass} forExport={forExport} />
@@ -1746,17 +1893,27 @@ export const ApexSlideContent: React.FC<{
             />
           ))}
 
-        {type === "sauce" && !slide.visualData?.teamMembers?.length && (
-          <ApexPainGrid
-            content={content}
-            parseBullet={parseBullet}
-            renderBullet={renderBullet}
-            renderLabel={renderLabel}
-            image={slide.image}
-            glass={glass}
-            forExport={forExport}
-          />
-        )}
+        {type === "sauce" &&
+          (cream ? (
+            <CreamTeamRow
+              content={content}
+              teamMembers={slide.visualData?.teamMembers}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : !slide.visualData?.teamMembers?.length ? (
+            <ApexPainGrid
+              content={content}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              renderLabel={renderLabel}
+              image={slide.image}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : null)}
 
         {!["title", "problem", "solution", "product", "market", "pricing", "traction", "launch", "ask", "vision", "competition", "sauce"].includes(type) &&
           index !== 0 && (

@@ -972,7 +972,7 @@ Rules:
 - layoutIntent must vary: use big-stat, quote-poster, stats-grid, product-split, matrix-2x2, price-tiers, roadmap, team-grid, funding-split, vision-map etc.
 - Adjacent slides MUST NOT share the same layoutIntent
 - ONE accent color only. Dark poster style unless idea clearly needs light theme (then recommendedStyle=clean-light, recommendedTemplate=ember)
-- recommendedTemplate one of: studio, apex, swiss, titanium, ember, midnight`,
+- recommendedTemplate one of: studio, apex, swiss, cream, titanium, ember, midnight`,
       `Startup idea: ${idea}\nMode: ${mode}\n${brandingCtx}\n${outline?.title ? `Outline title: ${outline.title}` : ""}\nCreate design plan.`,
       1800
     );

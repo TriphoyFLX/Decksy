@@ -191,7 +191,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     );
   }
 
-  // APEX / SWISS template — Apple-style layouts from Teamplate.html
+  // APEX / SWISS / CREAM template — layouts from Teamplate.html / Teamplate2 / Teamplate3
   if (shouldUseApexLayout(slide)) {
     return (
       <ApexSlideContent

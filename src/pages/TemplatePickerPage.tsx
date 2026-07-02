@@ -39,6 +39,25 @@ function TemplatePreview({ id }: { id: DeckTemplateId }) {
     );
   }
 
+  if (id === "cream") {
+    return (
+      <div className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2" style={{ background: t.frameGradient }}>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-6 h-6 rounded-full" style={{ background: "linear-gradient(135deg,#eae6db,#b9b2a1)" }} />
+          <div className="h-1.5 w-12 rounded bg-[#f5f3ee]/70" />
+        </div>
+        <div className="grid grid-cols-3 gap-1 flex-1">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border border-white/10 bg-white/[0.05] p-1">
+              <div className="h-1 w-5 rounded mb-1" style={{ background: "rgba(201,121,60,0.5)" }} />
+              <div className="h-0.5 w-full bg-white/15 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (id === "apex") {
     return (
       <div className="h-full w-full rounded-lg overflow-hidden flex flex-col items-center justify-center p-3" style={{ background: t.frameGradient }}>

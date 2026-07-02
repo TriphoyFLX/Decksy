@@ -52,8 +52,8 @@ export interface SlideConstructorLayout {
 }
 
 export interface SlideVisualData {
-  template?: 'apex' | 'swiss';
-  deckTemplate?: 'apex' | 'swiss' | 'titanium' | 'ember' | 'midnight' | 'studio';
+  template?: 'apex' | 'swiss' | 'cream';
+  deckTemplate?: 'apex' | 'swiss' | 'cream' | 'titanium' | 'ember' | 'midnight' | 'studio';
   variant?: string;
   layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics' | 'timeline' | 'pricing' | 'matrix';
   teamMembers?: { name: string; role: string; image: string }[];
