@@ -71,8 +71,10 @@ import {
   createInitialCanvas,
   buildInitialBrandingQuestion,
   DECK_GENERATION_TOKEN_COST,
+  finalizeCanvasForGeneration,
   getRequiredBlockCount,
   isInterviewComplete,
+  wantsToSkipInterview,
 } from "./lib/interviewFlow";
 import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, mergeBrandingFromInterview } from "./lib/projectBranding";
 import { enrichSlidesWithVisuals, fixMisplacedTeamLayout } from "./lib/slideImageUtils";
@@ -386,6 +388,7 @@ export default function App() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [sessionImages, setSessionImages] = useState<{ id: string; image: string; description: string }[]>(() => loadSessionImages());
   const [showImagePromptModal, setShowImagePromptModal] = useState(false);
+  const [pendingGenerationCanvas, setPendingGenerationCanvas] = useState<PitchCanvas | undefined>(undefined);
   const [isRewritingSlide, setIsRewritingSlide] = useState(false);
   const [rewriteError, setRewriteError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -1020,8 +1023,9 @@ export default function App() {
   };
 
   // Interview → outline → templates → generate
-  const fetchOutline = async (brandingOverride?: ProjectBranding) => {
+  const fetchOutline = async (brandingOverride?: ProjectBranding, canvasOverride?: PitchCanvas) => {
     const branding = brandingOverride ?? projectBranding;
+    const activeCanvas = canvasOverride ?? canvas;
     setIsLoading(true);
     try {
       const response = await fetch("/api/generate_outline", {
@@ -1034,7 +1038,7 @@ export default function App() {
           idea: idea.trim(),
           mode,
           branding,
-          canvas,
+          canvas: activeCanvas,
           messages: messages.map((m) => ({ sender: m.sender, text: m.text })),
           sessionImages: sessionImages.map((s) => ({ id: s.id, description: s.description })),
         }),
@@ -1052,12 +1056,13 @@ export default function App() {
     }
   };
 
-  const handleProceedToOutline = async () => {
-    const mergedBranding = mergeBrandingFromInterview(canvas, projectBranding, sessionImages);
+  const handleProceedToOutline = async (canvasOverride?: PitchCanvas) => {
+    const activeCanvas = canvasOverride ?? canvas;
+    const mergedBranding = mergeBrandingFromInterview(activeCanvas, projectBranding, sessionImages);
     setProjectBranding(mergedBranding);
     setPresentationOutline(null);
     setScreen("outline");
-    await fetchOutline(mergedBranding);
+    await fetchOutline(mergedBranding, activeCanvas);
   };
 
   const handleStartInterview = async () => {
@@ -1191,7 +1196,10 @@ export default function App() {
       const introMsg: Message = {
         id: "import-summary",
         sender: "investor",
-        text: `📄 ${data.summary || "Документы обработаны."}`,
+        text:
+          data.parseSource === "local"
+            ? `📄 ${data.summary}`
+            : `📄 ${data.summary || "Документы обработаны AI."}`,
         timestamp: ts,
       };
       const questionMsg: Message = {
@@ -1474,8 +1482,27 @@ export default function App() {
 
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
+    const outgoingText = inputMessage;
     setInputMessage("");
     setIsLoading(true);
+
+    if (wantsToSkipInterview(outgoingText)) {
+      const finalized = finalizeCanvasForGeneration(canvas, mode, idea);
+      setCanvas(finalized);
+      const skipMsg: Message = {
+        id: `msg-${Date.now()}-investor`,
+        sender: "investor",
+        text: "Хорошо, пропускаю оставшиеся вопросы. Сейчас автоматически соберу план презентации...",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, skipMsg]);
+      setUnderlyingThoughts("Интервью завершено досрочно — используем данные из брифа.");
+      setIsLoading(false);
+      setTimeout(() => {
+        handleProceedToGeneration(finalized);
+      }, 900);
+      return;
+    }
 
     try {
       const response = await fetch("/api/interview", {
@@ -1612,12 +1639,20 @@ export default function App() {
     }
   };
 
-  const handleProceedToGeneration = () => {
+  const handleProceedToGeneration = (canvasOverride?: PitchCanvas) => {
     if (sessionImages.length === 0) {
+      setPendingGenerationCanvas(canvasOverride);
       setShowImagePromptModal(true);
     } else {
-      handleProceedToOutline();
+      handleProceedToOutline(canvasOverride);
     }
+  };
+
+  const continueToOutlineAfterImages = () => {
+    const canvasOverride = pendingGenerationCanvas;
+    setPendingGenerationCanvas(undefined);
+    setShowImagePromptModal(false);
+    handleProceedToOutline(canvasOverride);
   };
 
   const handleGenerateDeck = () => {
@@ -1627,7 +1662,9 @@ export default function App() {
       setShowAuthModal(true);
       return;
     }
-    handleProceedToGeneration();
+    const finalized = finalizeCanvasForGeneration(canvas, mode, idea);
+    setCanvas(finalized);
+    handleProceedToGeneration(finalized);
   };
 
   const updateSlide = (slideIndex: number, patch: Partial<Slide>) => {
@@ -3400,10 +3437,7 @@ export default function App() {
               <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-end gap-3 relative z-10">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowImagePromptModal(false);
-                    handleProceedToOutline();
-                  }}
+                  onClick={continueToOutlineAfterImages}
                   className="w-full sm:w-auto px-5 py-2.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors rounded uppercase text-[10px] font-bold tracking-widest cursor-pointer border border-white/5 text-center"
                 >
                   {sessionImages.length === 0 ? "Пропустить, к плану" : "К плану презентации"}
@@ -3411,10 +3445,7 @@ export default function App() {
                 {sessionImages.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowImagePromptModal(false);
-                      handleProceedToOutline();
-                    }}
+                    onClick={continueToOutlineAfterImages}
                     className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:opacity-90 transition-all font-bold uppercase text-[10px] tracking-widest cursor-pointer rounded flex items-center justify-center space-x-2"
                   >
                     <span>Готово, собрать план</span>
@@ -4072,6 +4103,7 @@ export default function App() {
             canvas={canvas}
             disabled={false}
             generationDisabled={Boolean(deck)}
+            briefImported={briefImported}
           />
         )}
 

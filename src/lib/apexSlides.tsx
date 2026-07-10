@@ -32,6 +32,20 @@ import {
   CreamTeamRow,
   CreamRoadmapTimeline,
 } from "./creamSlides";
+import {
+  AppleHero,
+  AppleGroupedList,
+  AppleMetricTiles,
+  AppleFeatureRows,
+  AppleProductShowcase,
+  AppleMarketGrouped,
+  AppleCompareTable,
+  AppleBizGrouped,
+  AppleTractionBoard,
+  AppleTeamGrouped,
+  AppleTimeline,
+  AppleAskSlide,
+} from "./appleSlides";
 
 const APEX_BLUE = "#0071e3";
 const APEX_GREEN = "#30d158";
@@ -50,11 +64,29 @@ export type GlassSurface = {
   warning: string;
   danger: string;
   creamGlass?: boolean;
+  appleGlass?: boolean;
 };
 
 export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-dark", forExport = false): GlassSurface {
   const deckTemplate = slide.visualData?.deckTemplate as DeckTemplateId | undefined;
   const templateEntry = deckTemplate ? TEMPLATE_CATALOG[deckTemplate] : undefined;
+  if (deckTemplate === "apple") {
+    const isLight = selectedStyle === "clean-light";
+    return {
+      isLight,
+      hasImageBg: false,
+      appleGlass: true,
+      titleClass: isLight ? "text-black" : "text-white",
+      bodyClass: isLight ? "text-[#3C3C43]" : "text-[#EBEBF5]",
+      mutedClass: isLight ? "text-[rgba(60,60,67,0.6)]" : "text-[rgba(235,235,245,0.6)]",
+      labelColor: "#007AFF",
+      accent: "#007AFF",
+      secondary: "#5856D6",
+      success: "#34C759",
+      warning: "#FF9500",
+      danger: "#FF3B30",
+    };
+  }
   if (deckTemplate === "cream") {
     return {
       isLight: false,
@@ -100,6 +132,19 @@ export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-
 }
 
 export function glassCardStyle(glass: GlassSurface, forExport = false): React.CSSProperties {
+  if (glass.appleGlass) {
+    if (glass.isLight) {
+      return {
+        background: "#FFFFFF",
+        borderColor: "transparent",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+      };
+    }
+    return {
+      background: "#1C1C1E",
+      borderColor: "transparent",
+    };
+  }
   if (glass.creamGlass) {
     return {
       background: forExport ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.045)",
@@ -1420,7 +1465,7 @@ export const ApexVisionMap: React.FC<{
 
 export function shouldUseApexLayout(slide: Slide): boolean {
   const t = slide.visualData?.template;
-  return t === "apex" || t === "swiss" || t === "cream";
+  return t === "apex" || t === "swiss" || t === "cream" || t === "apple";
 }
 
 export function isSwissTemplate(slide: Slide): boolean {
@@ -1429,6 +1474,10 @@ export function isSwissTemplate(slide: Slide): boolean {
 
 export function isCreamTemplate(slide: Slide): boolean {
   return slide.visualData?.template === "cream";
+}
+
+export function isAppleTemplate(slide: Slide): boolean {
+  return slide.visualData?.template === "apple";
 }
 
 export const ApexSlideContent: React.FC<{
@@ -1464,13 +1513,14 @@ export const ApexSlideContent: React.FC<{
   const variant = slide.visualData?.variant || "";
   const swiss = isSwissTemplate(slide);
   const cream = isCreamTemplate(slide);
+  const apple = isAppleTemplate(slide);
   const glass = getGlassSurface(slide, (selectedStyle || "cosmic-dark") as StyleKey, forExport);
 
   return (
     <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">
     <div className="h-full flex flex-col py-0.5 relative min-h-0 overflow-hidden">
       <div className="relative z-10 flex flex-col h-full min-h-0">
-        {index !== 0 && type !== "title" && !cream && (
+        {index !== 0 && type !== "title" && !cream && !apple && (
           <div className="mb-2 text-left shrink-0">
             {sectionLabel && <ApexSectionLabel color={glass.accent}>{sectionLabel}</ApexSectionLabel>}
             <ApexTitle className={glass.titleClass}>{title}</ApexTitle>
@@ -1481,6 +1531,17 @@ export const ApexSlideContent: React.FC<{
         {(index === 0 || type === "title") &&
           (cream ? (
             <CreamHero
+              title={title}
+              subtitle={subtitle}
+              content={content}
+              image={slide.image}
+              founderName={slide.founderName}
+              founderRole={slide.founderRole}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : apple ? (
+            <AppleHero
               title={title}
               subtitle={subtitle}
               content={content}
@@ -1508,7 +1569,28 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "problem" &&
-          (cream ? (
+          (apple ? (
+            variant === "big-stat" || variant === "stats-grid" ? (
+              <AppleMetricTiles
+                content={content}
+                parseBullet={parseBullet}
+                extractNumber={extractNumber}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            ) : (
+              <AppleGroupedList
+                title={title}
+                content={content}
+                parseBullet={parseBullet}
+                renderBullet={renderBullet}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            )
+          ) : cream ? (
             variant === "big-stat" || variant === "stats-grid" ? (
               <CreamStatTriplet
                 content={content}
@@ -1592,7 +1674,17 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "market" &&
-          (cream ? (
+          (apple ? (
+            <AppleMarketGrouped
+              content={content}
+              metrics={slide.visualData?.metrics}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : cream ? (
             <CreamMarketStack
               content={content}
               metrics={slide.visualData?.metrics}
@@ -1645,7 +1737,29 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {(type === "solution" || type === "product") &&
-          (cream ? (
+          (apple ? (
+            type === "product" || variant === "apple-product" ? (
+              <AppleProductShowcase
+                content={content}
+                image={slide.image}
+                cardImages={slide.visualData?.images}
+                parseBullet={parseBullet}
+                renderBullet={renderBullet}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            ) : (
+              <AppleFeatureRows
+                content={content}
+                parseBullet={parseBullet}
+                renderBullet={renderBullet}
+                renderLabel={renderLabel}
+                glass={glass}
+                forExport={forExport}
+              />
+            )
+          ) : cream ? (
             type === "product" || variant === "cream-steps" ? (
               <CreamProductSteps
                 content={content}
@@ -1720,7 +1834,16 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "traction" &&
-          (cream ? (
+          (apple ? (
+            <AppleTractionBoard
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : cream ? (
             <CreamTractionBoard
               content={content}
               parseBullet={parseBullet}
@@ -1764,7 +1887,15 @@ export const ApexSlideContent: React.FC<{
         )}
 
         {type === "competition" &&
-          (cream || variant === "compare-table" ? (
+          (apple ? (
+            <AppleCompareTable
+              content={content}
+              competitors={slide.visualData?.competitors}
+              parseBullet={parseBullet}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : cream || variant === "compare-table" ? (
             cream ? (
               <CreamCompareMatrix
                 content={content}
@@ -1791,7 +1922,16 @@ export const ApexSlideContent: React.FC<{
         )}
 
         {type === "pricing" &&
-          (cream ? (
+          (apple ? (
+            <AppleBizGrouped
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : cream ? (
             <CreamBizSplit
               content={content}
               parseBullet={parseBullet}
@@ -1822,7 +1962,16 @@ export const ApexSlideContent: React.FC<{
         )}
 
         {type === "launch" &&
-          (cream ? (
+          (apple ? (
+            <AppleTimeline
+              content={content}
+              timeline={slide.visualData?.timeline}
+              parseBullet={parseBullet}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : cream ? (
             <CreamRoadmapTimeline
               content={content}
               timeline={slide.visualData?.timeline}
@@ -1838,8 +1987,19 @@ export const ApexSlideContent: React.FC<{
           )
         )}
 
-        {type === "ask" && (
-          variant === "big-stat" ? (
+        {type === "ask" &&
+          (apple ? (
+            <AppleAskSlide
+              title={title}
+              subtitle={subtitle}
+              content={content}
+              parseBullet={parseBullet}
+              extractNumber={extractNumber}
+              renderLabel={renderLabel}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : variant === "big-stat" ? (
             <ApexBigStat
               content={content}
               parseBullet={parseBullet}
@@ -1869,8 +2029,7 @@ export const ApexSlideContent: React.FC<{
               glass={glass}
               forExport={forExport}
             />
-          )
-        )}
+          ))}
 
         {type === "vision" &&
           (variant === "quote-poster" ? (
@@ -1894,7 +2053,16 @@ export const ApexSlideContent: React.FC<{
           ))}
 
         {type === "sauce" &&
-          (cream ? (
+          (apple ? (
+            <AppleTeamGrouped
+              content={content}
+              teamMembers={slide.visualData?.teamMembers}
+              parseBullet={parseBullet}
+              renderBullet={renderBullet}
+              glass={glass}
+              forExport={forExport}
+            />
+          ) : cream ? (
             <CreamTeamRow
               content={content}
               teamMembers={slide.visualData?.teamMembers}

@@ -1,6 +1,8 @@
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
 import * as XLSX from "xlsx";
+
+// pdf-parse/index.js runs debug self-test on ESM import — use lib directly
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 function stripDataUrl(base64: string): string {
   return base64.replace(/^data:[^;]+;base64,/, "").trim();

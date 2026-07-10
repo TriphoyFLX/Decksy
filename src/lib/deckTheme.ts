@@ -1,8 +1,8 @@
 import type React from "react";
 
-export type DeckTemplateId = "apex" | "swiss" | "cream" | "titanium" | "ember" | "midnight" | "studio";
+export type DeckTemplateId = "apex" | "swiss" | "cream" | "apple" | "titanium" | "ember" | "midnight" | "studio";
 
-export type DeckLayoutEngine = "apex" | "swiss" | "cream";
+export type DeckLayoutEngine = "apex" | "swiss" | "cream" | "apple";
 
 export type StyleKey = "cobalt" | "clean-light" | "cosmic-dark";
 
@@ -59,6 +59,17 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     accent: "#c9793c",
     selectedStyle: "cosmic-dark",
     layoutEngine: "cream",
+  },
+  apple: {
+    id: "apple",
+    name: "Apple HIG",
+    source: "Human Interface Guidelines",
+    description: "Keynote / iOS: SF Pro, grouped lists, system blue, нативный UI без перегруза",
+    frameGradient: "#000000",
+    gridBg: "none",
+    accent: "#007AFF",
+    selectedStyle: "cosmic-dark",
+    layoutEngine: "apple",
   },
   titanium: {
     id: "titanium",
@@ -148,6 +159,24 @@ export function getTemplateFrameAppearance(
   const isThemeLight = selectedStyle === "clean-light" || tpl.isLightBackground;
   const isThemeCobalt = selectedStyle === "cobalt";
   const useImageBg = Boolean(tpl.backgroundImage) && !isThemeCobalt;
+
+  if (templateId === "apple" && !isThemeCobalt) {
+    const light = isThemeLight;
+    return {
+      frameStyle: { background: light ? "#F2F2F7" : "#000000" },
+      headerClass: light
+        ? "flex items-center justify-between text-[8px] sm:text-[9px] pb-2 relative z-10 border-b border-[rgba(60,60,67,0.18)] text-[rgba(60,60,67,0.6)]"
+        : "flex items-center justify-between text-[8px] sm:text-[9px] pb-2 relative z-10 border-b border-[rgba(84,84,88,0.45)] text-[rgba(235,235,245,0.55)]",
+      footerClass: light
+        ? "pt-2 flex items-center justify-between text-[7px] sm:text-[8px] uppercase tracking-widest relative z-10 border-t border-[rgba(60,60,67,0.18)] text-[rgba(60,60,67,0.45)]"
+        : "pt-2 flex items-center justify-between text-[7px] sm:text-[8px] uppercase tracking-widest relative z-10 border-t border-[rgba(84,84,88,0.45)] text-[rgba(235,235,245,0.4)]",
+      titleHeaderClass: light ? "text-black font-semibold tracking-tight" : "text-white font-semibold tracking-tight",
+      gridBg: "none",
+      gridBgSize: "0",
+      frameBorderClass: light ? "border-[rgba(60,60,67,0.18)]" : "border-[rgba(84,84,88,0.35)]",
+      showGlowBlobs: false,
+    };
+  }
 
   if (templateId === "cream" && !isThemeCobalt && !isThemeLight) {
     return {

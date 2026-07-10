@@ -39,6 +39,28 @@ function TemplatePreview({ id }: { id: DeckTemplateId }) {
     );
   }
 
+  if (id === "apple") {
+    return (
+      <div
+        className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2"
+        style={{ background: "#000000", fontFamily: "-apple-system, system-ui, sans-serif" }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md" style={{ background: "#007AFF" }} />
+          <div className="h-1.5 flex-1 rounded bg-white/15" />
+        </div>
+        <div className="rounded-lg overflow-hidden flex-1" style={{ background: "#1C1C1E" }}>
+          <div className="h-2 w-16 bg-white/20 rounded m-2" />
+          <div className="mx-2 space-y-1">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-4 rounded bg-white/[0.06]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (id === "cream") {
     return (
       <div className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2" style={{ background: t.frameGradient }}>

@@ -195,7 +195,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
               disabled={isLoading || !ideaReady || (!planFile && !xlsxFile)}
               className="w-full rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-black text-[11px] font-bold uppercase tracking-widest py-2.5 transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer border-none"
             >
-              Собрать из документов
+              {isLoading ? "Разбираю документы..." : "Собрать из документов"}
             </button>
 
             {!ideaReady && (planFile || xlsxFile) && (

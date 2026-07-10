@@ -28,14 +28,17 @@ import {
   DECK_GENERATION_TOKEN_COST,
   buildInterviewQuestion,
   countCompiledBlocks,
+  finalizeCanvasForGeneration,
   getInterviewBlocksForMode,
   getNextInterviewBlock,
   getPlanTokenAllowance,
   getRequiredBlockCount,
   isInterviewComplete,
   createInitialCanvas,
+  wantsToSkipInterview,
 } from "./src/lib/interviewFlow";
 import { extractBriefDocuments } from "./src/lib/briefParser";
+import { isLlmConfigured, parseBriefLocally } from "./src/lib/briefLocalParser";
 import {
   extractWordPromptTopic,
   isWordGenerationPrompt,
@@ -972,7 +975,7 @@ Rules:
 - layoutIntent must vary: use big-stat, quote-poster, stats-grid, product-split, matrix-2x2, price-tiers, roadmap, team-grid, funding-split, vision-map etc.
 - Adjacent slides MUST NOT share the same layoutIntent
 - ONE accent color only. Dark poster style unless idea clearly needs light theme (then recommendedStyle=clean-light, recommendedTemplate=ember)
-- recommendedTemplate one of: studio, apex, swiss, cream, titanium, ember, midnight`,
+- recommendedTemplate one of: studio, apex, swiss, cream, apple, titanium, ember, midnight`,
       `Startup idea: ${idea}\nMode: ${mode}\n${brandingCtx}\n${outline?.title ? `Outline title: ${outline.title}` : ""}\nCreate design plan.`,
       1800
     );
@@ -1318,10 +1321,12 @@ app.post("/api/auth/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const isConfiguredAdmin = isAdminEmail(trimmedEmail);
+    const skipEmailVerification = !isProduction && !isSmtpConfigured();
     const userRole = isConfiguredAdmin ? "admin" : "user";
     const userIsPro = isConfiguredAdmin;
     const userPlan = isConfiguredAdmin ? "Pro" : "Free";
     const now = new Date();
+    const verifyNow = isConfiguredAdmin || skipEmailVerification;
 
     // Create user in database
     const user = await prisma.user.create({
@@ -1329,8 +1334,8 @@ app.post("/api/auth/register", async (req, res) => {
         email: trimmedEmail,
         password: hashedPassword,
         name: name ? name.trim() : null,
-        emailVerified: isConfiguredAdmin,
-        emailVerifiedAt: isConfiguredAdmin ? now : null,
+        emailVerified: verifyNow,
+        emailVerifiedAt: verifyNow ? now : null,
         role: userRole,
         isPro: userIsPro,
         plan: userPlan,
@@ -1343,7 +1348,7 @@ app.post("/api/auth/register", async (req, res) => {
       }
     });
 
-    if (!isConfiguredAdmin) {
+    if (!verifyNow) {
       const verification = await issueEmailVerification(user);
       return res.status(201).json({
         requiresEmailVerification: true,
@@ -2378,6 +2383,23 @@ app.post("/api/interview", authenticateToken, async (req, res) => {
     const requiredBlocks = getInterviewBlocksForMode(deckMode);
     const minTurns = requiredBlocks.length;
 
+    if (userMessages.length > 0 && wantsToSkipInterview(lastUserMsg)) {
+      const mergedCanvas = finalizeCanvasForGeneration(canvas || {}, deckMode, idea);
+      return res.json({
+        nextQuestion:
+          "Хорошо, пропускаю оставшиеся вопросы. Сейчас автоматически соберу план презентации по данным из брифа...",
+        interviewComplete: true,
+        investorSentiment: "intrigued",
+        underlyingThoughts: "Интервью завершено досрочно — используем данные из документов и брифа.",
+        canvasUpdates: mergedCanvas,
+        interviewProgress: {
+          compiled: minTurns,
+          total: minTurns,
+          userTurns,
+        },
+      });
+    }
+
     if (userMessages.length > 0 && isGibberish(lastUserMsg)) {
       const validUserMessages = userMessages.filter((m: any) => !isGibberish(m.text));
       const turnIndex = validUserMessages.length;
@@ -2564,17 +2586,36 @@ app.post("/api/import_brief", authenticateToken, async (req: any, res) => {
 
     let canvasUpdates: Record<string, any> = {};
     let missingBlockKeys: string[] = requiredBlocks.map((b) => b.key);
-    let summary = "Документы обработаны.";
+    let summary = "";
+    let parseSource: "ai" | "local" = "ai";
 
-    try {
-      const result = await callLLM(systemInstruction, prompt, 2500);
-      canvasUpdates = result.canvasUpdates || {};
-      if (Array.isArray(result.missingBlockKeys)) {
-        missingBlockKeys = result.missingBlockKeys;
+    console.log(
+      `import_brief: extracted ${briefText.length} chars, LLM configured: ${isLlmConfigured()}`,
+    );
+
+    if (isLlmConfigured()) {
+      try {
+        const result = await callLLM(systemInstruction, prompt, 2500);
+        canvasUpdates = result.canvasUpdates || {};
+        if (Array.isArray(result.missingBlockKeys)) {
+          missingBlockKeys = result.missingBlockKeys;
+        }
+        if (result.summary) summary = result.summary;
+      } catch (err: any) {
+        console.warn("import_brief LLM failed, using local parser:", err.message?.slice(0, 120));
       }
-      if (result.summary) summary = result.summary;
-    } catch (err: any) {
-      console.warn("import_brief LLM failed:", err.message?.slice(0, 120));
+    } else {
+      console.warn("import_brief: no AI keys — using local document parser");
+    }
+
+    if (!summary || Object.keys(canvasUpdates).length === 0) {
+      const local = parseBriefLocally(briefText, idea, deckMode);
+      canvasUpdates = { ...local.canvasUpdates, ...canvasUpdates };
+      if (missingBlockKeys.length === requiredBlocks.length) {
+        missingBlockKeys = local.missingBlockKeys;
+      }
+      if (!summary) summary = local.summary;
+      parseSource = "local";
     }
 
     const baseCanvas = createInitialCanvas();
@@ -2588,21 +2629,27 @@ app.post("/api/import_brief", authenticateToken, async (req: any, res) => {
     if (interviewComplete) {
       nextQuestion =
         "Отлично! Из Word/Excel достаточно данных для питч-дека. Сейчас автоматически соберу план презентации...";
+    } else if (compiled >= 6) {
+      nextQuestion = `Разобрал ваши файлы (${compiled}/${total} блоков) — достаточно для черновика дека. Нажмите «Сгенерировать дек» внизу или напишите «сгенерируй». Оставшиеся блоки заполню автоматически.`;
     } else if (nextBlock) {
-      nextQuestion = `Разобрал ваши файлы (${compiled}/${total} блоков). ${buildInterviewQuestion(nextBlock, idea, deckMode)}`;
+      nextQuestion = `Разобрал ваши файлы (${compiled}/${total} блоков). Можно сразу написать «сгенерируй» или нажать «Сгенерировать дек» внизу. ${buildInterviewQuestion(nextBlock, idea, deckMode)}`;
     } else {
       nextQuestion = buildInterviewQuestion(requiredBlocks[0], idea, deckMode);
     }
 
     res.json({
       summary,
+      parseSource,
       canvasUpdates: mergedCanvas,
       missingBlockKeys,
       nextQuestion,
       interviewComplete,
       interviewProgress: { compiled, total, userTurns: 0 },
       investorSentiment: compiled >= total / 2 ? "intrigued" : "skeptical",
-      underlyingThoughts: `Из документов заполнено ${compiled} из ${total} блоков.`,
+      underlyingThoughts:
+        parseSource === "local"
+          ? `Локальный разбор документов: ${compiled} из ${total} блоков (без AI).`
+          : `Из документов заполнено ${compiled} из ${total} блоков.`,
     });
   } catch (err: any) {
     console.error("import_brief error:", err);
@@ -3406,11 +3453,29 @@ function getMockInterviewResponse(messages: any[], mode: string, idea: string, c
   const deckMode = (mode as "quick" | "investor" | "shark") || "investor";
   const userMessages = messages.filter((m: any) => m.sender === "user" || m.sender === "Founder");
   const lastUserMessage = userMessages[userMessages.length - 1]?.text || "";
+  const requiredBlocks = getInterviewBlocksForMode(deckMode);
+  const minTurns = requiredBlocks.length;
+
+  if (wantsToSkipInterview(lastUserMessage)) {
+    const mergedCanvas = finalizeCanvasForGeneration(canvas || {}, deckMode, idea);
+    return {
+      nextQuestion:
+        "Хорошо, пропускаю оставшиеся вопросы. Сейчас автоматически соберу план презентации...",
+      interviewComplete: true,
+      investorSentiment: "intrigued",
+      underlyingThoughts: "Интервью завершено досрочно — используем данные из брифа.",
+      canvasUpdates: mergedCanvas,
+      interviewProgress: {
+        compiled: minTurns,
+        total: minTurns,
+        userTurns: userMessages.length,
+      },
+    };
+  }
+
   const isLastGibberish = lastUserMessage ? isGibberish(lastUserMessage) : false;
   const validUserMessages = userMessages.filter((m: any) => !isGibberish(m.text));
   const userTurns = validUserMessages.length;
-  const requiredBlocks = getInterviewBlocksForMode(deckMode);
-  const minTurns = requiredBlocks.length;
 
   const canvasUpdates: Record<string, any> = {};
   requiredBlocks.forEach((block, index) => {

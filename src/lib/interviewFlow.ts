@@ -258,7 +258,7 @@ export function createInitialCanvas(): PitchCanvas {
 }
 
 export function getPlanTokenAllowance(plan?: string | null, role?: string | null): number {
-  if (role === "admin") return Number.POSITIVE_INFINITY;
+  if (role === "admin") return 999_999;
   return PLAN_TOKEN_ALLOWANCE[plan || "Free"] ?? PLAN_TOKEN_ALLOWANCE.Free;
 }
 
@@ -268,4 +268,57 @@ export function canAffordDeckGeneration(
 ): boolean {
   if (role === "admin") return true;
   return (tokenBalance ?? 0) >= DECK_GENERATION_TOKEN_COST;
+}
+
+const SKIP_INTERVIEW_PATTERNS = [
+  /^пропуст/i,
+  /пропусти\s*(все|остальн|вопрос|блок|это)/i,
+  /(сгенериру|собери|сделай|создай)\s*(дек|презентац|слайд|план|всё|все)/i,
+  /^(сгенерируй|сгенерир|генерируй|генерир)$/i,
+  /^skip$/i,
+  /достаточно\s*(данн|инф)/i,
+  /хватит\s*вопрос/i,
+  /без\s*вопрос/i,
+  /сразу\s*генер/i,
+  /просто\s*сгенер/i,
+  /не\s*задавай\s*вопрос/i,
+  /понимаешь\s*меня/i,
+];
+
+export function wantsToSkipInterview(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return SKIP_INTERVIEW_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+export function finalizeCanvasForGeneration(
+  canvas: PitchCanvas,
+  mode: Mode,
+  idea: string,
+): PitchCanvas {
+  const blocks = getInterviewBlocksForMode(mode);
+  const result = { ...canvas } as PitchCanvas;
+
+  for (const block of blocks) {
+    const section = result[block.key];
+    if (section?.status === "compiled") continue;
+
+    const existingSummary = section?.summary?.trim() || "";
+    const placeholderSummary = existingSummary.includes("Собираем блок")
+      ? `Черновик по идее «${idea}» — уточнится при генерации.`
+      : existingSummary || `Черновик по идее «${idea}».`;
+    const existingBullets = (section?.bullets || []).filter(Boolean);
+
+    result[block.key] = {
+      title: block.canvasTitle,
+      summary: placeholderSummary,
+      bullets:
+        existingBullets.length > 0
+          ? existingBullets
+          : [placeholderSummary],
+      status: "compiled",
+    };
+  }
+
+  return result;
 }

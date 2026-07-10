@@ -19,6 +19,7 @@ interface InterviewPageProps {
   canvas: PitchCanvas;
   disabled?: boolean;
   generationDisabled?: boolean;
+  briefImported?: boolean;
 }
 
 export const InterviewPage: React.FC<InterviewPageProps> = ({
@@ -36,6 +37,7 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
   canvas,
   disabled = false,
   generationDisabled = false,
+  briefImported = false,
 }) => {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [showMemory, setShowMemory] = useState(false);
@@ -198,9 +200,9 @@ export const InterviewPage: React.FC<InterviewPageProps> = ({
               id="fast-generate-btn"
               onClick={handleGenerateDeck}
               disabled={generationDisabled || isLoading}
-              className="ml-auto text-[11px] font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-slate-200 disabled:opacity-40 cursor-pointer border-none transition-colors"
+              className="ml-auto text-[11px] font-semibold px-4 py-2 rounded-full bg-emerald-400 text-black hover:bg-emerald-300 disabled:opacity-40 cursor-pointer border-none transition-colors"
             >
-              Собрать план →
+              {briefImported && compiledCount >= 6 ? "Сгенерировать дек →" : "Собрать план →"}
             </button>
           </div>
 
