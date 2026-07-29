@@ -148,61 +148,158 @@ export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-
   };
 }
 
-// --- Улучшенный стиль стеклянной карточки ---
-export function glassCardStyle(glass: GlassSurface, forExport = false): React.CSSProperties {
+function alpha(hex: string, opacity: string): string {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return `${hex}${opacity}`;
+  return `#${normalized}${opacity}`;
+}
+
+/** Supervity-style bento tile tones */
+export type BentoTone = "surface" | "ink" | "accent" | "soft" | "glass";
+
+export function bentoCardStyle(
+  glass: GlassSurface,
+  tone: BentoTone = "surface",
+  forExport = false,
+): React.CSSProperties {
   if (glass.appleGlass) {
+    if (tone === "accent") {
+      return { background: glass.accent, borderColor: "transparent", color: "#000" };
+    }
+    if (tone === "ink") {
+      return { background: "#000000", borderColor: "transparent", color: "#fff" };
+    }
     if (glass.isLight) {
       return {
-        background: "#FFFFFF",
+        background: tone === "soft" ? "#F2F2F7" : "#FFFFFF",
         borderColor: "transparent",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)",
+        boxShadow: "0 8px 28px rgba(0,0,0,0.06)",
       };
     }
     return {
-      background: "#1C1C1E",
+      background: tone === "soft" ? "#2C2C2E" : "#1C1C1E",
       borderColor: "transparent",
     };
   }
+
   if (glass.creamGlass) {
+    if (tone === "accent") {
+      return { background: glass.accent, borderColor: "transparent", color: "#1a120c" };
+    }
+    if (tone === "ink") {
+      return { background: "rgba(0,0,0,0.55)", borderColor: "rgba(255,255,255,0.12)" };
+    }
     return {
-      background: forExport ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.05)",
-      borderColor: "rgba(255,255,255,0.15)",
-      boxShadow: forExport ? undefined : "inset 0 1px 0 rgba(255,255,255,0.08)",
+      background: forExport ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.07)",
+      borderColor: "rgba(255,255,255,0.14)",
+      boxShadow: forExport ? undefined : "inset 0 1px 0 rgba(255,255,255,0.1)",
       backdropFilter: forExport ? undefined : "blur(24px)",
       WebkitBackdropFilter: forExport ? undefined : "blur(24px)",
     };
   }
-  if (glass.isLight) {
+
+  if (tone === "accent") {
     return {
-      background: "rgba(255,255,255,0.8)",
-      borderColor: "rgba(0,0,0,0.05)",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.04)",
-      backdropFilter: forExport ? undefined : "blur(16px)",
-      WebkitBackdropFilter: forExport ? undefined : "blur(16px)",
+      background: glass.accent,
+      borderColor: "transparent",
+      boxShadow: `0 16px 40px ${alpha(glass.accent, "55")}`,
+      color: glass.isLight ? "#0a0a0a" : "#0a0a0a",
     };
   }
-  if (glass.hasImageBg) {
+
+  if (tone === "ink") {
     return {
-      background: "rgba(18, 18, 24, 0.7)",
-      borderColor: "rgba(255,255,255,0.12)",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+      background: glass.isLight ? "#0a0a0a" : "#0a0a0a",
+      borderColor: "transparent",
+      boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
+      color: "#ffffff",
+    };
+  }
+
+  if (tone === "soft") {
+    return glass.isLight
+      ? {
+          background: "#F3F4F6",
+          borderColor: "transparent",
+          boxShadow: "0 10px 28px rgba(15,23,42,0.05)",
+        }
+      : {
+          background: "rgba(255,255,255,0.06)",
+          borderColor: "transparent",
+          boxShadow: "0 12px 32px rgba(0,0,0,0.22)",
+        };
+  }
+
+  if (tone === "glass" || glass.hasImageBg) {
+    return {
+      background: glass.isLight ? "rgba(255,255,255,0.72)" : "rgba(18,18,22,0.62)",
+      borderColor: glass.isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)",
+      boxShadow: "0 12px 36px rgba(0,0,0,0.18)",
       backdropFilter: forExport ? undefined : "blur(28px)",
       WebkitBackdropFilter: forExport ? undefined : "blur(28px)",
     };
   }
-  // Дефолтный премиум-стеклянный стиль
+
+  // Default surface — solid bento tile (reference style)
+  if (glass.isLight) {
+    return {
+      background: "#FFFFFF",
+      borderColor: "transparent",
+      boxShadow: "0 12px 36px rgba(15,23,42,0.07), 0 2px 6px rgba(15,23,42,0.04)",
+    };
+  }
   return {
-    background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)",
-    borderColor: "rgba(255,255,255,0.1)",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)",
-    backdropFilter: forExport ? undefined : "blur(20px)",
-    WebkitBackdropFilter: forExport ? undefined : "blur(20px)",
+    background: "#141416",
+    borderColor: "transparent",
+    boxShadow: "0 16px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
   };
+}
+
+export function glassCardStyle(glass: GlassSurface, forExport = false): React.CSSProperties {
+  return bentoCardStyle(glass, "surface", forExport);
 }
 
 export const slideBodyClass = "flex-1 min-h-0 w-full h-full";
 
-export const glassCardClass = "rounded-3xl border backdrop-blur-2xl";
+/** Soft super-rounded bento tiles (Supervity / Apple Keynote vibe) */
+export const glassCardClass = "rounded-[1.75rem] border-0 overflow-hidden relative";
+export const bentoCardClass = glassCardClass;
+export const bentoGapClass = "gap-3";
+
+export const BentoPill: React.FC<{
+  children: React.ReactNode;
+  tone?: "accent" | "ink" | "soft";
+  glass: GlassSurface;
+}> = ({ children, tone = "soft", glass }) => {
+  const style: React.CSSProperties =
+    tone === "accent"
+      ? { background: glass.accent, color: "#0a0a0a" }
+      : tone === "ink"
+        ? { background: "#0a0a0a", color: "#fff" }
+        : glass.isLight
+          ? { background: "rgba(15,23,42,0.06)", color: "#0f172a" }
+          : { background: "rgba(255,255,255,0.1)", color: "#fff" };
+  return (
+    <span
+      className="inline-flex items-center px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wide whitespace-nowrap"
+      style={style}
+    >
+      {children}
+    </span>
+  );
+};
+
+export const BentoOrb: React.FC<{ glass: GlassSurface; ink?: boolean }> = ({ glass, ink }) => (
+  <span
+    className="absolute top-3 right-3 h-7 w-7 rounded-full flex items-center justify-center text-[14px] font-light leading-none"
+    style={{
+      background: ink ? "rgba(255,255,255,0.14)" : glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
+      color: ink || !glass.isLight ? "#fff" : "#0a0a0a",
+    }}
+  >
+    +
+  </span>
+);
 
 // Иконки болей с премиум-градиентами
 const PAIN_ICON_COLORS = [
@@ -235,12 +332,6 @@ function shortInsight(text: string, max = 48): string {
   const cleaned = text.replace(/^[^:]+:\s*/, "").trim();
   if (!cleaned) return "";
   return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
-}
-
-function alpha(hex: string, opacity: string): string {
-  const normalized = hex.replace("#", "");
-  if (normalized.length !== 6) return `${hex}${opacity}`;
-  return `#${normalized}${opacity}`;
 }
 
 function parseItems(content: string[], parseBullet: (s: string) => { label: string; detail: string }) {
@@ -421,29 +512,41 @@ export const ApexPainGrid: React.FC<{
         const cardImg = cardImages?.[i];
         const metric = extractMetricHint(item);
 
+        const tone = (["soft", "surface", "ink", "accent"] as const)[i % 4];
+        const onAccent = tone === "accent";
+        const onInk = tone === "ink";
+        const titleCls = onAccent ? "text-black" : onInk ? "text-white" : glass.titleClass;
+        const bodyCls = onAccent ? "text-black/70" : onInk ? "text-white/70" : glass.bodyClass;
         return (
           <div
             key={i}
             className={`${glassCardClass} p-4 flex flex-col gap-3 text-left h-full justify-between`}
-            style={glassCardStyle(glass, forExport)}
+            style={bentoCardStyle(glass, tone, forExport)}
           >
+            <BentoOrb glass={glass} ink={onInk} onAccent={onAccent} />
             {/* Верхняя часть: иконка или фото */}
             {cardImg ? (
-              <div className="h-16 rounded-2xl overflow-hidden shrink-0">
-                <PremiumImage src={cardImg} variant="thumb" className="!min-h-16 !h-16 !rounded-2xl" />
+              <div className="h-16 rounded-[1.25rem] overflow-hidden shrink-0">
+                <PremiumImage src={cardImg} variant="thumb" className="!min-h-16 !h-16 !rounded-[1.25rem]" />
               </div>
             ) : (
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: colors.bg, color: colors.fg }}>
+              <div
+                className="w-12 h-12 rounded-[1.1rem] flex items-center justify-center shrink-0"
+                style={{
+                  background: onAccent ? "rgba(0,0,0,0.12)" : onInk ? "rgba(255,255,255,0.12)" : colors.bg,
+                  color: onAccent ? "#0a0a0a" : onInk ? "#fff" : colors.fg,
+                }}
+              >
                 <Icon className="h-6 w-6" strokeWidth={1.5} />
               </div>
             )}
 
             {/* Заголовок и описание */}
             <div className="flex flex-col gap-2 flex-1">
-              <h3 className={`text-sm font-semibold leading-tight line-clamp-2 ${glass.titleClass}`}>
+              <h3 className={`text-sm font-semibold leading-tight line-clamp-2 ${titleCls}`}>
                 {renderLabel ? renderLabel(label, i, "") : label}
               </h3>
-              <p className={`text-xs leading-relaxed line-clamp-4 flex-1 ${glass.bodyClass}`}>
+              <p className={`text-xs leading-relaxed line-clamp-4 flex-1 ${bodyCls}`}>
                 {renderBullet(detail, i, "")}
               </p>
             </div>
@@ -564,7 +667,7 @@ export const ApexCompetitionPanel: React.FC<{
   </div>
 );
 
-// Статистическая сетка с акцентом на числа
+// Bento ROI / metrics grid (Supervity-style asymmetric tiles)
 export const ApexStatsGrid: React.FC<{
   content: string[];
   parseBullet: (s: string) => { label: string; detail: string };
@@ -589,54 +692,108 @@ export const ApexStatsGrid: React.FC<{
     );
   }
 
-  const colCount = Math.min(Math.max(content.slice(0, 4).length, 1), 4);
+  const items = content.slice(0, 4).map((item, i) => {
+    const parsed = parseBullet(item);
+    return {
+      num: extractMetricValue(item) || extractNumber(item) || "",
+      label: parsed.label || `Метрика ${i + 1}`,
+      detail: parsed.detail || item,
+      metric: extractMetricHint(item),
+    };
+  });
+
+  while (items.length < 4) {
+    items.push({ num: "—", label: "Метрика", detail: "", metric: null as string | null });
+  }
+
+  const [a, b, c, d] = items;
+  const accentTitle = "text-black";
+  const accentBody = "text-black/70";
+  const inkTitle = "text-white";
+  const inkBody = "text-white/70";
+
   return (
     <div
-      className={`grid gap-3 h-full items-stretch ${slideBodyClass} overflow-hidden`}
-      style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+      className={`grid h-full min-h-0 ${slideBodyClass} overflow-hidden`}
+      style={{
+        gridTemplateColumns: "1.05fr 1.15fr 0.95fr",
+        gridTemplateRows: "1.15fr 0.95fr",
+        gap: "0.75rem",
+      }}
     >
-      {content.slice(0, 4).map((item, i) => {
-        const parsed = parseBullet(item);
-        const num = extractMetricValue(item) || extractNumber(item);
-        const label = parsed.label || `Пункт ${i + 1}`;
-        const detail = parsed.detail || item;
-        const metric = extractMetricHint(item);
+      <div className={`${bentoCardClass} p-4 flex flex-col justify-between`} style={{ ...bentoCardStyle(glass, "soft", forExport), gridColumn: "1", gridRow: "1" }}>
+        <BentoOrb glass={glass} />
+        <div className={`text-3xl sm:text-4xl font-black tracking-tight leading-none ${glass.titleClass}`}>{a.num || "100%"}</div>
+        <div>
+          <p className={`text-[11px] font-bold leading-tight line-clamp-2 ${glass.titleClass}`}>
+            {renderLabel ? renderLabel(a.label, 0, "") : a.label}
+          </p>
+          {a.detail && <p className={`text-[9px] mt-1 line-clamp-2 ${glass.mutedClass}`}>{a.detail}</p>}
+        </div>
+      </div>
 
-        return (
-          <div key={i} className={`${glassCardClass} p-4 flex flex-col gap-3 h-full justify-between`} style={glassCardStyle(glass, forExport)}>
-            {num ? (
-              <>
-                <div className={`text-3xl font-black tracking-tight leading-none ${glass.titleClass}`}>
-                  {num}
-                </div>
-                <div className={`text-sm font-semibold leading-tight line-clamp-2 ${glass.titleClass}`}>
-                  {renderLabel ? renderLabel(label, i, "") : label}
-                </div>
-                {detail && detail !== num && (
-                  <div className={`text-xs leading-relaxed line-clamp-4 flex-1 ${glass.bodyClass}`}>{detail}</div>
-                )}
-                {metric && (
-                  <div className="text-xs font-medium mt-auto px-2 py-1 rounded-lg bg-white/5 w-fit" style={{ color: glass.success }}>
-                    {metric}
-                  </div>
-                )}
-                <div className="w-full h-1 rounded-full bg-white/5 overflow-hidden mt-2">
-                  <div className="h-full rounded-full" style={{ width: `${45 + i * 15}%`, background: glass.accent }} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={`text-sm font-semibold leading-tight line-clamp-2 ${glass.titleClass}`}>
-                  {renderLabel ? renderLabel(label, i, "") : label}
-                </div>
-                <div className={`text-xs leading-relaxed line-clamp-5 flex-1 ${glass.bodyClass}`}>
-                  {renderBullet(detail, i, "")}
-                </div>
-              </>
-            )}
+      <div
+        className={`${bentoCardClass} p-4 flex flex-col justify-between`}
+        style={{ ...bentoCardStyle(glass, "accent", forExport), gridColumn: "2", gridRow: "1 / span 2" }}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex -space-x-2">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-7 w-7 rounded-full border-2 border-black/10"
+                style={{ background: i === 1 ? "#0a0a0a" : "rgba(0,0,0,0.18)" }}
+              />
+            ))}
           </div>
-        );
-      })}
+          <span className="h-7 w-7 rounded-full bg-black/15 text-black flex items-center justify-center text-sm">→</span>
+        </div>
+        <div>
+          <div className={`text-4xl sm:text-5xl font-black tracking-tight leading-none ${accentTitle}`}>{b.num || "70%"}</div>
+          <p className={`text-[12px] font-bold mt-2 leading-snug line-clamp-3 ${accentTitle}`}>
+            {renderLabel ? renderLabel(b.label, 1, "") : b.label}
+          </p>
+          {b.detail && <p className={`text-[9px] mt-1.5 line-clamp-3 ${accentBody}`}>{b.detail}</p>}
+        </div>
+      </div>
+
+      <div className={`${bentoCardClass} p-4 flex flex-col justify-between`} style={{ ...bentoCardStyle(glass, "surface", forExport), gridColumn: "3", gridRow: "1" }}>
+        <BentoOrb glass={glass} />
+        <div
+          className="absolute -right-4 -top-6 h-24 w-24 rounded-full blur-2xl opacity-50 pointer-events-none"
+          style={{ background: glass.accent }}
+        />
+        <div className={`text-3xl sm:text-4xl font-black tracking-tight leading-none relative ${glass.titleClass}`}>{c.num || "80%+"}</div>
+        <p className={`text-[10px] font-semibold line-clamp-2 relative ${glass.titleClass}`}>
+          {renderLabel ? renderLabel(c.label, 2, "") : c.label}
+        </p>
+      </div>
+
+      <div className={`${bentoCardClass} p-4 flex flex-col justify-between`} style={{ ...bentoCardStyle(glass, "ink", forExport), gridColumn: "3", gridRow: "2" }}>
+        <BentoOrb glass={glass} ink />
+        <div className={`text-3xl font-black tracking-tight leading-none ${inkTitle}`}>{d.num || "4"}</div>
+        <p className={`text-[10px] font-semibold leading-snug line-clamp-3 ${inkBody}`}>
+          {renderLabel ? renderLabel(d.label, 3, "") : d.label}
+        </p>
+      </div>
+
+      <div className={`${bentoCardClass} px-4 py-3 flex items-center gap-2 flex-wrap content-center`} style={{ ...bentoCardStyle(glass, "surface", forExport), gridColumn: "1", gridRow: "2" }}>
+        {[a, b, c, d]
+          .flatMap((it, i) => (it.metric ? [{ t: it.metric as string, i }] : []))
+          .slice(0, 3)
+          .map((p) => (
+            <BentoPill key={p.i} glass={glass} tone={p.i === 1 ? "accent" : "soft"}>
+              {p.t}
+            </BentoPill>
+          ))}
+        {!a.metric && !b.metric && (
+          <>
+            <BentoPill glass={glass} tone="accent">ROI</BentoPill>
+            <BentoPill glass={glass} tone="ink">AI</BentoPill>
+            <BentoPill glass={glass} tone="soft">Scale</BentoPill>
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -824,29 +981,39 @@ export const ApexFeatureColumns: React.FC<{
 }> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
   const items = parseItems(content, parseBullet).slice(0, 4);
   const cols = Math.min(Math.max(items.length, 1), 4);
+  const tones = ["soft", "ink", "accent", "surface"] as const;
   return (
     <div
-      className={`grid gap-2.5 h-full items-stretch ${slideBodyClass}`}
+      className={`grid gap-3 h-full items-stretch ${slideBodyClass}`}
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
-      {items.map((item, i) => (
-        <div
-          key={i}
-          className={`${glassCardClass} p-3.5 flex flex-col gap-2 h-full justify-between`}
-          style={glassCardStyle(glass, forExport)}
-        >
-          <div className="h-1.5 rounded-full shrink-0" style={{ width: `${50 + i * 14}%`, background: i % 2 ? glass.secondary : glass.accent }} />
-          <div className="text-lg font-black" style={{ color: i % 2 ? glass.secondary : glass.accent }}>
-            {String(i + 1).padStart(2, "0")}
+      {items.map((item, i) => {
+        const tone = tones[i % tones.length];
+        const onAccent = tone === "accent";
+        const onInk = tone === "ink";
+        const titleCls = onAccent ? "text-black" : onInk ? "text-white" : glass.titleClass;
+        const bodyCls = onAccent ? "text-black/70" : onInk ? "text-white/65" : glass.bodyClass;
+        return (
+          <div
+            key={i}
+            className={`${glassCardClass} p-4 flex flex-col gap-2.5 h-full justify-between`}
+            style={bentoCardStyle(glass, tone, forExport)}
+          >
+            <div className="flex items-start justify-between gap-2 relative min-h-[1.75rem]">
+              <BentoPill glass={glass} tone={onAccent ? "ink" : onInk ? "accent" : "accent"}>
+                {String(i + 1).padStart(2, "0")}
+              </BentoPill>
+            </div>
+            <BentoOrb glass={glass} ink={onInk} onAccent={onAccent} />
+            <h3 className={`text-[12px] font-bold leading-tight line-clamp-2 ${titleCls}`}>
+              {renderLabel ? renderLabel(item.label, i, "") : item.label}
+            </h3>
+            <p className={`text-[9px] leading-snug line-clamp-5 flex-1 ${bodyCls}`}>
+              {renderBullet(item.detail, i, "")}
+            </p>
           </div>
-          <h3 className={`text-[11px] font-bold leading-tight line-clamp-2 ${glass.titleClass}`}>
-            {renderLabel ? renderLabel(item.label, i, "") : item.label}
-          </h3>
-          <p className={`text-[9px] leading-snug line-clamp-5 flex-1 ${glass.bodyClass}`}>
-            {renderBullet(item.detail, i, "")}
-          </p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -1314,16 +1481,17 @@ export const ApexCompetitionArena: React.FC<{
       >
         {players.map((player, i) => {
           const rating = player.rating ?? (player.ours ? 9 : 5);
+          const tone = player.ours ? "accent" : ((["soft", "surface", "ink"] as const)[i % 3]);
+          const onAccent = tone === "accent";
+          const onInk = tone === "ink";
+          const titleCls = onAccent ? "text-black" : onInk ? "text-white" : glass.titleClass;
+          const mutedCls = onAccent ? "text-black/60" : onInk ? "text-white/55" : glass.mutedClass;
+          const bodyCls = onAccent ? "text-black/75" : onInk ? "text-white/70" : glass.bodyClass;
           return (
             <div
               key={i}
-              className={`${glassCardClass} p-2.5 flex flex-col gap-1.5 min-h-0 ${player.ours ? "ring-1" : ""}`}
-              style={{
-                ...glassCardStyle(glass, forExport),
-                ...(player.ours
-                  ? { borderColor: alpha(glass.accent, "55"), boxShadow: `0 0 0 1px ${alpha(glass.accent, "33")}` }
-                  : {}),
-              }}
+              className={`${glassCardClass} p-3 flex flex-col gap-2 min-h-0`}
+              style={bentoCardStyle(glass, tone, forExport)}
             >
               <div className="flex items-center gap-2">
                 <CompetitorLogoSlot
@@ -1335,27 +1503,22 @@ export const ApexCompetitionArena: React.FC<{
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1">
-                    <p className={`text-[10px] font-bold truncate ${glass.titleClass}`}>{player.label}</p>
+                    <p className={`text-[10px] font-bold truncate ${titleCls}`}>{player.label}</p>
                     {player.ours && (
-                      <span
-                        className="text-[6px] uppercase tracking-wider font-bold px-1 py-0.5 rounded shrink-0"
-                        style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
-                      >
-                        мы
-                      </span>
+                      <BentoPill glass={glass} tone="ink">мы</BentoPill>
                     )}
                   </div>
-                  <p className={`text-[8px] line-clamp-1 ${glass.mutedClass}`}>
+                  <p className={`text-[8px] line-clamp-1 ${mutedCls}`}>
                     {player.tagline || player.detail}
                   </p>
                 </div>
               </div>
-              <div className="h-1 rounded-full overflow-hidden" style={{ background: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.08)" }}>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: onAccent ? "rgba(0,0,0,0.12)" : onInk ? "rgba(255,255,255,0.14)" : glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.08)" }}>
                 <div
                   className="h-full rounded-full"
                   style={{
                     width: `${rating * 10}%`,
-                    background: player.ours ? glass.accent : glass.secondary,
+                    background: onAccent ? "#0a0a0a" : player.ours ? glass.accent : glass.secondary,
                   }}
                 />
               </div>
@@ -1368,13 +1531,8 @@ export const ApexCompetitionArena: React.FC<{
                 )
                   .slice(0, player.ours ? 6 : 4)
                   .map((adv, ai) => (
-                    <li key={ai} className={`text-[7.5px] leading-snug flex gap-1 ${glass.bodyClass}`}>
-                      <span
-                        className="shrink-0"
-                        style={{ color: player.ours ? glass.success : glass.isLight ? "rgba(15,23,42,0.35)" : "rgba(255,255,255,0.35)" }}
-                      >
-                        {player.ours ? "✓" : "·"}
-                      </span>
+                    <li key={ai} className={`text-[7.5px] leading-snug flex gap-1 ${bodyCls}`}>
+                      <span className="shrink-0">{player.ours ? "✓" : "·"}</span>
                       <span className="line-clamp-1">{adv}</span>
                     </li>
                   ))}
@@ -1644,16 +1802,13 @@ export const ApexFundingSplit: React.FC<{
     <div className={`grid grid-cols-[0.95fr_1.05fr] gap-3 h-full ${slideBodyClass}`}>
       <div
         className={`${glassCardClass} p-5 flex flex-col justify-center text-center h-full`}
-        style={{
-          ...glassCardStyle(glass, forExport),
-          background: `linear-gradient(160deg, ${alpha(glass.accent, "EE")}, ${alpha(glass.secondary, "CC")})`,
-        }}
+        style={bentoCardStyle(glass, "accent", forExport)}
       >
-        <span className="text-[8px] uppercase tracking-widest text-white/70 font-bold">Запрос</span>
-        <div className="text-3xl sm:text-4xl font-black text-white mt-2">
+        <span className="text-[8px] uppercase tracking-widest text-black/55 font-bold">Запрос</span>
+        <div className="text-3xl sm:text-4xl font-black text-black mt-2">
           {extractNumber(ask?.raw || "") || ask?.number || "Seed"}
         </div>
-        <p className="text-[10px] text-white/85 mt-2 line-clamp-3">{ask?.detail || ask?.label}</p>
+        <p className="text-[10px] text-black/75 mt-2 line-clamp-3">{ask?.detail || ask?.label}</p>
       </div>
       <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.max(items.length - 1, 1)}, minmax(0, 1fr))` }}>
         {items.slice(1).map((item, i) => (
@@ -1677,19 +1832,49 @@ export const ApexCTA: React.FC<{
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ title, subtitle, content, renderBullet, glass, forExport }) => (
-  <div className={`h-full flex flex-col items-center justify-center text-center gap-3 px-6 ${slideBodyClass}`}>
-    <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${glass.titleClass}`}>{title}</h2>
-    {subtitle && <p className={`text-sm max-w-md ${glass.mutedClass}`}>{subtitle}</p>}
-    <div className="flex flex-wrap justify-center gap-2 mt-2">
-      {content.slice(0, 3).map((item, i) => (
-        <span key={i} className={`${glassCardClass} px-3 py-2 text-[10px] ${glass.bodyClass}`} style={glassCardStyle(glass, forExport)}>
-          {renderBullet(item, i, "")}
-        </span>
-      ))}
+}> = ({ title, subtitle, content, renderBullet, glass, forExport }) => {
+  const cards = content.slice(0, 3);
+  while (cards.length < 3) cards.push(cards[cards.length - 1] || "Связаться");
+  const tones = ["ink", "soft", "accent"] as const;
+  return (
+    <div className={`grid grid-cols-[1.05fr_1.35fr] gap-3 h-full min-h-0 ${slideBodyClass}`}>
+      <div className="flex flex-col justify-center gap-2 pr-1">
+        <h2 className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-[1.1] ${glass.titleClass}`}>
+          {title}
+        </h2>
+        {subtitle && <p className={`text-[11px] leading-relaxed ${glass.mutedClass}`}>{subtitle}</p>}
+      </div>
+      <div className="grid grid-cols-3 gap-2.5 h-full min-h-0">
+        {cards.map((item, i) => {
+          const tone = tones[i];
+          const onAccent = tone === "accent";
+          const onInk = tone === "ink";
+          return (
+            <div
+              key={i}
+              className={`${glassCardClass} p-3.5 flex flex-col justify-between h-full`}
+              style={bentoCardStyle(glass, tone, forExport)}
+            >
+              <BentoOrb glass={glass} ink={onInk} onAccent={onAccent} />
+              <p className={`text-[10px] font-semibold leading-snug line-clamp-6 mt-6 ${onAccent ? "text-black" : onInk ? "text-white" : glass.titleClass}`}>
+                {renderBullet(item, i, "")}
+              </p>
+              <span
+                className="mt-3 inline-flex self-start px-2.5 py-1 rounded-full text-[8px] font-bold"
+                style={{
+                  background: onAccent ? "#0a0a0a" : onInk ? glass.accent : glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
+                  color: onAccent ? "#fff" : onInk ? "#0a0a0a" : glass.isLight ? "#0a0a0a" : "#fff",
+                }}
+              >
+                {i === 2 ? "Go →" : "Next"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const ApexVisionMap: React.FC<{
   content: string[];
