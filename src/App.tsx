@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { 
   Sparkles, 
   Send, 
@@ -80,6 +80,14 @@ import {
 } from "./lib/interviewFlow";
 import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, getDeckDisplayName, mergeBrandingFromInterview } from "./lib/projectBranding";
 import { formatDeckFrameLabel } from "./lib/slideMetrics";
+import {
+  type AppScreen,
+  getLegalPageFromPath,
+  isKnownAppPath,
+  normalizePathname,
+  pathForAppScreen,
+  resolveAppRoute,
+} from "./lib/appRoutes";
 import { enrichSlidesWithVisuals, fixMisplacedTeamLayout } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
 import {
@@ -103,18 +111,8 @@ import { DeckWatermark } from "./components/DeckWatermark";
 
 const INITIAL_CANVAS = createInitialCanvas();
 
-const legalPagesByPath: Record<string, LegalPageId> = {
-  "/offer": "offer",
-  "/privacy": "privacy",
-  "/contacts": "contacts",
-  "/refunds": "refunds",
-  "/service-delivery": "service-delivery",
-};
-
-function getLegalPageFromPath(pathname: string): LegalPageId | null {
-  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
-  return legalPagesByPath[normalizedPath] || null;
-}
+const initialAppRoute = resolveAppRoute(window.location.pathname);
+const initialLegalPage = getLegalPageFromPath(window.location.pathname);
 
 const EXAMPLE_DECKS = [
   {
@@ -356,9 +354,11 @@ function SlideFrameDecorations({ frame }: { frame: TemplateFrameAppearance }) {
 }
 
 export default function App() {
-  // Screen views: 'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
-  const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'present' | 'admin' | 'about' | 'plans' | 'word'>('intro');
-  const [legalPage, setLegalPage] = useState<LegalPageId | null>(() => getLegalPageFromPath(window.location.pathname));
+  // Screen views synced with URL — see src/lib/appRoutes.ts
+  const [screen, setScreen] = useState<AppScreen>(() =>
+    initialLegalPage ? "intro" : initialAppRoute.screen,
+  );
+  const [legalPage, setLegalPage] = useState<LegalPageId | null>(initialLegalPage);
   
   // Custom design style and selection state
   const [selectedStyle, setSelectedStyle] = useState<'cobalt' | 'clean-light' | 'cosmic-dark'>('cosmic-dark');
@@ -442,26 +442,74 @@ export default function App() {
   const [oauthProviders, setOauthProviders] = useState<{ id: string; label: string; enabled: boolean }[]>([]);
   const vkidContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Saved decks library
+  const [savedDecks, setSavedDecks] = useState<any[]>([]);
+  const [showLibraryDrawer, setShowLibraryDrawer] = useState(initialAppRoute.openLibrary ?? false);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [saveInProgress, setSaveInProgress] = useState(false);
+  const [lastSavedDeckId, setLastSavedDeckId] = useState<string | null>(null);
+
+  const navigateToScreen = useCallback(
+    (
+      next: AppScreen,
+      options?: { replace?: boolean; openLibrary?: boolean },
+    ) => {
+      setScreen(next);
+      setLegalPage(null);
+      if (options?.openLibrary !== undefined) {
+        setShowLibraryDrawer(options.openLibrary);
+      }
+      const path = pathForAppScreen(next, options?.openLibrary);
+      const state = { screen: next };
+      if (options?.replace) {
+        window.history.replaceState(state, "", path);
+      } else {
+        window.history.pushState(state, "", path);
+      }
+    },
+    [],
+  );
+
+  const closeLibrary = useCallback(() => {
+    setShowLibraryDrawer(false);
+    if (normalizePathname(window.location.pathname) === "/projects") {
+      window.history.replaceState({ screen }, "", pathForAppScreen(screen));
+    }
+  }, [screen]);
+
   useEffect(() => {
     const handlePopState = () => {
-      setLegalPage(getLegalPageFromPath(window.location.pathname));
+      const legal = getLegalPageFromPath(window.location.pathname);
+      if (legal) {
+        setLegalPage(legal);
+        return;
+      }
+      setLegalPage(null);
+      const route = resolveAppRoute(window.location.pathname);
+      setScreen(route.screen);
+      setShowLibraryDrawer(route.openLibrary ?? false);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  useEffect(() => {
+    if (!isKnownAppPath(window.location.pathname)) {
+      window.history.replaceState({ screen: "intro" }, "", "/");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (legalPage) return;
+    if ((screen === "deck" || screen === "present") && !deck) {
+      navigateToScreen("intro", { replace: true });
+    }
+  }, [screen, deck, legalPage, navigateToScreen]);
+
   const openGeneratorRoot = () => {
     setLegalPage(null);
-    window.history.pushState({}, document.title, "/");
-    setScreen("intro");
+    navigateToScreen("intro", { replace: true });
   };
-
-  // Saved decks library
-  const [savedDecks, setSavedDecks] = useState<any[]>([]);
-  const [showLibraryDrawer, setShowLibraryDrawer] = useState(false);
-  const [libraryLoading, setLibraryLoading] = useState(false);
-  const [saveInProgress, setSaveInProgress] = useState(false);
-  const [lastSavedDeckId, setLastSavedDeckId] = useState<string | null>(null);
 
   // Synchronize Auth Session on app load
   useEffect(() => {
@@ -658,6 +706,12 @@ export default function App() {
     }
   };
 
+  const openLibrary = useCallback(() => {
+    void fetchLibraryDecks();
+    setShowLibraryDrawer(true);
+    window.history.pushState({ screen, openLibrary: true }, "", "/projects");
+  }, [screen, authToken]);
+
   useEffect(() => {
     if (user && authToken) {
       fetchLibraryDecks();
@@ -830,9 +884,9 @@ export default function App() {
     setAuthToken(null);
     setUser(null);
     setIsWatermarkRemoved(false);
-    setScreen('intro');
+    navigateToScreen('intro');
     setSavedDecks([]);
-    setShowLibraryDrawer(false);
+    closeLibrary();
   };
 
   const loadSavedDeck = (saved: any) => {
@@ -848,8 +902,8 @@ export default function App() {
       }
     }
     setActiveSlideIndex(0);
-    setScreen("deck");
-    setShowLibraryDrawer(false);
+    navigateToScreen("deck");
+    closeLibrary();
   };
 
   const loadExampleDeck = (exDeck: typeof EXAMPLE_DECKS[0]) => {
@@ -886,7 +940,7 @@ export default function App() {
     
     setDeck(newDeck);
     setActiveSlideIndex(0);
-    setScreen("deck");
+    navigateToScreen("deck");
   };
 
   const deleteSavedDeckSubmit = async (deckId: string, e: React.MouseEvent) => {
@@ -936,11 +990,11 @@ export default function App() {
     setInvestorSentiment((saved.investorSentiment as typeof investorSentiment) || "skeptical");
     setUnderlyingThoughts(saved.underlyingThoughts || "");
     if (saved.screen && saved.screen !== "generating" && saved.screen !== "deck") {
-      setScreen(saved.screen);
+      navigateToScreen(saved.screen as AppScreen, { replace: true });
     } else if (saved.messages.length > 1) {
-      setScreen("interview");
+      navigateToScreen("interview", { replace: true });
     }
-  }, []);
+  }, [navigateToScreen]);
 
   // Persist chat while interviewing
   useEffect(() => {
@@ -1064,7 +1118,7 @@ export default function App() {
     const mergedBranding = mergeBrandingFromInterview(activeCanvas, projectBranding, sessionImages);
     setProjectBranding(mergedBranding);
     setPresentationOutline(null);
-    setScreen("outline");
+    navigateToScreen("outline");
     await fetchOutline(mergedBranding, activeCanvas);
   };
 
@@ -1079,7 +1133,7 @@ export default function App() {
         return;
       }
       setWordSeed({ text: idea.trim(), autoGenerate: true });
-      setScreen("word");
+      navigateToScreen("word");
       return;
     }
 
@@ -1097,7 +1151,7 @@ export default function App() {
     setBriefImported(false);
     setBriefImportError("");
     setIsLoading(true);
-    setScreen("interview");
+    navigateToScreen("interview");
     setCanvas(INITIAL_CANVAS);
     setSessionImages([]);
     setCurrentQuestionIndex(1);
@@ -1186,7 +1240,7 @@ export default function App() {
       setDeck(null);
       clearChatSession();
       setBriefImported(true);
-      setScreen("interview");
+      navigateToScreen("interview");
       setSessionImages([]);
       setCurrentQuestionIndex(1);
 
@@ -1240,7 +1294,7 @@ export default function App() {
         },
       ]);
     }
-    setScreen("interview");
+    navigateToScreen("interview");
   };
 
   const handleBrandingChange = (patch: Partial<ProjectBranding>) => {
@@ -1306,7 +1360,7 @@ export default function App() {
   };
 
   const handleOutlineToTemplates = () => {
-    setScreen("templates");
+    navigateToScreen("templates");
   };
 
   const handleGenerateFromOutline = async () => {
@@ -1322,7 +1376,7 @@ export default function App() {
       return;
     }
     setIsLoading(true);
-    setScreen("generating");
+    navigateToScreen("generating");
 
     try {
       const initialMessages: Message[] = messages.length > 0 ? messages : [
@@ -1358,7 +1412,7 @@ export default function App() {
         const data = await response.json().catch(() => ({}));
         setLimitMessage(data.error || getGenerationLimitMessage());
         setShowLimitModal(true);
-        setScreen("templates");
+        navigateToScreen("templates");
         return;
       }
 
@@ -1373,7 +1427,7 @@ export default function App() {
         );
       }
       const deckData = await finalizeDeckFromPayload(payload, idea.trim(), mode, canvas, sessionImages);
-      setScreen("deck");
+      navigateToScreen("deck");
       setMessages([]);
       setInputMessage("");
       clearChatSession();
@@ -1383,7 +1437,7 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       setAuthError("Не удалось сгенерировать презентацию. Попробуйте ещё раз.");
-      setScreen("templates");
+      navigateToScreen("templates");
     } finally {
       setIsLoading(false);
     }
@@ -1407,7 +1461,7 @@ export default function App() {
     const finalIdea = targetIdea.trim() || suggestions[1];
     setIdea(finalIdea);
     setIsLoading(true);
-    setScreen('generating');
+    navigateToScreen('generating');
 
     try {
       const initialMessages: Message[] = [
@@ -1435,7 +1489,7 @@ export default function App() {
         const data = await response.json().catch(() => ({}));
         setLimitMessage(data.error || getGenerationLimitMessage());
         setShowLimitModal(true);
-        setScreen("intro");
+        navigateToScreen("intro");
         return;
       }
 
@@ -1448,7 +1502,7 @@ export default function App() {
         setUser((prev: any) => prev ? { ...prev, ...payload.usage } : prev);
       }
       const deckData = await finalizeDeckFromPayload(payload, finalIdea, mode, INITIAL_CANVAS, images);
-      setScreen('deck');
+      navigateToScreen('deck');
       setMessages([]);
       setInputMessage("");
       clearChatSession();
@@ -1458,7 +1512,7 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       setAuthError("Не удалось сгенерировать презентацию. Проверьте подключение и попробуйте снова.");
-      setScreen("intro");
+      navigateToScreen("intro");
     } finally {
       setIsLoading(false);
     }
@@ -1584,7 +1638,7 @@ export default function App() {
       return;
     }
     setIsLoading(true);
-    setScreen("generating");
+    navigateToScreen("generating");
 
     try {
       const compressedImages = await compressSessionImages(sessionImages);
@@ -1608,7 +1662,7 @@ export default function App() {
         const data = await response.json().catch(() => ({}));
         setLimitMessage(data.error || getGenerationLimitMessage());
         setShowLimitModal(true);
-        setScreen("interview");
+        navigateToScreen("interview");
         return;
       }
 
@@ -1624,7 +1678,7 @@ export default function App() {
       if (deckData.theme) {
         setDeckCustomTheme(deckData.theme);
       }
-      setScreen("deck");
+      navigateToScreen("deck");
       setMessages([]);
       setInputMessage("");
       clearChatSession();
@@ -1634,7 +1688,7 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       setAuthError("Не удалось сгенерировать презентацию. Попробуйте ещё раз.");
-      setScreen("interview");
+      navigateToScreen("interview");
     } finally {
       setIsLoading(false);
     }
@@ -1889,7 +1943,7 @@ export default function App() {
   };
 
   const handleReset = () => {
-    setScreen('intro');
+    navigateToScreen('intro');
     setIdea("");
     setMessages([]);
     setCanvas(INITIAL_CANVAS);
@@ -2868,7 +2922,7 @@ export default function App() {
         {/* Quick upgrade or profile on the right of mobile top bar */}
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setScreen('about')}
+            onClick={() => navigateToScreen('about')}
             className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all flex items-center space-x-1 border cursor-pointer ${
               screen === 'about'
                 ? "bg-white text-black border-white"
@@ -2881,7 +2935,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setScreen('plans')}
+            onClick={() => navigateToScreen('plans')}
             className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all flex items-center space-x-1 border cursor-pointer ${
               screen === 'plans'
                 ? "bg-white text-black border-white"
@@ -2921,7 +2975,7 @@ export default function App() {
 
           {!isWatermarkRemoved ? (
             <button 
-              onClick={() => setScreen('plans')}
+              onClick={() => navigateToScreen('plans')}
               className="px-3 py-1.5 bg-white text-black text-[10px] font-bold uppercase tracking-wider rounded-full transition-all cursor-pointer hover:bg-slate-200"
             >
               Upgrade
@@ -2938,7 +2992,7 @@ export default function App() {
       <div id="mobile-bottom-dock" className="lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-[#0E0E12]/90 backdrop-blur-xl border border-white/10 rounded-[28px] z-45 px-3 py-1.5 flex items-center justify-around shadow-[0_12px_40px_-10px_rgba(0,0,0,0.9)]">
         {/* Tab 1: Ввод идеи */}
         <button
-          onClick={() => setScreen('intro')}
+          onClick={() => navigateToScreen('intro')}
           className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all relative cursor-pointer border-none bg-transparent ${
             screen === 'intro' || screen === 'outline' || screen === 'templates' ? 'text-[#FF5D44]' : 'text-slate-400 hover:text-slate-200'
           }`}
@@ -2957,7 +3011,7 @@ export default function App() {
             if (deck || messages.length > 0 || screen === 'interview' || screen === 'generating') {
               openAgentChat();
             } else if (presentationOutline) {
-              setScreen('outline');
+              navigateToScreen('outline');
             }
           }}
           className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all relative cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed border-none bg-transparent ${
@@ -2976,7 +3030,7 @@ export default function App() {
           disabled={!deck}
           onClick={() => {
             if (deck) {
-              setScreen('deck');
+              navigateToScreen('deck');
             }
           }}
           className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all relative cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed border-none bg-transparent ${
@@ -2992,10 +3046,7 @@ export default function App() {
 
         {/* Tab 4: Мои проекты */}
         <button
-          onClick={() => {
-            fetchLibraryDecks();
-            setShowLibraryDrawer(true);
-          }}
+          onClick={openLibrary}
           className="flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all relative cursor-pointer border-none bg-transparent text-slate-400 hover:text-slate-200"
         >
           <div className="relative">
@@ -3033,7 +3084,7 @@ export default function App() {
             
             {/* Nav Option 1: Ввод идеи / Главная */}
             <button
-              onClick={() => setScreen('intro')}
+              onClick={() => navigateToScreen('intro')}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'intro'
                   ? 'bg-[#FF5D44]/10 border-[#FF5D44]/15 text-white'
@@ -3046,7 +3097,7 @@ export default function App() {
 
             {/* Nav Option 1.5: О проекте */}
             <button
-              onClick={() => setScreen('about')}
+              onClick={() => navigateToScreen('about')}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'about'
                   ? 'bg-purple-500/10 border-purple-500/15 text-white'
@@ -3059,7 +3110,7 @@ export default function App() {
 
             {/* Nav Option 1.6: Тарифы & Экономика */}
             <button
-              onClick={() => setScreen('plans')}
+              onClick={() => navigateToScreen('plans')}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'plans'
                   ? 'bg-emerald-500/10 border-emerald-500/15 text-white'
@@ -3074,7 +3125,7 @@ export default function App() {
             <button
               onClick={() => {
                 setWordSeed(null);
-                setScreen('word');
+                navigateToScreen('word');
               }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
                 screen === 'word'
@@ -3110,7 +3161,7 @@ export default function App() {
               disabled={!deck}
               onClick={() => {
                 if (deck) {
-                  setScreen('deck');
+                  navigateToScreen('deck');
                 }
               }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border disabled:opacity-25 disabled:cursor-not-allowed ${
@@ -3126,10 +3177,7 @@ export default function App() {
 
             {/* Nav Option 4: Моя библиотека */}
             <button
-              onClick={() => {
-                fetchLibraryDecks();
-                setShowLibraryDrawer(true);
-              }}
+              onClick={openLibrary}
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-semibold uppercase tracking-wider transition-all text-left border border-transparent bg-transparent cursor-pointer"
             >
               <div className="flex items-center space-x-3">
@@ -3170,7 +3218,7 @@ export default function App() {
                 <span>Free Agent</span>
               </div>
               <button
-                onClick={() => setScreen('plans')}
+                onClick={() => navigateToScreen('plans')}
                 className="w-full py-2 bg-gradient-to-r from-red-500 to-[#FF5D44] text-white hover:opacity-95 text-[10px] font-extrabold uppercase tracking-widest rounded-sm transition-all text-center flex items-center justify-center space-x-1 shrink-0 cursor-pointer"
               >
                 <Sparkles className="h-3 w-3 animate-pulse" />
@@ -3218,7 +3266,7 @@ export default function App() {
             {user && (
               <button
                 type="button"
-                onClick={() => setScreen("plans")}
+                onClick={() => navigateToScreen("plans")}
                 className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border text-[10px] font-mono tracking-wide transition-colors cursor-pointer shrink-0 ${
                   user.role === "admin" || (user.tokenBalance ?? 0) >= DECK_GENERATION_TOKEN_COST
                     ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
@@ -3243,7 +3291,7 @@ export default function App() {
             {!isWatermarkRemoved ? (
               <button 
                 id="unlock-premium-header-btn"
-                onClick={() => setScreen('plans')}
+                onClick={() => navigateToScreen('plans')}
                 className="px-3.5 py-1.5 bg-white text-black hover:bg-slate-200 text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer rounded-full"
               >
                 Upgrade
@@ -3257,7 +3305,7 @@ export default function App() {
             {/* Admin toggle door */}
             {user && user.role === 'admin' && (
               <button
-                onClick={() => setScreen(screen === 'admin' ? 'intro' : 'admin')}
+                onClick={() => navigateToScreen(screen === 'admin' ? 'intro' : 'admin')}
                 className={`px-3 py-1.5 rounded-sm text-[10px] uppercase tracking-wider font-mono font-black flex items-center space-x-1 border transition-all cursor-pointer ${
                   screen === 'admin'
                     ? "bg-[#FF5D44] border-[#FF5D44] text-white hover:bg-orange-600"
@@ -3858,7 +3906,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowLibraryDrawer(false)}
+            onClick={closeLibrary}
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end"
           >
             <motion.div
@@ -3878,7 +3926,7 @@ export default function App() {
                     <h3 className="text-sm font-extrabold uppercase text-white tracking-wider">Моя библиотека</h3>
                   </div>
                   <button
-                    onClick={() => setShowLibraryDrawer(false)}
+                    onClick={closeLibrary}
                     className="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded bg-white/5 border border-white/10 cursor-pointer"
                   >
                     Закрыть
@@ -3986,7 +4034,7 @@ export default function App() {
         {!legalPage && screen === 'admin' && (
           <AdminPanel 
             authToken={authToken} 
-            onBack={() => setScreen('intro')} 
+            onBack={() => navigateToScreen('intro')} 
             onSubscriptionChanged={handleSubscriptionChanged}
             onTestGenerate={user?.role === 'admin' ? (idea, imgs) => handleFastGenerateDeck(idea, imgs) : undefined}
             isGenerating={isLoading && screen === 'generating'}
@@ -4006,14 +4054,14 @@ export default function App() {
               setAuthTab("login");
               setShowAuthModal(true);
             }}
-            onBackToGenerator={() => setScreen('intro')}
+            onBackToGenerator={() => navigateToScreen('intro')}
           />
         )}
 
         {/* VIEW: ABOUT PROJECT SCREEN */}
         {!legalPage && screen === 'about' && (
           <AboutPage
-            onBackToGenerator={() => setScreen('intro')}
+            onBackToGenerator={() => navigateToScreen('intro')}
             loadExampleDeck={loadExampleDeck}
             exampleDecks={EXAMPLE_DECKS}
           />
@@ -4028,10 +4076,10 @@ export default function App() {
               setAuthTab("login");
               setShowAuthModal(true);
             }}
-            onOpenPlans={() => setScreen('plans')}
+            onOpenPlans={() => navigateToScreen('plans')}
             onBack={() => {
               setWordSeed(null);
-              setScreen('intro');
+              navigateToScreen('intro');
             }}
             initialText={wordSeed?.text}
             autoGenerate={wordSeed?.autoGenerate}
@@ -4068,7 +4116,7 @@ export default function App() {
             onAddSlide={handleAddOutlineSlide}
             onRemoveSlide={handleRemoveOutlineSlide}
             onContinue={handleOutlineToTemplates}
-            onBack={() => setScreen('interview')}
+            onBack={() => navigateToScreen('interview')}
             isPro={isWatermarkRemoved}
           />
         )}
@@ -4080,7 +4128,7 @@ export default function App() {
               setSelectedTemplate(tid);
               setSelectedStyle(TEMPLATE_CATALOG[tid].selectedStyle);
             }}
-            onBack={() => setScreen('outline')}
+            onBack={() => navigateToScreen('outline')}
             onGenerate={handleGenerateFromOutline}
             isLoading={isLoading}
             slideCount={presentationOutline?.slides.length ?? SLIDE_TYPES.length}
@@ -4139,7 +4187,7 @@ export default function App() {
                 </div>
                 <button
                   id="unlock-premium-btn"
-                  onClick={() => setScreen('plans')}
+                  onClick={() => navigateToScreen('plans')}
                   className="bg-gradient-to-r from-purple-500 to-[#FF5D44] text-white font-extrabold uppercase tracking-widest text-[10px] px-5 py-3 rounded-sm transition-all cursor-pointer flex-shrink-0 animate-pulse"
                 >
                   Выбрать тариф и убрать знак
@@ -4263,7 +4311,7 @@ export default function App() {
                   )}
                   <button
                     type="button"
-                    onClick={() => setScreen("present")}
+                    onClick={() => navigateToScreen("present")}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-wider border cursor-pointer bg-emerald-500/15 border-emerald-400/35 text-emerald-200 hover:bg-emerald-500/25 transition-colors"
                   >
                     <Maximize2 className="h-3.5 w-3.5" />
@@ -4913,7 +4961,7 @@ export default function App() {
               </p>
               <div className="flex gap-2 justify-center">
                 <button
-                  onClick={() => { setShowLimitModal(false); setScreen("plans"); }}
+                  onClick={() => { setShowLimitModal(false); navigateToScreen("plans"); }}
                   className="px-4 py-2 bg-white text-black text-xs font-bold uppercase rounded cursor-pointer border-none"
                 >
                   Выбрать тариф
@@ -5001,7 +5049,7 @@ export default function App() {
           selectedTemplate={selectedTemplate}
           selectedStyle={selectedStyle}
           isWatermarkRemoved={isWatermarkRemoved}
-          onExit={() => setScreen("deck")}
+          onExit={() => navigateToScreen("deck")}
           deckFrameLabel={formatDeckFrameLabel(getDeckDisplayName(deck, projectBranding))}
           renderSlide={(slide, index) => renderSlideContent(slide, index)}
         />

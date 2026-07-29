@@ -7,7 +7,18 @@ export interface PersistedChatSession {
   mode: Mode;
   messages: Message[];
   canvas: PitchCanvas;
-  screen: "intro" | "interview" | "generating" | "deck" | "admin" | "about" | "plans";
+  screen:
+    | "intro"
+    | "outline"
+    | "templates"
+    | "interview"
+    | "generating"
+    | "deck"
+    | "present"
+    | "admin"
+    | "about"
+    | "plans"
+    | "word";
   currentQuestionIndex: number;
   investorSentiment: string;
   underlyingThoughts: string;
