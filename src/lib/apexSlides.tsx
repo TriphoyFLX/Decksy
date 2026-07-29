@@ -2327,6 +2327,8 @@ export const ApexSlideContent: React.FC<{
                   />
                 ) : (
                   <CreamFeatureCards
+                    title={title}
+                    subtitle={subtitle}
                     content={content}
                     parseBullet={parseBullet}
                     renderBullet={renderBullet}

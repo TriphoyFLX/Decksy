@@ -1,5 +1,17 @@
 import React from "react";
-import { BarChart3, Clock, TrendingUp, User, Zap } from "lucide-react";
+import {
+  BarChart3,
+  Clock,
+  TrendingUp,
+  User,
+  Zap,
+  Wallet,
+  Shield,
+  Smartphone,
+  Gift,
+  Check,
+  type LucideIcon,
+} from "lucide-react";
 import type { SlideVisualData } from "../types";
 import { PremiumImage } from "./slideVisuals";
 import type { GlassSurface } from "./apexSlides";
@@ -282,36 +294,181 @@ export const CreamProductSteps: React.FC<{
 };
 
 export const CreamFeatureCards: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   content: string[];
   parseBullet: (s: string) => { label: string; detail: string };
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   renderLabel?: InlineRenderer;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
-  const icons = [Zap, Clock, TrendingUp];
-  const items = parseItems(content, parseBullet).slice(0, 3);
+}> = ({ title, subtitle, content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const icons: LucideIcon[] = [Wallet, TrendingUp, Gift, Smartphone, Shield, Zap, Clock];
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  while (items.length < 4) {
+    items.push({
+      raw: "",
+      label: `Фича ${items.length + 1}`,
+      detail: "Ключевое преимущество продукта",
+      number: "",
+    });
+  }
+
+  const [hero, ...rest] = items;
+  const HeroIcon = icons[0];
+
+  const pointsFor = (detail: string): string[] => {
+    const parts = detail
+      .split(/[,;•|]/)
+      .map((s) => s.replace(/^[\s\-–—]+/, "").trim())
+      .filter((s) => s.length > 2);
+    if (parts.length >= 2) return parts.slice(0, 3);
+    return [detail].filter(Boolean).slice(0, 1);
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
-      {items.map((item, i) => {
-        const Icon = icons[i] || Zap;
-        return (
-          <div key={i} className={`${creamCardClass} p-4 flex flex-col`} style={creamCardStyle(forExport)}>
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-              style={{ ...creamStrongStyle(forExport), color: glass.accent }}
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Решение</CreamChip>
+          {title && (
+            <h2
+              className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}
             >
-              <Icon className="h-4 w-4" strokeWidth={1.6} />
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {["Без покупки", "Онлайн", "SLA"].map((t) => (
+            <span
+              key={t}
+              className="text-[7px] uppercase tracking-wider font-bold px-2 py-1 rounded-full"
+              style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className="grid flex-1 min-h-0 gap-2.5"
+        style={{
+          gridTemplateColumns: "1.15fr 1fr 1fr",
+          gridTemplateRows: "1.2fr 1fr",
+        }}
+      >
+        {/* Hero feature */}
+        <div
+          className={`${creamCardClass} p-3.5 flex flex-col justify-between min-h-0`}
+          style={{ ...creamStrongStyle(forExport), gridColumn: "1", gridRow: "1 / span 2" }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
+            >
+              <HeroIcon className="h-5 w-5" strokeWidth={1.6} />
             </div>
-            <h3 className={`text-[11px] font-semibold mb-1 ${glass.titleClass}`}>
-              {renderLabel ? renderLabel(item.label, i, "") : item.label}
-            </h3>
-            <p className={`text-[8.5px] leading-relaxed line-clamp-4 ${glass.mutedClass}`}>
-              {renderBullet(item.detail, i, "")}
-            </p>
+            {hero.number && (
+              <span className="text-2xl font-black tracking-tight leading-none" style={{ color: glass.accent }}>
+                {hero.number}
+              </span>
+            )}
           </div>
-        );
-      })}
+          <div className="mt-3 min-h-0">
+            <h3 className={`text-[13px] font-bold leading-tight ${glass.titleClass}`}>
+              {renderLabel ? renderLabel(hero.label, 0, "") : hero.label}
+            </h3>
+            <p className={`text-[9px] mt-1.5 leading-relaxed line-clamp-3 ${glass.mutedClass}`}>
+              {renderBullet(hero.detail, 0, "")}
+            </p>
+            <ul className="mt-3 space-y-1.5">
+              {pointsFor(hero.detail).map((pt, pi) => (
+                <li key={pi} className={`flex gap-1.5 text-[8.5px] leading-snug ${glass.bodyClass}`}>
+                  <Check className="h-3 w-3 shrink-0 mt-0.5" style={{ color: glass.success }} strokeWidth={2.5} />
+                  <span className="line-clamp-2">{pt}</span>
+                </li>
+              ))}
+              {pointsFor(hero.detail).length < 2 && (
+                <>
+                  <li className={`flex gap-1.5 text-[8.5px] ${glass.bodyClass}`}>
+                    <Check className="h-3 w-3 shrink-0 mt-0.5" style={{ color: glass.success }} strokeWidth={2.5} />
+                    Прозрачный тариф без скрытых платежей
+                  </li>
+                  <li className={`flex gap-1.5 text-[8.5px] ${glass.bodyClass}`}>
+                    <Check className="h-3 w-3 shrink-0 mt-0.5" style={{ color: glass.success }} strokeWidth={2.5} />
+                    Оплата и договор в одном потоке
+                  </li>
+                </>
+              )}
+            </ul>
+          </div>
+          <div className="mt-3 pt-2 border-t border-white/10 flex flex-wrap gap-1">
+            {["Цена", "Скорость", "Доверие"].map((chip) => (
+              <span
+                key={chip}
+                className="text-[7px] px-1.5 py-0.5 rounded-md font-medium"
+                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(245,243,238,0.7)" }}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {rest.slice(0, 3).map((item, i) => {
+          const Icon = icons[i + 1] || Zap;
+          const idx = i + 1;
+          const points = pointsFor(item.detail);
+          return (
+            <div
+              key={idx}
+              className={`${creamCardClass} p-3 flex flex-col min-h-0 gap-1.5`}
+              style={{
+                ...creamCardStyle(forExport),
+                gridColumn: i === 2 ? "2 / span 2" : String(i + 2),
+                gridRow: i < 2 ? "1" : "2",
+              }}
+            >
+              <div className="flex items-center justify-between gap-2 shrink-0">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: alpha(glass.accent, "22"), color: glass.accent }}
+                >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.7} />
+                </div>
+                {item.number ? (
+                  <span className="text-lg font-black tracking-tight" style={{ color: glass.accent }}>
+                    {item.number}
+                  </span>
+                ) : (
+                  <span className="text-[8px] font-mono text-white/35">{String(idx + 1).padStart(2, "0")}</span>
+                )}
+              </div>
+              <h3 className={`text-[11px] font-bold leading-tight line-clamp-1 ${glass.titleClass}`}>
+                {renderLabel ? renderLabel(item.label, idx, "") : item.label}
+              </h3>
+              <p className={`text-[8.5px] leading-snug line-clamp-2 ${glass.mutedClass}`}>
+                {renderBullet(item.detail, idx, "")}
+              </p>
+              <ul className="mt-auto space-y-1 pt-1">
+                {(points.length > 1 ? points.slice(0, 2) : [`${item.label}: готово к продакшену`, "Встроено в продукт"]).map(
+                  (pt, pi) => (
+                    <li key={pi} className="flex gap-1.5 text-[8px] leading-snug text-white/65">
+                      <span style={{ color: glass.success }}>✓</span>
+                      <span className="line-clamp-1">{pt}</span>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
