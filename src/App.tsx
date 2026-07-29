@@ -37,7 +37,8 @@ import {
   X,
   Image,
   Upload,
-  FileText
+  FileText,
+  Maximize2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminPanel } from "./components/AdminPanel";
@@ -48,6 +49,7 @@ import { IntroPage } from "./pages/IntroPage";
 import { OutlinePage } from "./pages/OutlinePage";
 import { TemplatePickerPage } from "./pages/TemplatePickerPage";
 import { GeneratingPage } from "./pages/GeneratingPage";
+import { PresentationFullscreenPage } from "./pages/PresentationFullscreenPage";
 import { InterviewPage } from "./pages/InterviewPage";
 import { WordGeneratorPage } from "./pages/WordGeneratorPage";
 import { LegalPage, LegalPageId } from "./pages/LegalPage";
@@ -76,7 +78,8 @@ import {
   isInterviewComplete,
   wantsToSkipInterview,
 } from "./lib/interviewFlow";
-import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, mergeBrandingFromInterview } from "./lib/projectBranding";
+import { applyBrandingToDeck, EMPTY_PROJECT_BRANDING, getDeckDisplayName, mergeBrandingFromInterview } from "./lib/projectBranding";
+import { formatDeckFrameLabel } from "./lib/slideMetrics";
 import { enrichSlidesWithVisuals, fixMisplacedTeamLayout } from "./lib/slideImageUtils";
 import { assignDeckVariants } from "./lib/deckVariants";
 import {
@@ -354,7 +357,7 @@ function SlideFrameDecorations({ frame }: { frame: TemplateFrameAppearance }) {
 
 export default function App() {
   // Screen views: 'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans'
-  const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'admin' | 'about' | 'plans' | 'word'>('intro');
+  const [screen, setScreen] = useState<'intro' | 'outline' | 'templates' | 'interview' | 'generating' | 'deck' | 'present' | 'admin' | 'about' | 'plans' | 'word'>('intro');
   const [legalPage, setLegalPage] = useState<LegalPageId | null>(() => getLegalPageFromPath(window.location.pathname));
   
   // Custom design style and selection state
@@ -4111,7 +4114,9 @@ export default function App() {
         )}
 
         {/* VIEW 4: MAGIC FINAL PRESENTATION DECK STAGE */}
-        {!legalPage && screen === 'deck' && deck && (
+        {!legalPage && screen === 'deck' && deck && (() => {
+          const deckFrameLabel = formatDeckFrameLabel(getDeckDisplayName(deck, projectBranding));
+          return (
           <motion.div 
             id="screen-deck"
             initial={{ opacity: 0 }}
@@ -4231,7 +4236,7 @@ export default function App() {
 
             <div className="text-center sm:text-left space-y-1">
               <h2 className="text-2xl font-black text-white uppercase tracking-tight flex flex-col sm:flex-row sm:items-center sm:space-x-3 justify-center sm:justify-start">
-                <span>{deck.title}</span>
+                <span>{deckFrameLabel}</span>
                 <span className="text-[9px] font-mono bg-white/5 text-slate-400 border border-white/10 px-2 py-0.5 rounded uppercase self-center mt-1 sm:mt-0 font-bold tracking-widest">PITCH DECK</span>
               </h2>
               <p className="text-xs text-slate-500 font-mono uppercase tracking-wider">{deck.subtitle}</p>
@@ -4242,8 +4247,8 @@ export default function App() {
               
               {/* LEFT COLUMN: THE ACTIVE SLIDE ASPECT (16:9 VIEW) + SPEAK PLAYS (7 COLS) */}
               <div className="lg:col-span-8 space-y-4">
-                {isWatermarkRemoved && !exportState && (
-                  <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isWatermarkRemoved && !exportState && (
                     <button
                       type="button"
                       onClick={() => setConstructorMode((v) => !v)}
@@ -4255,8 +4260,16 @@ export default function App() {
                     >
                       {constructorMode ? "Конструктор вкл" : "Конструктор слайда"}
                     </button>
-                  </div>
-                )}
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setScreen("present")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-wider border cursor-pointer bg-emerald-500/15 border-emerald-400/35 text-emerald-200 hover:bg-emerald-500/25 transition-colors"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    На весь экран
+                  </button>
+                </div>
 
                 {/* Visual Slide Frame with standard 16:9 box ratio in styling */}
                 {(() => {
@@ -4275,7 +4288,7 @@ export default function App() {
                       <SlideFrameDecorations frame={frame} />
 
                       <div className={frame.headerClass}>
-                        <span className={frame.titleHeaderClass}>{deck.title}</span>
+                        <span className={`${frame.titleHeaderClass} truncate max-w-[55%]`}>{deckFrameLabel}</span>
                         <span>СЛАЙД {activeSlideIndex + 1} ИЗ {deck.slides.length}</span>
                       </div>
 
@@ -4307,11 +4320,11 @@ export default function App() {
 
                       {/* Footer bar */}
                       <div className={frame.footerClass}>
-                        <span>© {deck.title} • Seed Round</span>
+                        <span className="truncate max-w-[45%]">© {deckFrameLabel} • Seed Round</span>
                         {isWatermarkRemoved ? (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 truncate max-w-[45%]">
                             <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
-                            {`Проект: ${deck.title}`}
+                            {`Проект: ${deckFrameLabel}`}
                           </span>
                         ) : (
                           <DeckWatermark forExport={exportState !== null} />
@@ -4821,7 +4834,8 @@ export default function App() {
             </div>
 
           </motion.div>
-        )}
+          );
+        })()}
 
       </main>
 
@@ -4978,6 +4992,20 @@ export default function App() {
           </div>
         );
       })()}
+
+      {screen === "present" && deck && (
+        <PresentationFullscreenPage
+          deck={deck}
+          activeSlideIndex={activeSlideIndex}
+          setActiveSlideIndex={setActiveSlideIndex}
+          selectedTemplate={selectedTemplate}
+          selectedStyle={selectedStyle}
+          isWatermarkRemoved={isWatermarkRemoved}
+          onExit={() => setScreen("deck")}
+          deckFrameLabel={formatDeckFrameLabel(getDeckDisplayName(deck, projectBranding))}
+          renderSlide={(slide, index) => renderSlideContent(slide, index)}
+        />
+      )}
 
     </div>
   );

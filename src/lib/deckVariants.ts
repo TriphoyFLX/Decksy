@@ -1,3 +1,8 @@
+// ============================================================
+// Файл 3: variantEngine.ts
+// Полный код без сокращений.
+// ============================================================
+
 import type { PitchDeck, Slide } from "../types";
 import type { DeckDesignPlan } from "./designPlan";
 import { type DeckTemplateId, resolveLayoutEngine } from "./deckTheme";

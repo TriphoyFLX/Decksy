@@ -13,6 +13,7 @@ import {
 import { resolveSlideType } from "../lib/deckBuilder";
 import { ApexSlideContent, shouldUseApexLayout } from "../lib/apexSlides";
 import { resolveSlideTheme } from "../lib/deckTheme";
+import { extractMetricValue } from "../lib/slideMetrics";
 import type { DeckThemeCustom } from "../types";
 
 export const getThemeStyles = (
@@ -141,11 +142,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
     return { label: "", detail: str };
   };
 
-  // Helper to parse numbers
-  const extractNumber = (str: string) => {
-    const match = str.match(/(\$?\d+[,.]?\d*\s*(?:миллиард\w*|млн|тыс|%|B|M|K|млрд| доллар\w*|к\b|к\s))/i);
-    return match ? match[1] : "";
-  };
+  const extractNumber = (str: string) => extractMetricValue(str) || "";
 
   // TEAM SLIDE — founder photos (sauce slide only)
   if (

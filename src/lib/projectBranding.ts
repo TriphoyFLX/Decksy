@@ -1,4 +1,5 @@
 import type { PitchDeck, Slide } from "../types";
+import { sanitizeCompanyName } from "./slideMetrics";
 
 export interface ProjectBranding {
   companyName: string;
@@ -20,9 +21,22 @@ export const EMPTY_PROJECT_BRANDING: ProjectBranding = {
 };
 
 export function resolveCompanyName(branding: ProjectBranding | undefined, idea: string): string {
-  const name = branding?.companyName?.trim();
-  if (name) return name;
+  const fromBranding = sanitizeCompanyName(branding?.companyName, "");
+  if (fromBranding && fromBranding !== "Название проекта") return fromBranding;
+  const fromIdea = idea?.trim();
+  if (fromIdea && fromIdea.length <= 60 && !/скачать|заказать|бизнес[-\s]?план/i.test(fromIdea)) {
+    const short = fromIdea.split(/[.!?\n]/)[0].trim();
+    if (short.length >= 2 && short.length <= 48) return short;
+  }
   return "Название проекта";
+}
+
+export function getDeckDisplayName(deck: Pick<PitchDeck, "title" | "idea">, branding?: ProjectBranding): string {
+  const fromBranding = sanitizeCompanyName(branding?.companyName, "");
+  if (fromBranding && fromBranding !== "Название проекта") return fromBranding;
+  const fromTitle = sanitizeCompanyName(deck.title, "");
+  if (fromTitle && fromTitle !== "Название проекта") return fromTitle;
+  return resolveCompanyName(branding, deck.idea || "");
 }
 
 export function brandingContextForAI(branding?: ProjectBranding): string {

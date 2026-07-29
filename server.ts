@@ -15,6 +15,7 @@ import {
 } from "./src/lib/deckBuilder";
 import { generateLocalOutline, outlineToDeckContext } from "./src/lib/outlineBuilder";
 import { brandingContextForAI, parseBrandingFromCanvas } from "./src/lib/projectBranding";
+import { sanitizeCompanyName } from "./src/lib/slideMetrics";
 import { businessPromptForAI } from "./src/lib/businessSlides";
 import { enrichSlidesWithVisuals } from "./src/lib/slideImageUtils";
 import { assignDeckVariants } from "./src/lib/deckVariants";
@@ -930,7 +931,7 @@ ${businessPromptForAI()}
       3500
     );
     if (result?.slides?.length >= 8) {
-      const companyName = branding?.companyName?.trim() || result.title || "Название проекта";
+      const companyName = sanitizeCompanyName(branding?.companyName?.trim() || result.title);
       return {
         title: companyName,
         subtitle: branding?.tagline?.trim() || result.subtitle || idea.slice(0, 120),

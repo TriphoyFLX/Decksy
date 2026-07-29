@@ -1,3 +1,8 @@
+// ============================================================
+// Файл 4: DeckCustomizer.tsx
+// Полный код без сокращений.
+// ============================================================
+
 import React from "react";
 import { Palette, RotateCcw, Sparkles } from "lucide-react";
 import type { DeckThemeCustom } from "../lib/deckTheme";

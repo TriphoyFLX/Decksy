@@ -1,3 +1,8 @@
+// ============================================================
+// Файл 2: deckTheme.ts
+// Полный код без сокращений.
+// ============================================================
+
 import type React from "react";
 
 export type DeckTemplateId = "apex" | "swiss" | "cream" | "apple" | "titanium" | "ember" | "midnight" | "studio";
@@ -32,7 +37,7 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     frameGradient: "linear-gradient(165deg, #0a0a0f 0%, #0f172a 42%, #09090b 100%)",
     gridBg:
       "linear-gradient(rgba(148,163,184,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.07) 1px, transparent 1px)",
-    accent: "#38bdf8",
+    accent: "#8B5CF6",
     selectedStyle: "cosmic-dark",
     layoutEngine: "apex",
   },
@@ -44,7 +49,7 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     frameGradient: "linear-gradient(165deg, #08080c 0%, #111827 45%, #09090b 100%)",
     gridBg:
       "linear-gradient(rgba(52,211,153,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(52,211,153,0.06) 1px, transparent 1px)",
-    accent: "#34d399",
+    accent: "#10B981",
     selectedStyle: "cosmic-dark",
     layoutEngine: "swiss",
   },
@@ -315,21 +320,21 @@ export function getTemplateFrameAppearance(
           className: "z-[1]",
           style: {
             background:
-              "radial-gradient(ellipse 58% 48% at 12% 18%, rgba(52,211,153,0.16), transparent 62%)",
+              "radial-gradient(ellipse 58% 48% at 12% 18%, rgba(139,92,246,0.16), transparent 62%)",
           },
         },
         {
           className: "z-[1]",
           style: {
             background:
-              "radial-gradient(ellipse 52% 42% at 88% 78%, rgba(56,189,248,0.14), transparent 58%)",
+              "radial-gradient(ellipse 52% 42% at 88% 78%, rgba(14,165,233,0.14), transparent 58%)",
           },
         },
         {
           className: "z-[1]",
           style: {
             background:
-              "radial-gradient(ellipse 34% 28% at 72% 12%, rgba(139,92,246,0.1), transparent 55%)",
+              "radial-gradient(ellipse 34% 28% at 72% 12%, rgba(245,158,11,0.1), transparent 55%)",
           },
         },
       ];
@@ -383,8 +388,8 @@ export const DEFAULT_CUSTOM_THEMES: Record<StyleKey, DeckThemeCustom> = {
     borderColor: "rgba(15, 23, 42, 0.08)",
   },
   "cosmic-dark": {
-    primary: "#34d399",
-    accent: "#38bdf8",
+    primary: "#8B5CF6",
+    accent: "#0EA5E9",
     background: "#0a0a0f",
     surface: "rgba(255,255,255,0.06)",
     text: "#f8fafc",
@@ -541,7 +546,7 @@ export function resolveSlideTheme(
     titleColor: "text-white",
     bulletTextColor: "text-slate-200",
     subtitleColor: "text-slate-400",
-    accentText: "text-emerald-400",
+    accentText: "text-violet-400",
     footerTextColor: "#64748b",
     dotColor: base.primary,
   };
