@@ -60,7 +60,25 @@ export interface SlideVisualData {
   metrics?: { label: string; value: string; highlight?: boolean }[];
   timeline?: { label: string; title: string; detail?: string }[];
   pricing?: { label: string; price: string; detail?: string; featured?: boolean }[];
-  competitors?: { label: string; detail: string; ours?: boolean }[];
+  competitors?: {
+    label: string;
+    detail: string;
+    ours?: boolean;
+    /** Logo URL or data-URL */
+    logo?: string;
+    /** Short tagline under the name */
+    tagline?: string;
+    /** Up to 6 advantage bullets for this player */
+    advantages?: string[];
+    /** 1–10 strength score for visual bars */
+    rating?: number;
+  }[];
+  /** Shared feature rows for comparison matrix (columns = competitors) */
+  compareFeatures?: {
+    label: string;
+    /** per-competitor: true = has, false = no, "partial" = partial */
+    scores: Array<boolean | "partial">;
+  }[];
   accentImage?: string;
   images?: string[];
   constructorLayout?: SlideConstructorLayout;

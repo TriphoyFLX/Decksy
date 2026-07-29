@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Maximize2, Minimize2, FlaskConical } from "lucide-react";
 import { SlideRenderer } from "../components/SlideRenderer";
+import type { Slide } from "../types";
 import {
   TEMPLATE_CATALOG,
   getTemplateFrameAppearance,
@@ -51,18 +52,26 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
   const [templateId, setTemplateId] = useState<DeckTemplateId>("apex");
   const [slideIndex, setSlideIndex] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
+  const [slides, setSlides] = useState<Slide[]>(() => buildDesignLabDeck("apex").slides);
+  const [deckTitle, setDeckTitle] = useState(() => buildDesignLabDeck("apex").title);
 
-  const deck = useMemo(() => buildDesignLabDeck(templateId), [templateId]);
   const meta = getDesignLabMeta(templateId);
   const style = meta.selectedStyle;
-  const slide = deck.slides[slideIndex];
+  const slide = slides[slideIndex];
   const isTitle = slideIndex === 0 || slide?.type === "title";
   const frame = getTemplateFrameAppearance(templateId, style, isTitle);
   const frameClass = `aspect-video w-full rounded-2xl p-5 sm:p-7 md:p-8 relative overflow-hidden flex flex-col justify-between shadow-2xl border ${frame.frameBorderClass}`;
 
   useEffect(() => {
+    const next = buildDesignLabDeck(templateId);
+    setSlides(next.slides);
+    setDeckTitle(next.title);
     setSlideIndex(0);
   }, [templateId]);
+
+  const updateSlide = (index: number, patch: Partial<Slide>) => {
+    setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,14 +80,14 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
         setSlideIndex((i) => Math.max(0, i - 1));
       } else if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
-        setSlideIndex((i) => Math.min(deck.slides.length - 1, i + 1));
+        setSlideIndex((i) => Math.min(slides.length - 1, i + 1));
       } else if (e.key === "Escape" && focusMode) {
         setFocusMode(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deck.slides.length, focusMode]);
+  }, [slides.length, focusMode]);
 
   const slideType = slide?.type || "";
   const variant = slide?.visualData?.variant || "—";
@@ -149,10 +158,10 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
             <div className="min-w-0">
               <p className="text-[11px] font-bold text-white truncate">
                 {meta.name}
-                <span className="text-slate-500 font-normal"> · {deck.title}</span>
+                <span className="text-slate-500 font-normal"> · {deckTitle}</span>
               </p>
               <p className="text-[10px] font-mono text-slate-500 truncate">
-                слайд {slideIndex + 1}/{deck.slides.length} · type={slideType} · variant={variant}
+                слайд {slideIndex + 1}/{slides.length} · type={slideType} · variant={variant}
               </p>
             </div>
             <button
@@ -174,9 +183,9 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
                 <SlideFrameDecorations frame={frame} />
 
                 <div className={frame.headerClass}>
-                  <span className={`${frame.titleHeaderClass} truncate max-w-[55%]`}>{deck.title}</span>
+                  <span className={`${frame.titleHeaderClass} truncate max-w-[55%]`}>{deckTitle}</span>
                   <span>
-                    СЛАЙД {slideIndex + 1} ИЗ {deck.slides.length}
+                    СЛАЙД {slideIndex + 1} ИЗ {slides.length}
                   </span>
                 </div>
 
@@ -187,12 +196,13 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
                       index={slideIndex}
                       selectedStyle={style}
                       forExport={false}
+                      onUpdate={(patch) => updateSlide(slideIndex, patch)}
                     />
                   )}
                 </div>
 
                 <div className={frame.footerClass}>
-                  <span className="truncate max-w-[50%]">© {deck.title} · Seed Round</span>
+                  <span className="truncate max-w-[50%]">© {deckTitle} · Seed Round</span>
                   <span className="flex items-center gap-1 truncate max-w-[45%]">
                     <span className="h-1 w-1 rounded-full bg-emerald-500" />
                     Design Lab · {meta.name}
@@ -212,7 +222,7 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex flex-wrap justify-center gap-1 overflow-x-auto max-w-[calc(100%-6rem)]">
-              {deck.slides.map((s, i) => (
+              {slides.map((s, i) => (
                 <button
                   key={i}
                   type="button"
@@ -230,7 +240,7 @@ export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
             </div>
             <button
               type="button"
-              disabled={slideIndex >= deck.slides.length - 1}
+              disabled={slideIndex >= slides.length - 1}
               onClick={() => setSlideIndex((i) => i + 1)}
               className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center cursor-pointer disabled:opacity-30"
             >

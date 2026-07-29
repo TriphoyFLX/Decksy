@@ -205,6 +205,7 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
         renderLabel={(text, i, className, Tag = "span") => L(text, i, className, Tag)}
         selectedStyle={selectedStyle}
         forExport={forExport}
+        onUpdate={onUpdate}
       />
     );
   }

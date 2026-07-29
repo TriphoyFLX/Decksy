@@ -137,12 +137,27 @@ function applyStructuredVisualData(slides: Slide[]): void {
     }
 
     if (slide.type === "competition") {
-      const competitors = parsed.slice(0, 4).map(({ label, detail }, i) => ({
-        label: label || (i < 2 ? `Конкурент ${i + 1}` : "Наше отличие"),
-        detail,
-        ours: /наш|мы|отлич|преим/i.test(`${label} ${detail}`) || i >= 2,
-      }));
-      slide.visualData = { ...(slide.visualData || {}), competitors, layout: slide.visualData?.layout || "matrix" };
+      const competitors = parsed.slice(0, 4).map(({ label, detail }, i) => {
+        const ours = /наш|мы|отлич|преим/i.test(`${label} ${detail}`) || i >= Math.max(parsed.length - 1, 2);
+        const advantages = detail
+          .split(/[,;•|]/)
+          .map((s) => s.replace(/^[\s\-–—]+/, "").trim())
+          .filter((s) => s.length > 2)
+          .slice(0, 6);
+        return {
+          label: label || (ours ? "Мы" : `Конкурент ${i + 1}`),
+          detail,
+          tagline: label || "",
+          ours,
+          advantages: advantages.length ? advantages : [detail].filter(Boolean),
+          rating: ours ? 9 : 4 + i,
+        };
+      });
+      slide.visualData = {
+        ...(slide.visualData || {}),
+        competitors,
+        layout: slide.visualData?.layout || "matrix",
+      };
     }
   }
 }

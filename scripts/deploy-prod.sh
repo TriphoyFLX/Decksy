@@ -29,8 +29,9 @@ SSHPASS="$SSHPASS" sshpass -e ssh -o StrictHostKeyChecking=accept-new "$HOST" "s
   pm2 restart decksy --update-env
   pm2 save
   echo HEAD=\$(git rev-parse --short HEAD)
+  sleep 2
   curl -s -o /dev/null -w 'local:%{http_code}\n' http://127.0.0.1:3000/
 "
 
 echo "Public check:"
-curl -I --max-time 15 https://decksy.ru/ | head -1
+curl -I --max-time 15 https://decksy.ru/ 2>/dev/null | head -1 || echo "HTTPS check skipped"

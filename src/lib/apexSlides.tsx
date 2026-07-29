@@ -1092,91 +1092,422 @@ export const ApexRevenueLadder: React.FC<{
   );
 };
 
-/** Premium comparison table — usable on competition slides */
+type CompetitorRow = NonNullable<SlideVisualData["competitors"]>[number];
+type CompareFeature = NonNullable<SlideVisualData["compareFeatures"]>[number];
+
+function normalizeCompetitors(
+  content: string[],
+  competitors: SlideVisualData["competitors"] | undefined,
+  parseBullet: (s: string) => { label: string; detail: string },
+): CompetitorRow[] {
+  if (competitors?.length) {
+    return competitors.slice(0, 4).map((c, i) => ({
+      ...c,
+      label: c.label || `Игрок ${i + 1}`,
+      detail: c.detail || "",
+      advantages: (c.advantages || []).slice(0, 6),
+      rating: typeof c.rating === "number" ? Math.min(10, Math.max(1, c.rating)) : c.ours ? 9 : 5 + i,
+    }));
+  }
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  return items.map((item, i) => {
+    const ours = /наш|мы|отлич|преим|nordflow|наш продукт/i.test(`${item.label} ${item.detail}`) || i === items.length - 1;
+    return {
+      label: item.label,
+      detail: item.detail,
+      ours,
+      advantages: item.detail
+        .split(/[,;•]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 4),
+      rating: ours ? 9 : 4 + i,
+    };
+  });
+}
+
+function buildCompareFeatures(
+  players: CompetitorRow[],
+  compareFeatures: SlideVisualData["compareFeatures"] | undefined,
+): CompareFeature[] {
+  if (compareFeatures?.length) {
+    return compareFeatures.slice(0, 8).map((f) => ({
+      label: f.label,
+      scores: players.map((_, i) => f.scores[i] ?? false),
+    }));
+  }
+
+  const pool = [
+    "Цена / прозрачность",
+    "Онлайн-бронь",
+    "Страховка / SLA",
+    "Ассортимент",
+    "Скорость выдачи",
+    "Рейтинг / отзывы",
+    "B2B контракты",
+    "Данные / аналитика",
+  ];
+
+  const featureSet = new Set<string>();
+  players.forEach((p) => (p.advantages || []).forEach((a) => featureSet.add(a.slice(0, 42))));
+  const labels = [...featureSet].slice(0, 6);
+  while (labels.length < 6) {
+    const next = pool[labels.length];
+    if (!labels.includes(next)) labels.push(next);
+    else break;
+  }
+
+  return labels.slice(0, 7).map((label, fi) => ({
+    label,
+    scores: players.map((p) => {
+      if (p.ours) return fi < 6 ? true : "partial";
+      const hit = (p.advantages || []).some((a) => a.toLowerCase().includes(label.slice(0, 8).toLowerCase()));
+      if (hit) return true;
+      if (fi === 0) return "partial";
+      return fi % (players.indexOf(p) + 2) === 0 ? "partial" : false;
+    }),
+  }));
+}
+
+function CompetitorLogoSlot({
+  player,
+  glass,
+  forExport,
+  editable,
+  onLogoChange,
+}: {
+  player: CompetitorRow;
+  glass: GlassSurface;
+  forExport?: boolean;
+  editable?: boolean;
+  onLogoChange?: (logo: string) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const initial = (player.label || "?").trim().charAt(0).toUpperCase() || "?";
+
+  const onFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") onLogoChange?.(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={!editable || forExport}
+      onClick={() => inputRef.current?.click()}
+      className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden border shrink-0 flex items-center justify-center ${
+        editable && !forExport ? "cursor-pointer group" : "cursor-default"
+      }`}
+      style={{
+        borderColor: player.ours ? alpha(glass.accent, "66") : glass.isLight ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.14)",
+        background: player.ours
+          ? `linear-gradient(145deg, ${alpha(glass.accent, "44")}, ${alpha(glass.secondary, "33")})`
+          : glass.isLight
+            ? "rgba(15,23,42,0.04)"
+            : "rgba(255,255,255,0.06)",
+      }}
+      title={editable ? "Загрузить лого конкурента" : player.label}
+    >
+      {player.logo ? (
+        <img src={player.logo} alt={player.label} className="w-full h-full object-cover" />
+      ) : (
+        <span className={`text-base font-black ${glass.titleClass}`}>{initial}</span>
+      )}
+      {editable && !forExport && (
+        <span className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity">
+          <ImagePlus className="h-3.5 w-3.5 text-white" />
+          <span className="text-[6px] text-white/90 uppercase tracking-wider mt-0.5">лого</span>
+        </span>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+    </button>
+  );
+}
+
+function ScoreCell({
+  value,
+  glass,
+}: {
+  value: boolean | "partial";
+  glass: GlassSurface;
+}) {
+  if (value === true) {
+    return (
+      <span
+        className="inline-flex items-center justify-center w-6 h-6 rounded-full"
+        style={{ background: alpha(glass.success, "22"), color: glass.success }}
+      >
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      </span>
+    );
+  }
+  if (value === "partial") {
+    return (
+      <span
+        className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[8px] font-bold"
+        style={{ background: alpha(glass.warning, "22"), color: glass.warning }}
+      >
+        ~
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center justify-center w-6 h-6 rounded-full"
+      style={{ background: alpha(glass.danger, "14"), color: glass.danger }}
+    >
+      <X className="h-3 w-3" strokeWidth={2.5} />
+    </span>
+  );
+}
+
+/** Maxed competition slide: logos + advantage cards + feature matrix */
+export const ApexCompetitionArena: React.FC<{
+  content: string[];
+  competitors?: SlideVisualData["competitors"];
+  compareFeatures?: SlideVisualData["compareFeatures"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  glass: GlassSurface;
+  forExport?: boolean;
+  editable?: boolean;
+  onCompetitorsChange?: (competitors: CompetitorRow[]) => void;
+}> = ({
+  content,
+  competitors,
+  compareFeatures,
+  parseBullet,
+  renderBullet,
+  glass,
+  forExport,
+  editable,
+  onCompetitorsChange,
+}) => {
+  const players = normalizeCompetitors(content, competitors, parseBullet);
+  const features = buildCompareFeatures(players, compareFeatures);
+  const cols = Math.min(Math.max(players.length, 2), 4);
+
+  const patchPlayer = (index: number, patch: Partial<CompetitorRow>) => {
+    const next = players.map((p, i) => (i === index ? { ...p, ...patch } : p));
+    onCompetitorsChange?.(next);
+  };
+
+  return (
+    <div className={`flex flex-col gap-2 h-full min-h-0 ${slideBodyClass}`}>
+      {/* Player cards with logos */}
+      <div
+        className="grid gap-2 shrink-0"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      >
+        {players.map((player, i) => {
+          const rating = player.rating ?? (player.ours ? 9 : 5);
+          return (
+            <div
+              key={i}
+              className={`${glassCardClass} p-2.5 flex flex-col gap-1.5 min-h-0 ${player.ours ? "ring-1" : ""}`}
+              style={{
+                ...glassCardStyle(glass, forExport),
+                ...(player.ours
+                  ? { borderColor: alpha(glass.accent, "55"), boxShadow: `0 0 0 1px ${alpha(glass.accent, "33")}` }
+                  : {}),
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <CompetitorLogoSlot
+                  player={player}
+                  glass={glass}
+                  forExport={forExport}
+                  editable={editable}
+                  onLogoChange={(logo) => patchPlayer(i, { logo })}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <p className={`text-[10px] font-bold truncate ${glass.titleClass}`}>{player.label}</p>
+                    {player.ours && (
+                      <span
+                        className="text-[6px] uppercase tracking-wider font-bold px-1 py-0.5 rounded shrink-0"
+                        style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
+                      >
+                        мы
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[8px] line-clamp-1 ${glass.mutedClass}`}>
+                    {player.tagline || player.detail}
+                  </p>
+                </div>
+              </div>
+              <div className="h-1 rounded-full overflow-hidden" style={{ background: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.08)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${rating * 10}%`,
+                    background: player.ours ? glass.accent : glass.secondary,
+                  }}
+                />
+              </div>
+              <ul className="space-y-0.5 min-h-0">
+                {(player.advantages?.length
+                  ? player.advantages
+                  : player.detail
+                    ? [player.detail]
+                    : ["—"]
+                )
+                  .slice(0, player.ours ? 6 : 4)
+                  .map((adv, ai) => (
+                    <li key={ai} className={`text-[7.5px] leading-snug flex gap-1 ${glass.bodyClass}`}>
+                      <span
+                        className="shrink-0"
+                        style={{ color: player.ours ? glass.success : glass.isLight ? "rgba(15,23,42,0.35)" : "rgba(255,255,255,0.35)" }}
+                      >
+                        {player.ours ? "✓" : "·"}
+                      </span>
+                      <span className="line-clamp-1">{adv}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Feature matrix */}
+      <div className={`${glassCardClass} flex-1 min-h-0 overflow-hidden flex flex-col`} style={glassCardStyle(glass, forExport)}>
+        <div
+          className="grid gap-0 px-2 py-1.5 border-b shrink-0 items-center"
+          style={{
+            gridTemplateColumns: `minmax(90px, 1.35fr) repeat(${cols}, minmax(0, 1fr))`,
+            borderColor: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
+            background: glass.isLight ? "rgba(15,23,42,0.03)" : "rgba(255,255,255,0.04)",
+          }}
+        >
+          <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+            Преимущество
+          </span>
+          {players.map((p, i) => (
+            <span key={i} className={`text-[7px] font-bold text-center truncate px-0.5 ${p.ours ? "" : glass.mutedClass}`} style={p.ours ? { color: glass.accent } : undefined}>
+              {p.label}
+            </span>
+          ))}
+        </div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {features.map((feat, fi) => (
+            <div
+              key={fi}
+              className="grid gap-0 px-2 py-1 flex-1 items-center min-h-0 border-b last:border-b-0"
+              style={{
+                gridTemplateColumns: `minmax(90px, 1.35fr) repeat(${cols}, minmax(0, 1fr))`,
+                borderColor: glass.isLight ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.05)",
+                background: fi % 2 === 0 ? "transparent" : glass.isLight ? "rgba(15,23,42,0.02)" : "rgba(255,255,255,0.02)",
+              }}
+            >
+              <span className={`text-[8px] font-medium line-clamp-2 pr-1 ${glass.bodyClass}`}>{feat.label}</span>
+              {players.map((_, pi) => (
+                <div key={pi} className="flex justify-center">
+                  <ScoreCell value={feat.scores[pi] ?? false} glass={glass} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {editable && !forExport && (
+        <p className={`text-[7px] ${glass.mutedClass}`}>
+          Нажми на лого → загрузить. Матрица: ✓ есть · ~ частично · ✕ нет
+        </p>
+      )}
+    </div>
+  );
+};
+
+/** Compact comparison table — usable as alternate competition variant */
 export const ApexCompareTable: React.FC<{
   content: string[];
   competitors?: SlideVisualData["competitors"];
   parseBullet: (s: string) => { label: string; detail: string };
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, competitors, parseBullet, glass, forExport }) => {
-  const rows = competitors?.length
-    ? competitors.slice(0, 5).map((c) => ({
-        label: c.label,
-        detail: c.detail,
-        ours: Boolean(c.ours),
-      }))
-    : parseItems(content, parseBullet)
-        .slice(0, 5)
-        .map((item, idx) => ({
-          label: item.label,
-          detail: item.detail,
-          ours: idx >= Math.floor(content.length / 2),
-        }));
+  editable?: boolean;
+  onCompetitorsChange?: (competitors: CompetitorRow[]) => void;
+}> = ({ content, competitors, parseBullet, glass, forExport, editable, onCompetitorsChange }) => {
+  const players = normalizeCompetitors(content, competitors, parseBullet);
+  const rows = players.slice(0, 5);
 
   return (
     <div className={`flex flex-col gap-2 h-full min-h-0 ${slideBodyClass}`}>
       <div className={`${glassCardClass} overflow-hidden flex-1 min-h-0 flex flex-col`} style={glassCardStyle(glass, forExport)}>
         <div
-          className="grid grid-cols-[1.4fr_0.7fr_0.7fr] gap-0 px-3 py-2.5 border-b shrink-0"
+          className="grid grid-cols-[1.1fr_1.4fr_0.55fr_0.55fr] gap-0 px-3 py-2.5 border-b shrink-0 items-center"
           style={{
             borderColor: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
             background: glass.isLight ? "rgba(15,23,42,0.03)" : "rgba(255,255,255,0.04)",
           }}
         >
           <span className="text-[8px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
-            Критерий
+            Игрок
+          </span>
+          <span className="text-[8px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+            Суть
           </span>
           <span className="text-[8px] uppercase tracking-widest font-bold text-center" style={{ color: glass.success }}>
-            Мы
+            Сила
           </span>
-          <span className={`text-[8px] uppercase tracking-widest font-bold text-center ${glass.mutedClass}`}>Рынок</span>
+          <span className={`text-[8px] uppercase tracking-widest font-bold text-center ${glass.mutedClass}`}>Статус</span>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {rows.map((row, i) => (
             <div
               key={i}
-              className="grid grid-cols-[1.4fr_0.7fr_0.7fr] gap-0 px-3 py-2.5 flex-1 items-center border-b last:border-b-0 min-h-0"
+              className="grid grid-cols-[1.1fr_1.4fr_0.55fr_0.55fr] gap-0 px-3 py-2 flex-1 items-center border-b last:border-b-0 min-h-0"
               style={{
                 borderColor: glass.isLight ? "rgba(15,23,42,0.06)" : "rgba(255,255,255,0.06)",
                 background: i % 2 === 0 ? "transparent" : glass.isLight ? "rgba(15,23,42,0.02)" : "rgba(255,255,255,0.02)",
               }}
             >
-              <div className="min-w-0 pr-2">
+              <div className="flex items-center gap-2 min-w-0 pr-1">
+                <CompetitorLogoSlot
+                  player={row}
+                  glass={glass}
+                  forExport={forExport}
+                  editable={editable}
+                  onLogoChange={(logo) => {
+                    const next = players.map((p, idx) => (idx === i ? { ...p, logo } : p));
+                    onCompetitorsChange?.(next);
+                  }}
+                />
                 <p className={`text-[10px] font-semibold line-clamp-1 ${glass.titleClass}`}>{row.label}</p>
-                {row.detail && row.detail !== row.label && (
-                  <p className={`text-[8px] line-clamp-1 mt-0.5 ${glass.mutedClass}`}>{row.detail}</p>
-                )}
+              </div>
+              <p className={`text-[8px] line-clamp-2 ${glass.mutedClass}`}>{row.detail}</p>
+              <div className="flex justify-center">
+                <span className={`text-[11px] font-black ${glass.titleClass}`}>{row.rating ?? "—"}</span>
               </div>
               <div className="flex justify-center">
                 {row.ours ? (
-                  <span
-                    className="inline-flex items-center justify-center w-7 h-7 rounded-full"
-                    style={{ background: alpha(glass.success, "22"), color: glass.success }}
-                  >
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  <span className="text-[7px] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: alpha(glass.accent, "28"), color: glass.accent }}>
+                    мы
                   </span>
                 ) : (
-                  <span className={`text-[10px] ${glass.mutedClass}`}>—</span>
-                )}
-              </div>
-              <div className="flex justify-center">
-                {!row.ours ? (
-                  <span
-                    className="inline-flex items-center justify-center w-7 h-7 rounded-full"
-                    style={{ background: alpha(glass.danger, "18"), color: glass.danger }}
-                  >
-                    <X className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  </span>
-                ) : (
-                  <span className={`text-[10px] ${glass.mutedClass}`}>частично</span>
+                  <span className={`text-[10px] ${glass.mutedClass}`}>VS</span>
                 )}
               </div>
             </div>
           ))}
         </div>
       </div>
-      <p className={`text-[8px] ${glass.mutedClass}`}>Сравнение по ключевым критериям питча · галочка = наше преимущество</p>
     </div>
   );
 };
@@ -1476,6 +1807,7 @@ export const ApexSlideContent: React.FC<{
   renderLabel?: InlineRenderer;
   selectedStyle?: StyleKey;
   forExport?: boolean;
+  onUpdate?: (patch: Partial<Slide>) => void;
 }> = ({
   slide,
   index,
@@ -1490,6 +1822,7 @@ export const ApexSlideContent: React.FC<{
   renderLabel,
   selectedStyle = "cosmic-dark",
   forExport,
+  onUpdate,
 }) => {
   const type = slide.type;
   const variant = slide.visualData?.variant || "";
@@ -1497,6 +1830,18 @@ export const ApexSlideContent: React.FC<{
   const cream = isCreamTemplate(slide);
   const apple = isAppleTemplate(slide);
   const glass = getGlassSurface(slide, (selectedStyle || "cosmic-dark") as StyleKey, forExport);
+  const editable = !!onUpdate && !forExport;
+
+  const updateCompetitors = (competitors: NonNullable<SlideVisualData["competitors"]>) => {
+    onUpdate?.({
+      visualData: {
+        ...slide.visualData,
+        competitors,
+        compareFeatures: slide.visualData?.compareFeatures,
+        layout: "matrix",
+      },
+    });
+  };
 
   return (
     <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">
@@ -1798,33 +2143,7 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "competition" &&
-              (apple ? (
-                <AppleCompareTable
-                  content={content}
-                  competitors={slide.visualData?.competitors}
-                  parseBullet={parseBullet}
-                  glass={glass}
-                  forExport={forExport}
-                />
-              ) : cream || variant === "compare-table" ? (
-                cream ? (
-                  <CreamCompareMatrix
-                    content={content}
-                    competitors={slide.visualData?.competitors}
-                    parseBullet={parseBullet}
-                    glass={glass}
-                    forExport={forExport}
-                  />
-                ) : (
-                  <ApexCompareTable
-                    content={content}
-                    competitors={slide.visualData?.competitors}
-                    parseBullet={parseBullet}
-                    glass={glass}
-                    forExport={forExport}
-                  />
-                )
-              ) : variant === "positioning" ? (
+              (variant === "positioning" ? (
                 <ApexPositioningMap
                   content={content}
                   competitors={slide.visualData?.competitors}
@@ -1832,13 +2151,27 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : (
+              ) : variant === "compare-compact" ? (
                 <ApexCompareTable
                   content={content}
                   competitors={slide.visualData?.competitors}
                   parseBullet={parseBullet}
                   glass={glass}
                   forExport={forExport}
+                  editable={editable}
+                  onCompetitorsChange={updateCompetitors}
+                />
+              ) : (
+                <ApexCompetitionArena
+                  content={content}
+                  competitors={slide.visualData?.competitors}
+                  compareFeatures={slide.visualData?.compareFeatures}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  glass={glass}
+                  forExport={forExport}
+                  editable={editable}
+                  onCompetitorsChange={updateCompetitors}
                 />
               ))}
 
