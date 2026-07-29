@@ -1,0 +1,39 @@
+---
+description: Auto-deploy Decksy to production after meaningful code changes
+alwaysApply: true
+---
+
+# Production deploy (decksy.ru)
+
+After completing user-requested fixes or features that touch the app, **deploy to production yourself** without asking the user to run commands manually.
+
+## Server
+
+- Host: `159.194.221.146` (`root`, path `/var/www/decksy`)
+- Domain: https://decksy.ru
+- Process: PM2 `decksy` on port 3000
+- Do **not** break coexisting services (loopera on :5001, loopera-postgres on :5432)
+
+## Workflow
+
+1. Ensure changes are committed and pushed to `origin/main` (commit only when the user asked or deploy implies shipping their work).
+2. Run from repo root:
+
+```bash
+chmod +x scripts/deploy-prod.sh
+./scripts/deploy-prod.sh
+```
+
+Credentials live in gitignored `.env.deploy` (`SSHPASS`). Never commit secrets.
+
+## When to deploy
+
+- User says "задеплой", "deploy", "на прод", or "always deploy yourself"
+- After finishing a feature/bugfix the user expects on decksy.ru
+- Skip deploy for question-only or local-only experiments unless asked
+
+## Verify
+
+- `https://decksy.ru/` returns HTTP 200
+- PM2 status `decksy` is `online`
+- Server HEAD matches latest git commit on main
