@@ -25,7 +25,7 @@ export async function extractPdfText(base64: string): Promise<string> {
     .trim();
 }
 
-export function extractXlsxText(base64: string): string {
+export function extractSpreadsheetText(base64: string): string {
   const workbook = XLSX.read(toBuffer(base64), { type: "buffer" });
   const parts: string[] = [];
 
@@ -39,6 +39,9 @@ export function extractXlsxText(base64: string): string {
 
   return parts.join("\n\n");
 }
+
+/** @deprecated use extractSpreadsheetText */
+export const extractXlsxText = extractSpreadsheetText;
 
 export async function extractBriefDocuments(
   docxBase64?: string,
@@ -58,8 +61,8 @@ export async function extractBriefDocuments(
   }
 
   if (xlsxBase64) {
-    const sheetText = extractXlsxText(xlsxBase64);
-    if (sheetText) chunks.push(`=== Excel-таблицы ===\n${sheetText}`);
+    const sheetText = extractSpreadsheetText(xlsxBase64);
+    if (sheetText) chunks.push(`=== Таблицы (Excel / ODS) ===\n${sheetText}`);
   }
 
   return chunks.join("\n\n").slice(0, 24000);

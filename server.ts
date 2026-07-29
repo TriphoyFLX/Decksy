@@ -2544,14 +2544,14 @@ app.post("/api/import_brief", authenticateToken, async (req: any, res) => {
       return res.status(400).json({ error: "Укажите идею проекта." });
     }
     if (!docxBase64 && !xlsxBase64 && !pdfBase64) {
-      return res.status(400).json({ error: "Загрузите Word (.docx), PDF или Excel (.xlsx)." });
+      return res.status(400).json({ error: "Загрузите Word (.docx), PDF или таблицу (.xlsx / .ods)." });
     }
 
     const deckMode = (mode as "quick" | "investor" | "shark") || "investor";
     const briefText = await extractBriefDocuments(docxBase64, xlsxBase64, pdfBase64);
     if (!briefText || briefText.length < 40) {
       return res.status(400).json({
-        error: "Не удалось извлечь текст из файлов. Проверьте формат .docx / .pdf / .xlsx (PDF должен быть с текстом, не скан).",
+        error: "Не удалось извлечь текст из файлов. Проверьте формат .docx / .pdf / .xlsx / .ods (PDF должен быть с текстом, не скан).",
       });
     }
 

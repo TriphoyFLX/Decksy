@@ -1129,7 +1129,7 @@ export default function App() {
       return;
     }
     if (!planFile && !xlsxFile) {
-      setBriefImportError("Загрузите бизнес-план (.docx / .pdf) и/или Excel (.xlsx).");
+      setBriefImportError("Загрузите бизнес-план (.docx / .pdf) и/или таблицу (.xlsx / .ods).");
       return;
     }
     if (!authToken || !user) {

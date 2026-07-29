@@ -66,7 +66,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
 
   const handleXlsxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    if (file && !/\.xlsx$/i.test(file.name)) {
+    if (file && !/\.(xlsx|xls|ods|csv)$/i.test(file.name)) {
       return;
     }
     setXlsxFile(file);
@@ -138,7 +138,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
               <div className="min-w-0">
                 <p className="text-sm font-medium text-emerald-200">Pro: бриф из документов</p>
                 <p className="text-[12px] text-slate-400 mt-1 leading-relaxed">
-                  Загрузите бизнес-план (.docx или .pdf) и финмодель (.xlsx) — ИИ заполнит структуру деки и доспрашивает только недостающее.
+                  Загрузите бизнес-план (.docx или .pdf) и финмодель (.xlsx / .ods) — ИИ заполнит структуру деки и доспрашивает только недостающее.
                 </p>
               </div>
             </div>
@@ -167,9 +167,9 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span className="min-w-0">
                   <span className="block text-[11px] text-slate-300 truncate">
-                    {xlsxFile ? xlsxFile.name : "Excel (.xlsx)"}
+                    {xlsxFile ? xlsxFile.name : "Excel / ODS"}
                   </span>
-                  <span className="block text-[10px] text-slate-500">Юнит-экономика, P&amp;L</span>
+                  <span className="block text-[10px] text-slate-500">.xlsx, .ods, .xls, .csv</span>
                 </span>
               </button>
             </div>
@@ -184,7 +184,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <input
               ref={xlsxInputRef}
               type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              accept=".xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
               className="hidden"
               onChange={handleXlsxChange}
             />
