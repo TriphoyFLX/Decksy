@@ -38,7 +38,8 @@ import {
   Image,
   Upload,
   FileText,
-  Maximize2
+  Maximize2,
+  FlaskConical
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminPanel } from "./components/AdminPanel";
@@ -50,6 +51,7 @@ import { OutlinePage } from "./pages/OutlinePage";
 import { TemplatePickerPage } from "./pages/TemplatePickerPage";
 import { GeneratingPage } from "./pages/GeneratingPage";
 import { PresentationFullscreenPage } from "./pages/PresentationFullscreenPage";
+import { DesignLabPage } from "./pages/DesignLabPage";
 import { InterviewPage } from "./pages/InterviewPage";
 import { WordGeneratorPage } from "./pages/WordGeneratorPage";
 import { LegalPage, LegalPageId } from "./pages/LegalPage";
@@ -3108,6 +3110,18 @@ export default function App() {
               <span>О проекте</span>
             </button>
 
+            <button
+              onClick={() => navigateToScreen('design-lab')}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all text-left border cursor-pointer ${
+                screen === 'design-lab'
+                  ? 'bg-amber-500/10 border-amber-500/20 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5 border-transparent bg-transparent'
+              }`}
+            >
+              <FlaskConical className="h-4 w-4 text-amber-400 shrink-0" />
+              <span>Design Lab</span>
+            </button>
+
             {/* Nav Option 1.6: Тарифы & Экономика */}
             <button
               onClick={() => navigateToScreen('plans')}
@@ -3249,6 +3263,8 @@ export default function App() {
                 ? "Новый проект"
                 : screen === 'word'
                   ? "Word Generator"
+                  : screen === 'design-lab'
+                    ? "Design Lab"
                   : screen === 'interview'
                   ? "Интервью"
                   : screen === 'outline'
@@ -4065,6 +4081,10 @@ export default function App() {
             loadExampleDeck={loadExampleDeck}
             exampleDecks={EXAMPLE_DECKS}
           />
+        )}
+
+        {!legalPage && screen === 'design-lab' && (
+          <DesignLabPage onBack={() => navigateToScreen('intro')} />
         )}
 
         {!legalPage && screen === 'word' && (

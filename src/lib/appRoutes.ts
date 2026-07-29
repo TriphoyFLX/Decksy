@@ -11,7 +11,8 @@ export type AppScreen =
   | "admin"
   | "about"
   | "plans"
-  | "word";
+  | "word"
+  | "design-lab";
 
 export interface AppRoute {
   screen: AppScreen;
@@ -39,6 +40,7 @@ export const APP_SCREEN_PATHS: Record<AppScreen, string> = {
   deck: "/deck",
   present: "/present",
   admin: "/admin",
+  "design-lab": "/design-lab",
 };
 
 type PathTarget = AppScreen | "projects";
@@ -57,6 +59,8 @@ const PATH_ALIASES: Record<string, PathTarget> = {
   "/deck": "deck",
   "/present": "present",
   "/admin": "admin",
+  "/design-lab": "design-lab",
+  "/test-decks": "design-lab",
   "/projects": "projects",
 };
 
@@ -103,4 +107,5 @@ export const APP_SCREEN_LABELS: Record<AppScreen, string> = {
   about: "О проекте",
   plans: "Тарифы",
   admin: "Админка",
+  "design-lab": "Design Lab",
 };
