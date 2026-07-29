@@ -1256,9 +1256,7 @@ export default function App() {
 
   const handleRegenerateOutline = () => {
     if (idea.trim().length < 15) return;
-    const mergedBranding = mergeBrandingFromInterview(canvas, projectBranding, sessionImages);
-    setProjectBranding(mergedBranding);
-    fetchOutline(mergedBranding);
+    fetchOutline(projectBranding);
   };
 
   const handleUpdateOutlineSlide = (index: number, patch: Partial<OutlineSlide>) => {

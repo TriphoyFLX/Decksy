@@ -136,12 +136,12 @@ export function mergeBrandingFromInterview(
   const logoImg = sessionImages.find((i) => /лого/i.test(i.description))?.image;
   return {
     ...current,
-    companyName: fromCanvas.companyName || current.companyName,
-    tagline: fromCanvas.tagline || current.tagline,
-    founderName: fromCanvas.founderName || current.founderName,
-    founderRole: fromCanvas.founderRole || current.founderRole,
-    quote: fromCanvas.quote || current.quote,
-    slideNotes: fromCanvas.slideNotes || current.slideNotes,
-    logoImage: logoImg || current.logoImage || fromCanvas.logoImage,
+    companyName: current.companyName?.trim() || fromCanvas.companyName,
+    tagline: current.tagline?.trim() || fromCanvas.tagline,
+    founderName: current.founderName?.trim() || fromCanvas.founderName,
+    founderRole: current.founderRole?.trim() || fromCanvas.founderRole,
+    quote: current.quote?.trim() || fromCanvas.quote,
+    slideNotes: current.slideNotes?.trim() || fromCanvas.slideNotes,
+    logoImage: current.logoImage || logoImg || fromCanvas.logoImage,
   };
 }

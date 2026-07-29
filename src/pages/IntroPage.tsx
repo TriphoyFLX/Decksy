@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { ArrowUp, FileSpreadsheet, FileText, Upload } from "lucide-react";
+import { ArrowUp, FileSpreadsheet, FileText, Paperclip, X } from "lucide-react";
 import { motion } from "motion/react";
 
 interface IntroPageProps {
@@ -36,6 +36,8 @@ export const IntroPage: React.FC<IntroPageProps> = ({
   const displayName = userName?.trim() || null;
   const canImport = Boolean(isPro && handleImportBrief);
   const ideaReady = idea.trim().length >= 15;
+  const hasFiles = Boolean(planFile || xlsxFile);
+  const willImport = canImport && hasFiles;
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -45,7 +47,13 @@ export const IntroPage: React.FC<IntroPageProps> = ({
   }, [idea]);
 
   const handleSubmit = () => {
-    if (!idea.trim() || isLoading) return;
+    if (isLoading) return;
+    if (willImport) {
+      if (!ideaReady) return;
+      handleImportBrief!(planFile, xlsxFile);
+      return;
+    }
+    if (!idea.trim()) return;
     handleStartInterview();
   };
 
@@ -72,10 +80,17 @@ export const IntroPage: React.FC<IntroPageProps> = ({
     setXlsxFile(file);
   };
 
-  const handleImportClick = () => {
-    if (!handleImportBrief || isLoading) return;
-    handleImportBrief(planFile, xlsxFile);
-  };
+  const submitDisabled =
+    isLoading ||
+    (willImport ? !ideaReady || !hasFiles : !idea.trim());
+
+  const submitLabel = isLoading
+    ? willImport
+      ? "Разбираю документы..."
+      : "Запуск..."
+    : willImport
+      ? "Отправить с файлами"
+      : "Начать";
 
   return (
     <motion.div
@@ -102,112 +117,129 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           )}
         </h1>
         <p className="mt-4 text-sm sm:text-base text-slate-400 font-normal">
-          Опишите идею для презентации или запрос на Word-документ — агент поможет собрать результат.
+          Опишите идею или прикрепите бизнес-план — и нажмите отправить.
         </p>
       </div>
 
       <div className="w-full pb-6 sm:pb-8 space-y-3 shrink-0">
-        <div className="relative flex items-end rounded-[1.75rem] border border-white/10 bg-[#2a2a2c] shadow-lg shadow-black/20 focus-within:border-white/20 transition-colors">
-          <textarea
-            ref={textareaRef}
-            value={idea}
-            onChange={(e) => setIdea(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Презентация или «Сделай проект docx про робототехнику»..."
-            rows={1}
-            disabled={isLoading}
-            className="w-full min-h-[52px] max-h-[200px] bg-transparent border-none rounded-[1.75rem] px-5 py-4 pr-14 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none resize-none leading-relaxed"
-          />
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isLoading || !idea.trim()}
-            className="absolute right-2.5 bottom-2.5 h-9 w-9 rounded-full bg-white text-black flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed hover:bg-slate-200 transition-colors cursor-pointer border-none"
-            aria-label="Начать"
-          >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
-          </button>
-        </div>
+        <div className="rounded-[1.75rem] border border-white/10 bg-[#2a2a2c] shadow-lg shadow-black/20 focus-within:border-white/20 transition-colors overflow-hidden">
+          {(planFile || xlsxFile) && (
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
+              {planFile && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-200 max-w-full">
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-[180px]">{planFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPlanFile(null)}
+                    className="text-sky-300/70 hover:text-white bg-transparent border-none cursor-pointer p-0"
+                    aria-label="Убрать файл"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {xlsxFile && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200 max-w-full">
+                  <FileSpreadsheet className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-[180px]">{xlsxFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setXlsxFile(null)}
+                    className="text-emerald-300/70 hover:text-white bg-transparent border-none cursor-pointer p-0"
+                    aria-label="Убрать таблицу"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
 
-        {canImport && (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 space-y-3">
-            <div className="flex items-start gap-3 text-left">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                <Upload className="h-4 w-4 text-emerald-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-emerald-200">Pro: бриф из документов</p>
-                <p className="text-[12px] text-slate-400 mt-1 leading-relaxed">
-                  Загрузите бизнес-план (.docx или .pdf) и финмодель (.xlsx / .ods) — ИИ заполнит структуру деки и доспрашивает только недостающее.
-                </p>
-              </div>
+          <div className="relative flex items-end">
+            <div className="flex items-end gap-1 pl-3 pb-2.5 shrink-0">
+              {canImport && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => planInputRef.current?.click()}
+                    disabled={isLoading}
+                    title="Прикрепить Word или PDF"
+                    className="h-9 w-9 rounded-full text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer border-none bg-transparent disabled:opacity-40"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => xlsxInputRef.current?.click()}
+                    disabled={isLoading}
+                    title="Прикрепить Excel или ODS"
+                    className="h-9 w-9 rounded-full text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer border-none bg-transparent disabled:opacity-40"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+              {!canImport && (
+                <div className="h-9 w-9 flex items-center justify-center text-slate-600" title="Pro: импорт документов">
+                  <Paperclip className="h-4 w-4" />
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => planInputRef.current?.click()}
-                disabled={isLoading}
-                className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-left hover:bg-white/[0.04] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <FileText className="h-4 w-4 text-sky-400 shrink-0" />
-                <span className="min-w-0">
-                  <span className="block text-[11px] text-slate-300 truncate">
-                    {planFile ? planFile.name : "Word / PDF"}
-                  </span>
-                  <span className="block text-[10px] text-slate-500">Бизнес-план (.docx, .pdf)</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => xlsxInputRef.current?.click()}
-                disabled={isLoading}
-                className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-left hover:bg-white/[0.04] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span className="min-w-0">
-                  <span className="block text-[11px] text-slate-300 truncate">
-                    {xlsxFile ? xlsxFile.name : "Excel / ODS"}
-                  </span>
-                  <span className="block text-[10px] text-slate-500">.xlsx, .ods, .xls, .csv</span>
-                </span>
-              </button>
-            </div>
-
-            <input
-              ref={planInputRef}
-              type="file"
-              accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-              className="hidden"
-              onChange={handlePlanChange}
-            />
-            <input
-              ref={xlsxInputRef}
-              type="file"
-              accept=".xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
-              className="hidden"
-              onChange={handleXlsxChange}
+            <textarea
+              ref={textareaRef}
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Презентация или «Сделай проект docx про робототехнику»..."
+              rows={1}
+              disabled={isLoading}
+              className="flex-1 min-h-[52px] max-h-[200px] bg-transparent border-none px-2 py-4 pr-14 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none resize-none leading-relaxed"
             />
 
             <button
               type="button"
-              onClick={handleImportClick}
-              disabled={isLoading || !ideaReady || (!planFile && !xlsxFile)}
-              className="w-full rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-black text-[11px] font-bold uppercase tracking-widest py-2.5 transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer border-none"
+              onClick={handleSubmit}
+              disabled={submitDisabled}
+              title={willImport ? "Разобрать прикреплённые файлы" : "Начать"}
+              className="absolute right-2.5 bottom-2.5 h-9 w-9 rounded-full bg-white text-black flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed hover:bg-slate-200 transition-colors cursor-pointer border-none"
+              aria-label={submitLabel}
             >
-              {isLoading ? "Разбираю документы..." : "Собрать из документов"}
+              <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
             </button>
-
-            {!ideaReady && (planFile || xlsxFile) && (
-              <p className="text-[11px] text-amber-400/90 text-center">
-                Добавьте краткое описание идеи выше (минимум 15 символов).
-              </p>
-            )}
-
-            {importError && (
-              <p className="text-[11px] text-red-400 text-center">{importError}</p>
-            )}
           </div>
+
+          <input
+            ref={planInputRef}
+            type="file"
+            accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+            className="hidden"
+            onChange={handlePlanChange}
+          />
+          <input
+            ref={xlsxInputRef}
+            type="file"
+            accept=".xlsx,.xls,.ods,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+            className="hidden"
+            onChange={handleXlsxChange}
+          />
+        </div>
+
+        {canImport && hasFiles && !ideaReady && (
+          <p className="text-[11px] text-amber-400/90 text-center px-2">
+            Добавьте краткое описание идеи (минимум 15 символов) и нажмите отправить.
+          </p>
+        )}
+
+        {canImport && !hasFiles && (
+          <p className="text-[11px] text-slate-500 text-center px-2">
+            Pro: прикрепите .docx / .pdf / .xlsx / .ods — отправка через ту же кнопку ↑
+          </p>
+        )}
+
+        {importError && (
+          <p className="text-[11px] text-red-400 text-center">{importError}</p>
         )}
 
         {suggestions.length > 0 && (
