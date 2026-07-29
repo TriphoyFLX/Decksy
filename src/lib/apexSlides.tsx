@@ -19,6 +19,8 @@ import {
   Shield,
   Target,
   User,
+  Check,
+  X,
 } from "lucide-react";
 import type { Slide, SlideVisualData } from "../types";
 import { PremiumImage } from "./slideVisuals";
@@ -639,28 +641,809 @@ export const ApexStatsGrid: React.FC<{
   );
 };
 
-// ... (оставшиеся компоненты с аналогичным уровнем детализации и улучшенным дизайном)
+export const ApexBigStat: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, extractNumber, renderBullet, renderLabel, glass, forExport }) => {
+  const primary = content[0] || "Ключевая метрика";
+  const parsed = parseBullet(primary);
+  const stat = extractMetricValue(primary) || extractNumber(primary);
+  if (!stat || !looksLikeMetric(primary)) {
+    return (
+      <ApexFeatureColumns
+        content={content}
+        parseBullet={parseBullet}
+        renderBullet={renderBullet}
+        renderLabel={renderLabel}
+        glass={glass}
+        forExport={forExport}
+      />
+    );
+  }
+  const label = parsed.label && parsed.label !== stat ? parsed.label : "Главная цифра";
+  return (
+    <div className={`flex flex-col items-center justify-center text-center gap-3 px-4 ${slideBodyClass}`}>
+      <span className="text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: glass.accent }}>
+        {renderLabel ? renderLabel(label, 0, "") : label}
+      </span>
+      <div className={`text-5xl sm:text-6xl font-black tracking-tight leading-none ${glass.titleClass}`}>{stat}</div>
+      {parsed.detail && parsed.detail !== stat && (
+        <p className={`text-xs max-w-md leading-relaxed line-clamp-3 ${glass.bodyClass}`}>
+          {renderBullet(parsed.detail, 0, "")}
+        </p>
+      )}
+      {content.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-2 pt-1">
+          {content.slice(1, 4).map((item, i) => (
+            <span
+              key={i}
+              className={`text-[9px] px-2.5 py-1 rounded-full border ${glass.isLight ? "bg-white/80 border-slate-200" : "bg-white/[0.06] border-white/10"} ${glass.bodyClass}`}
+            >
+              {renderBullet(item, i + 1, "")}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
-// Заглушка для недостающих компонентов, чтобы избежать ошибок компиляции
-export const ApexBigStat: React.FC<any> = () => <div>Big Stat</div>;
-export const ApexQuotePoster: React.FC<any> = () => <div>Quote Poster</div>;
-export const ApexProductSplit: React.FC<any> = () => <div>Product Split</div>;
-export const ApexPricingCards: React.FC<any> = () => <div>Pricing Cards</div>;
-export const ApexRoadmap: React.FC<any> = () => <div>Roadmap</div>;
-export const ApexCTA: React.FC<any> = () => <div>CTA</div>;
-export const SwissProblemGrid: React.FC<any> = () => <div>Swiss Problem</div>;
-export const SwissSolutionList: React.FC<any> = () => <div>Swiss Solution</div>;
-export const ApexPainStack: React.FC<any> = () => <div>Pain Stack</div>;
-export const ApexSplitQuote: React.FC<any> = () => <div>Split Quote</div>;
-export const ApexFeatureColumns: React.FC<any> = () => <div>Feature Columns</div>;
-export const ApexDemoHero: React.FC<any> = () => <div>Demo Hero</div>;
-export const ApexChartFocus: React.FC<any> = () => <div>Chart Focus</div>;
-export const ApexRevenueLadder: React.FC<any> = () => <div>Revenue Ladder</div>;
-export const ApexCompareTable: React.FC<any> = () => <div>Compare Table</div>;
-export const ApexPositioningMap: React.FC<any> = () => <div>Positioning Map</div>;
-export const ApexGtmFunnel: React.FC<any> = () => <div>GTM Funnel</div>;
-export const ApexFundingSplit: React.FC<any> = () => <div>Funding Split</div>;
-export const ApexVisionMap: React.FC<any> = () => <div>Vision Map</div>;
+export const ApexQuotePoster: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, glass, forExport }) => {
+  const items = parseItems(content, parseBullet);
+  const quote = items[0]?.detail || content[0] || "";
+  return (
+    <div className={`flex flex-col justify-center gap-4 ${slideBodyClass}`}>
+      <div className={`${glassCardClass} p-5 sm:p-6 flex flex-col justify-center min-h-[45%]`} style={glassCardStyle(glass, forExport)}>
+        <div className="text-5xl font-black leading-none mb-2" style={{ color: alpha(glass.accent, "55") }}>
+          “
+        </div>
+        <p className={`text-base sm:text-lg font-semibold leading-snug ${glass.titleClass}`}>
+          {renderBullet(quote, 0, "")}
+        </p>
+      </div>
+      {items.length > 1 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {items.slice(1, 4).map((item, i) => (
+            <div key={i} className={`${glassCardClass} p-3`} style={glassCardStyle(glass, forExport)}>
+              <p className={`text-[10px] font-semibold line-clamp-1 ${glass.titleClass}`}>{item.label}</p>
+              <p className={`text-[9px] mt-1 line-clamp-3 ${glass.bodyClass}`}>{renderBullet(item.detail, i + 1, "")}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const ApexPainStack: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  const side = items.slice(1);
+  const rows = Math.max(side.length, 1);
+  return (
+    <div className={`grid grid-cols-[1.1fr_1fr] gap-3 h-full ${slideBodyClass}`}>
+      <div className={`${glassCardClass} p-4 flex flex-col justify-between h-full`} style={glassCardStyle(glass, forExport)}>
+        <span className="text-[8px] uppercase tracking-widest font-bold" style={{ color: glass.danger }}>
+          Главная боль
+        </span>
+        <div className="flex-1 flex flex-col justify-center">
+          <div className={`text-4xl font-black ${glass.titleClass}`}>{items[0]?.number || "01"}</div>
+          <h3 className={`text-sm font-bold mt-1 ${glass.titleClass}`}>
+            {renderLabel ? renderLabel(items[0]?.label || "Проблема", 0, "") : items[0]?.label || "Проблема"}
+          </h3>
+          <p className={`text-[10px] mt-2 line-clamp-6 ${glass.bodyClass}`}>
+            {renderBullet(items[0]?.detail || content[0] || "", 0, "")}
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}>
+        {(side.length ? side : [{ label: "Инсайт", detail: "Дополнительный контекст", raw: "", number: "" }]).map((item, i) => (
+          <div key={i} className={`${glassCardClass} p-3 flex gap-2 items-start h-full`} style={glassCardStyle(glass, forExport)}>
+            <span
+              className="text-[10px] font-mono font-bold rounded-full px-2 py-1 shrink-0"
+              style={{ color: glass.danger, background: alpha(glass.danger, "22") }}
+            >
+              {String(i + 2).padStart(2, "0")}
+            </span>
+            <div className="min-w-0">
+              <h3 className={`text-[10px] font-semibold line-clamp-1 ${glass.titleClass}`}>
+                {renderLabel ? renderLabel(item.label, i + 1, "") : item.label}
+              </h3>
+              <p className={`text-[8.5px] line-clamp-3 ${glass.bodyClass}`}>{renderBullet(item.detail, i + 1, "")}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexSplitQuote: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  const side = items.slice(1);
+  return (
+    <div className={`grid grid-cols-[0.95fr_1.05fr] gap-3 h-full ${slideBodyClass}`}>
+      <div
+        className={`${glassCardClass} p-4 flex flex-col justify-between h-full`}
+        style={{ ...glassCardStyle(glass, forExport), borderColor: alpha(glass.danger, "55") }}
+      >
+        <div className="text-5xl font-black leading-none" style={{ color: alpha(glass.danger, "88") }}>
+          “
+        </div>
+        <p className={`text-sm font-semibold leading-tight flex-1 flex items-center ${glass.titleClass}`}>
+          {renderBullet(items[0]?.detail || content[0] || "", 0, "")}
+        </p>
+        <span className={`text-[8px] uppercase tracking-widest ${glass.mutedClass}`}>голос клиента</span>
+      </div>
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.max(side.length, 1)}, minmax(0, 1fr))` }}>
+        {(side.length ? side : [{ label: "Инсайт", detail: "Контекст", raw: "", number: "" }]).map((item, i) => (
+          <div key={i} className={`${glassCardClass} p-3 flex flex-col justify-center h-full`} style={glassCardStyle(glass, forExport)}>
+            <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+              {renderLabel ? renderLabel(item.label, i + 1, "") : item.label}
+            </span>
+            <p className={`text-[9px] mt-1 line-clamp-3 ${glass.bodyClass}`}>{renderBullet(item.detail, i + 1, "")}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexFeatureColumns: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  const cols = Math.min(Math.max(items.length, 1), 4);
+  return (
+    <div
+      className={`grid gap-2.5 h-full items-stretch ${slideBodyClass}`}
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className={`${glassCardClass} p-3.5 flex flex-col gap-2 h-full justify-between`}
+          style={glassCardStyle(glass, forExport)}
+        >
+          <div className="h-1.5 rounded-full shrink-0" style={{ width: `${50 + i * 14}%`, background: i % 2 ? glass.secondary : glass.accent }} />
+          <div className="text-lg font-black" style={{ color: i % 2 ? glass.secondary : glass.accent }}>
+            {String(i + 1).padStart(2, "0")}
+          </div>
+          <h3 className={`text-[11px] font-bold leading-tight line-clamp-2 ${glass.titleClass}`}>
+            {renderLabel ? renderLabel(item.label, i, "") : item.label}
+          </h3>
+          <p className={`text-[9px] leading-snug line-clamp-5 flex-1 ${glass.bodyClass}`}>
+            {renderBullet(item.detail, i, "")}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const ApexProductSplit: React.FC<{
+  content: string[];
+  image?: string;
+  imageCaption?: string;
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, image, imageCaption, parseBullet, renderBullet, renderLabel, glass, forExport }) => (
+  <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch h-full ${slideBodyClass}`}>
+    <div className={`${glassCardClass} p-3.5 space-y-2 flex flex-col justify-center h-full`} style={glassCardStyle(glass, forExport)}>
+      {content.slice(0, 3).map((item, i) => {
+        const p = parseBullet(item);
+        return (
+          <div
+            key={i}
+            className={`flex gap-2.5 items-start rounded-2xl p-2.5 border ${glass.isLight ? "border-white/60 bg-white/40" : "border-white/10 bg-white/[0.04]"}`}
+          >
+            <div
+              className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm font-bold"
+              style={{ background: alpha(glass.accent, "22"), color: glass.accent }}
+            >
+              {i + 1}
+            </div>
+            <div className="min-w-0">
+              {p.label && (
+                <h3 className={`text-[10px] font-semibold mb-0.5 ${glass.titleClass}`}>
+                  {renderLabel ? renderLabel(p.label, i, "") : p.label}
+                </h3>
+              )}
+              <p className={`text-[9px] leading-relaxed line-clamp-3 ${glass.bodyClass}`}>
+                {renderBullet(p.detail || item, i, "")}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    {image ? (
+      <div className={`${glassCardClass} p-1.5 overflow-hidden h-full`} style={glassCardStyle(glass, forExport)}>
+        <PremiumImage src={image} caption={imageCaption} variant="hero" className="!rounded-2xl !min-h-full" />
+      </div>
+    ) : (
+      <div className={`${glassCardClass} p-3.5 flex flex-col gap-2 h-full`} style={glassCardStyle(glass, forExport)}>
+        <span className="text-[8px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+          Как работает
+        </span>
+        {content.slice(0, 3).map((item, i) => {
+          const p = parseBullet(item);
+          return (
+            <div key={i} className="flex-1 flex gap-2 items-start min-h-0">
+              <span className="text-[10px] font-bold shrink-0" style={{ color: glass.accent }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <p className={`text-[9px] line-clamp-4 ${glass.bodyClass}`}>{renderBullet(p.detail || item, i, "")}</p>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+);
+
+export const ApexDemoHero: React.FC<{
+  content: string[];
+  image?: string;
+  imageCaption?: string;
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, image, imageCaption, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  if (!image) {
+    return (
+      <ApexFeatureColumns
+        content={content}
+        parseBullet={parseBullet}
+        renderBullet={renderBullet}
+        renderLabel={renderLabel}
+        glass={glass}
+        forExport={forExport}
+      />
+    );
+  }
+  const items = parseItems(content, parseBullet).slice(0, 3);
+  return (
+    <div className={`grid grid-cols-[1.15fr_0.85fr] gap-3 h-full ${slideBodyClass}`}>
+      <div className={`${glassCardClass} p-2 overflow-hidden h-full`} style={glassCardStyle(glass, forExport)}>
+        <PremiumImage src={image} caption={imageCaption} variant="hero" className="!rounded-2xl !min-h-full" />
+      </div>
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}>
+        {items.map((item, i) => (
+          <div key={i} className={`${glassCardClass} p-3 flex flex-col justify-center`} style={glassCardStyle(glass, forExport)}>
+            <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+              {renderLabel ? renderLabel(item.label, i, "") : item.label}
+            </span>
+            <p className={`text-[9px] mt-1 line-clamp-4 ${glass.bodyClass}`}>{renderBullet(item.detail, i, "")}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexChartFocus: React.FC<{
+  content: string[];
+  metrics?: SlideVisualData["metrics"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, metrics, parseBullet, extractNumber, renderLabel, glass, forExport }) => {
+  const items = metrics?.length
+    ? metrics.slice(0, 4)
+    : parseItems(content, parseBullet)
+        .slice(0, 4)
+        .map((i) => ({
+          label: i.label,
+          value: extractNumber(i.raw) || i.number || i.detail.slice(0, 18),
+          highlight: Boolean(i.number),
+        }));
+  return (
+    <div className={`grid grid-cols-[1.1fr_0.9fr] gap-3 h-full ${slideBodyClass}`}>
+      <div className={`${glassCardClass} p-4 flex flex-col justify-end relative overflow-hidden h-full`} style={glassCardStyle(glass, forExport)}>
+        <div className="absolute inset-x-4 top-4 bottom-12 flex items-end gap-2">
+          {items.map((item, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t-xl"
+              style={{
+                height: `${36 + i * 16}%`,
+                background: `linear-gradient(to top, ${glass.accent}, ${alpha(glass.secondary, "AA")})`,
+                opacity: item.highlight ? 1 : 0.7,
+              }}
+            />
+          ))}
+        </div>
+        <div className="relative z-10">
+          <span className="text-[8px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+            market signal
+          </span>
+          <p className={`text-[10px] mt-1 ${glass.mutedClass}`}>{content[3] || "Фокус на платящем сегменте."}</p>
+        </div>
+      </div>
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}>
+        {items.map((item, i) => (
+          <div key={i} className={`${glassCardClass} px-3 py-2 flex items-center justify-between gap-2`} style={glassCardStyle(glass, forExport)}>
+            <span className={`text-[8px] line-clamp-1 ${glass.bodyClass}`}>
+              {renderLabel && !metrics?.length ? renderLabel(item.label, i, "") : item.label}
+            </span>
+            <strong className={`text-[11px] shrink-0 ${glass.titleClass}`}>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexPricingCards: React.FC<{
+  content: string[];
+  pricing?: SlideVisualData["pricing"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, pricing, parseBullet, extractNumber, glass, forExport }) => {
+  const items = pricing?.length
+    ? pricing.slice(0, 3).map((p) => ({ label: p.label, price: p.price, detail: p.detail || p.price, featured: p.featured }))
+    : content.slice(0, 3).map((item, i) => {
+        const p = parseBullet(item);
+        return { label: p.label || `Тариф ${i + 1}`, price: extractNumber(item) || p.detail, detail: p.detail, featured: i === 1 };
+      });
+  return (
+    <div
+      className={`grid gap-2.5 h-full items-stretch ${slideBodyClass}`}
+      style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}
+    >
+      {items.map((item, i) => {
+        const featured = item.featured || i === 1;
+        return (
+          <div
+            key={i}
+            className={`${glassCardClass} p-4 flex flex-col justify-between h-full ${featured ? "ring-1 ring-white/25" : ""}`}
+            style={
+              featured
+                ? {
+                    background: `linear-gradient(160deg, ${alpha(glass.accent, "E6")}, ${alpha(glass.secondary, "CC")})`,
+                    borderColor: "rgba(255,255,255,0.25)",
+                  }
+                : glassCardStyle(glass, forExport)
+            }
+          >
+            <div className={`text-[8px] uppercase tracking-widest ${featured ? "text-white/70" : glass.mutedClass}`}>
+              {item.label}
+            </div>
+            <div className={`text-xl font-black my-2 ${featured ? "text-white" : glass.titleClass}`}>{item.price}</div>
+            <p className={`text-[9px] leading-relaxed line-clamp-5 ${featured ? "text-white/85" : glass.bodyClass}`}>
+              {item.detail}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export const ApexRevenueLadder: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, extractNumber, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  return (
+    <div className={`grid grid-cols-4 gap-2 items-stretch h-full ${slideBodyClass}`}>
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className={`${glassCardClass} p-3 flex flex-col justify-between`}
+          style={{ ...glassCardStyle(glass, forExport), minHeight: `${70 + i * 8}%` }}
+        >
+          <span className="text-[7px] uppercase tracking-widest font-bold line-clamp-1" style={{ color: glass.accent }}>
+            {renderLabel ? renderLabel(item.label, i, "") : item.label}
+          </span>
+          <div>
+            <div className={`text-base font-black ${glass.titleClass}`}>
+              {extractNumber(item.raw) || item.number || `${i + 1}x`}
+            </div>
+            <p className={`text-[8px] line-clamp-3 mt-1 ${glass.bodyClass}`}>{item.detail}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/** Premium comparison table — usable on competition slides */
+export const ApexCompareTable: React.FC<{
+  content: string[];
+  competitors?: SlideVisualData["competitors"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, competitors, parseBullet, glass, forExport }) => {
+  const rows = competitors?.length
+    ? competitors.slice(0, 5).map((c) => ({
+        label: c.label,
+        detail: c.detail,
+        ours: Boolean(c.ours),
+      }))
+    : parseItems(content, parseBullet)
+        .slice(0, 5)
+        .map((item, idx) => ({
+          label: item.label,
+          detail: item.detail,
+          ours: idx >= Math.floor(content.length / 2),
+        }));
+
+  return (
+    <div className={`flex flex-col gap-2 h-full min-h-0 ${slideBodyClass}`}>
+      <div className={`${glassCardClass} overflow-hidden flex-1 min-h-0 flex flex-col`} style={glassCardStyle(glass, forExport)}>
+        <div
+          className="grid grid-cols-[1.4fr_0.7fr_0.7fr] gap-0 px-3 py-2.5 border-b shrink-0"
+          style={{
+            borderColor: glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
+            background: glass.isLight ? "rgba(15,23,42,0.03)" : "rgba(255,255,255,0.04)",
+          }}
+        >
+          <span className="text-[8px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+            Критерий
+          </span>
+          <span className="text-[8px] uppercase tracking-widest font-bold text-center" style={{ color: glass.success }}>
+            Мы
+          </span>
+          <span className={`text-[8px] uppercase tracking-widest font-bold text-center ${glass.mutedClass}`}>Рынок</span>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          {rows.map((row, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[1.4fr_0.7fr_0.7fr] gap-0 px-3 py-2.5 flex-1 items-center border-b last:border-b-0 min-h-0"
+              style={{
+                borderColor: glass.isLight ? "rgba(15,23,42,0.06)" : "rgba(255,255,255,0.06)",
+                background: i % 2 === 0 ? "transparent" : glass.isLight ? "rgba(15,23,42,0.02)" : "rgba(255,255,255,0.02)",
+              }}
+            >
+              <div className="min-w-0 pr-2">
+                <p className={`text-[10px] font-semibold line-clamp-1 ${glass.titleClass}`}>{row.label}</p>
+                {row.detail && row.detail !== row.label && (
+                  <p className={`text-[8px] line-clamp-1 mt-0.5 ${glass.mutedClass}`}>{row.detail}</p>
+                )}
+              </div>
+              <div className="flex justify-center">
+                {row.ours ? (
+                  <span
+                    className="inline-flex items-center justify-center w-7 h-7 rounded-full"
+                    style={{ background: alpha(glass.success, "22"), color: glass.success }}
+                  >
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <span className={`text-[10px] ${glass.mutedClass}`}>—</span>
+                )}
+              </div>
+              <div className="flex justify-center">
+                {!row.ours ? (
+                  <span
+                    className="inline-flex items-center justify-center w-7 h-7 rounded-full"
+                    style={{ background: alpha(glass.danger, "18"), color: glass.danger }}
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </span>
+                ) : (
+                  <span className={`text-[10px] ${glass.mutedClass}`}>частично</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className={`text-[8px] ${glass.mutedClass}`}>Сравнение по ключевым критериям питча · галочка = наше преимущество</p>
+    </div>
+  );
+};
+
+export const ApexPositioningMap: React.FC<{
+  content: string[];
+  competitors?: SlideVisualData["competitors"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, competitors, parseBullet, glass, forExport }) => {
+  const items = competitors?.length
+    ? competitors.slice(0, 4).map((c) => ({ label: c.label, detail: c.detail, ours: c.ours }))
+    : parseItems(content, parseBullet)
+        .slice(0, 4)
+        .map((i, idx) => ({ ...i, ours: idx >= 3 }));
+  return (
+    <div className={`grid grid-cols-[1fr_0.9fr] gap-3 h-full ${slideBodyClass}`}>
+      <div className={`${glassCardClass} p-4 relative overflow-hidden h-full`} style={glassCardStyle(glass, forExport)}>
+        <div className={`absolute left-4 right-4 top-1/2 h-px ${glass.isLight ? "bg-neutral-300" : "bg-white/15"}`} />
+        <div className={`absolute top-4 bottom-4 left-1/2 w-px ${glass.isLight ? "bg-neutral-300" : "bg-white/15"}`} />
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className="absolute rounded-xl px-2 py-1 text-[8px] font-semibold border"
+            style={{
+              left: `${i === 0 ? 12 : i === 1 ? 55 : i === 2 ? 18 : 62}%`,
+              top: `${i === 0 ? 18 : i === 1 ? 28 : i === 2 ? 62 : 58}%`,
+              color: item.ours ? "#fff" : glass.isLight ? "#171717" : "#fff",
+              background: item.ours ? glass.accent : glass.isLight ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.1)",
+              borderColor: item.ours ? alpha(glass.accent, "88") : "rgba(255,255,255,0.18)",
+            }}
+          >
+            {item.ours ? "Мы" : item.label}
+          </div>
+        ))}
+        <span className={`absolute left-4 bottom-2 text-[7px] ${glass.mutedClass}`}>низкая дифф.</span>
+        <span className={`absolute right-4 top-2 text-[7px] ${glass.mutedClass}`}>премиум</span>
+      </div>
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.min(items.length, 3)}, minmax(0, 1fr))` }}>
+        {items.slice(0, 3).map((item, i) => (
+          <div key={i} className={`${glassCardClass} p-3 flex flex-col justify-center`} style={glassCardStyle(glass, forExport)}>
+            <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+              {item.label}
+            </span>
+            <p className={`text-[8.5px] line-clamp-2 mt-1 ${glass.bodyClass}`}>{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexRoadmap: React.FC<{
+  content: string[];
+  timeline?: SlideVisualData["timeline"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, timeline, parseBullet, renderLabel, glass, forExport }) => {
+  const items = timeline?.length
+    ? timeline.slice(0, 4).map((t) => ({ label: t.label, title: t.title, detail: t.detail || "" }))
+    : parseItems(content, parseBullet)
+        .slice(0, 4)
+        .map((i) => ({ label: i.label, title: i.label, detail: i.detail }));
+  return (
+    <div className={`relative pl-1 h-full overflow-hidden ${slideBodyClass}`}>
+      <div className="absolute left-[18px] top-3 bottom-3 w-px" style={{ background: alpha(glass.accent, "44") }} />
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}>
+        {items.map((item, i) => (
+          <div key={i} className="relative flex gap-3 items-stretch min-h-0">
+            <div
+              className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold z-10 border"
+              style={{ background: alpha(glass.accent, "22"), color: glass.accent, borderColor: alpha(glass.accent, "44") }}
+            >
+              {item.label.slice(0, 3)}
+            </div>
+            <div className={`${glassCardClass} p-3 flex-1 min-w-0`} style={glassCardStyle(glass, forExport)}>
+              <h3 className={`text-[11px] font-bold line-clamp-1 ${glass.titleClass}`}>
+                {renderLabel ? renderLabel(item.title, i, "") : item.title}
+              </h3>
+              <p className={`text-[9px] mt-1 line-clamp-3 ${glass.bodyClass}`}>{item.detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexGtmFunnel: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 3);
+  const icons = ["📣", "🎯", "🚀"];
+  return (
+    <div
+      className={`grid gap-2.5 h-full items-stretch ${slideBodyClass}`}
+      style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}
+    >
+      {items.map((item, i) => (
+        <div key={i} className={`${glassCardClass} p-3.5 flex flex-col h-full`} style={glassCardStyle(glass, forExport)}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center text-base" style={{ background: alpha(glass.accent, "18") }}>
+              {icons[i] || "•"}
+            </span>
+            <span className="text-[9px] uppercase tracking-widest font-bold line-clamp-2" style={{ color: glass.accent }}>
+              {renderLabel ? renderLabel(item.label, i, "") : item.label}
+            </span>
+          </div>
+          <p className={`text-[9px] leading-relaxed line-clamp-6 flex-1 ${glass.bodyClass}`}>{item.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const ApexFundingSplit: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, extractNumber, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  const ask = items[0];
+  return (
+    <div className={`grid grid-cols-[0.95fr_1.05fr] gap-3 h-full ${slideBodyClass}`}>
+      <div
+        className={`${glassCardClass} p-5 flex flex-col justify-center text-center h-full`}
+        style={{
+          ...glassCardStyle(glass, forExport),
+          background: `linear-gradient(160deg, ${alpha(glass.accent, "EE")}, ${alpha(glass.secondary, "CC")})`,
+        }}
+      >
+        <span className="text-[8px] uppercase tracking-widest text-white/70 font-bold">Запрос</span>
+        <div className="text-3xl sm:text-4xl font-black text-white mt-2">
+          {extractNumber(ask?.raw || "") || ask?.number || "Seed"}
+        </div>
+        <p className="text-[10px] text-white/85 mt-2 line-clamp-3">{ask?.detail || ask?.label}</p>
+      </div>
+      <div className="grid gap-2 h-full" style={{ gridTemplateRows: `repeat(${Math.max(items.length - 1, 1)}, minmax(0, 1fr))` }}>
+        {items.slice(1).map((item, i) => (
+          <div key={i} className={`${glassCardClass} p-3 flex flex-col justify-center`} style={glassCardStyle(glass, forExport)}>
+            <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: glass.accent }}>
+              {renderLabel ? renderLabel(item.label, i + 1, "") : item.label}
+            </span>
+            <p className={`text-[9px] mt-1 line-clamp-3 ${glass.bodyClass}`}>{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ApexCTA: React.FC<{
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  content: string[];
+  image?: string;
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ title, subtitle, content, renderBullet, glass, forExport }) => (
+  <div className={`h-full flex flex-col items-center justify-center text-center gap-3 px-6 ${slideBodyClass}`}>
+    <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${glass.titleClass}`}>{title}</h2>
+    {subtitle && <p className={`text-sm max-w-md ${glass.mutedClass}`}>{subtitle}</p>}
+    <div className="flex flex-wrap justify-center gap-2 mt-2">
+      {content.slice(0, 3).map((item, i) => (
+        <span key={i} className={`${glassCardClass} px-3 py-2 text-[10px] ${glass.bodyClass}`} style={glassCardStyle(glass, forExport)}>
+          {renderBullet(item, i, "")}
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
+export const ApexVisionMap: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  return (
+    <div className={`grid grid-cols-2 gap-2.5 h-full ${slideBodyClass}`}>
+      {items.map((item, i) => (
+        <div key={i} className={`${glassCardClass} p-3.5 flex flex-col justify-between h-full`} style={glassCardStyle(glass, forExport)}>
+          <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: glass.accent }}>
+            {String(i + 1).padStart(2, "0")} · {renderLabel ? renderLabel(item.label, i, "") : item.label}
+          </span>
+          <p className={`text-[10px] leading-relaxed line-clamp-5 mt-2 ${glass.bodyClass}`}>
+            {renderBullet(item.detail, i, "")}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const SwissProblemGrid: React.FC<{
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  image?: string;
+  cardImages?: string[];
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = (props) => <ApexPainGrid {...props} />;
+
+export const SwissSolutionList: React.FC<{
+  content: string[];
+  image?: string;
+  imageCaption?: string;
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, image, imageCaption, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  if (!image) {
+    return (
+      <div className={`grid grid-cols-2 gap-2.5 h-full ${slideBodyClass}`}>
+        {content.slice(0, 4).map((item, i) => {
+          const p = parseBullet(item);
+          return (
+            <div key={i} className={`${glassCardClass} p-3 flex gap-2.5 h-full`} style={glassCardStyle(glass, forExport)}>
+              <div
+                className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm font-bold"
+                style={{ background: alpha(glass.accent, "22"), color: glass.accent }}
+              >
+                {i + 1}
+              </div>
+              <div className="min-w-0">
+                <h3 className={`text-[10px] font-semibold line-clamp-2 ${glass.titleClass}`}>
+                  {p.label ? (renderLabel ? renderLabel(p.label, i, "") : p.label) : renderBullet(item, i, "")}
+                </h3>
+                {p.detail && <p className={`text-[9px] mt-1 line-clamp-4 ${glass.bodyClass}`}>{p.detail}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return (
+    <ApexProductSplit
+      content={content}
+      image={image}
+      imageCaption={imageCaption}
+      parseBullet={parseBullet}
+      renderBullet={renderBullet}
+      renderLabel={renderLabel}
+      glass={glass}
+      forExport={forExport}
+    />
+  );
+};
 
 export function shouldUseApexLayout(slide: Slide): boolean {
   const t = slide.visualData?.template;
@@ -679,7 +1462,6 @@ export function isAppleTemplate(slide: Slide): boolean {
   return slide.visualData?.template === "apple";
 }
 
-// Главный контентный рендерер слайдов
 export const ApexSlideContent: React.FC<{
   slide: Slide;
   index: number;
@@ -718,94 +1500,557 @@ export const ApexSlideContent: React.FC<{
 
   return (
     <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">
-      <div className="h-full flex flex-col py-1 relative min-h-0 overflow-hidden">
+      <div className="h-full flex flex-col py-0.5 relative min-h-0 overflow-hidden">
         <div className="relative z-10 flex flex-col h-full min-h-0">
-          {/* Заголовок слайда (кроме титульного) */}
           {index !== 0 && type !== "title" && !cream && !apple && (
-            <div className="mb-4 text-left shrink-0">
+            <div className="mb-2 text-left shrink-0">
               {sectionLabel && <ApexSectionLabel color={glass.accent}>{sectionLabel}</ApexSectionLabel>}
               <ApexTitle className={glass.titleClass}>{title}</ApexTitle>
-              {subtitle && <p className={`text-sm ${glass.mutedClass}`}>{subtitle}</p>}
+              {subtitle && <p className={`text-[10px] ${glass.mutedClass}`}>{subtitle}</p>}
             </div>
           )}
 
           <div className="flex-1 min-h-0 flex flex-col">
-            {/* Титульный слайд */}
-            {(index === 0 || type === "title") && (
-              <ApexHero
-                title={title}
-                subtitle={subtitle}
-                badge={badge}
-                content={content}
-                image={slide.image}
-                founderName={slide.founderName}
-                founderRole={slide.founderRole}
-                brandQuote={slide.brandQuote}
-                renderBullet={renderBullet}
-                forExport={forExport}
-                constructorLayout={slide.visualData?.constructorLayout}
-                glass={glass}
-              />
-            )}
+            {(index === 0 || type === "title") &&
+              (cream ? (
+                <CreamHero
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  image={slide.image}
+                  founderName={slide.founderName}
+                  founderRole={slide.founderRole}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : apple ? (
+                <AppleHero
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  image={slide.image}
+                  founderName={slide.founderName}
+                  founderRole={slide.founderRole}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexHero
+                  title={title}
+                  subtitle={subtitle}
+                  badge={badge}
+                  content={content}
+                  image={slide.image}
+                  founderName={slide.founderName}
+                  founderRole={slide.founderRole}
+                  brandQuote={slide.brandQuote}
+                  renderBullet={renderBullet}
+                  forExport={forExport}
+                  constructorLayout={slide.visualData?.constructorLayout}
+                  glass={glass}
+                />
+              ))}
 
-            {/* Проблема */}
-            {type === "problem" && (
+            {type === "problem" &&
+              (apple ? (
+                variant === "big-stat" || variant === "stats-grid" ? (
+                  <AppleMetricTiles
+                    content={content}
+                    parseBullet={parseBullet}
+                    extractNumber={extractNumber}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                ) : (
+                  <AppleGroupedList
+                    title={title}
+                    content={content}
+                    parseBullet={parseBullet}
+                    renderBullet={renderBullet}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                )
+              ) : cream ? (
+                variant === "big-stat" || variant === "stats-grid" ? (
+                  <CreamStatTriplet
+                    content={content}
+                    parseBullet={parseBullet}
+                    extractNumber={extractNumber}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                ) : (
+                  <CreamProblemStatement
+                    title={title}
+                    content={content}
+                    image={slide.image}
+                    parseBullet={parseBullet}
+                    renderBullet={renderBullet}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                )
+              ) : variant === "big-stat" ? (
+                <ApexBigStat
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "quote-poster" ? (
+                <ApexQuotePoster
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "pain-stack" ? (
+                <ApexPainStack
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "split-quote" ? (
+                <ApexSplitQuote
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : swiss ? (
+                <SwissProblemGrid
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  image={slide.image}
+                  cardImages={slide.visualData?.images}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexPainGrid
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  image={slide.image}
+                  cardImages={slide.visualData?.images}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "market" &&
+              (apple ? (
+                <AppleMarketGrouped
+                  content={content}
+                  metrics={slide.visualData?.metrics}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : cream ? (
+                <CreamMarketStack
+                  content={content}
+                  metrics={slide.visualData?.metrics}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "chart-focus" ? (
+                <ApexChartFocus
+                  content={content}
+                  metrics={slide.visualData?.metrics}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "big-stat" ? (
+                <ApexBigStat
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexMarketPanel
+                  content={content}
+                  metrics={slide.visualData?.metrics}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {(type === "solution" || type === "product") &&
+              (apple ? (
+                type === "product" || variant === "apple-product" ? (
+                  <AppleProductShowcase
+                    content={content}
+                    image={slide.image}
+                    cardImages={slide.visualData?.images}
+                    parseBullet={parseBullet}
+                    renderBullet={renderBullet}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                ) : (
+                  <AppleFeatureRows
+                    content={content}
+                    parseBullet={parseBullet}
+                    renderBullet={renderBullet}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                )
+              ) : cream ? (
+                type === "product" || variant === "cream-steps" ? (
+                  <CreamProductSteps
+                    content={content}
+                    cardImages={slide.visualData?.images}
+                    parseBullet={parseBullet}
+                    renderBullet={renderBullet}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                ) : (
+                  <CreamFeatureCards
+                    content={content}
+                    parseBullet={parseBullet}
+                    renderBullet={renderBullet}
+                    renderLabel={renderLabel}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                )
+              ) : variant === "feature-columns" ? (
+                <ApexFeatureColumns
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "demo-hero" ? (
+                <ApexDemoHero
+                  content={content}
+                  image={slide.image}
+                  imageCaption={slide.imageDescription}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : swiss ? (
+                <SwissSolutionList
+                  content={content}
+                  image={slide.image}
+                  imageCaption={slide.imageDescription}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexProductSplit
+                  content={content}
+                  image={slide.image}
+                  imageCaption={slide.imageDescription}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "competition" &&
+              (apple ? (
+                <AppleCompareTable
+                  content={content}
+                  competitors={slide.visualData?.competitors}
+                  parseBullet={parseBullet}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : cream || variant === "compare-table" ? (
+                cream ? (
+                  <CreamCompareMatrix
+                    content={content}
+                    competitors={slide.visualData?.competitors}
+                    parseBullet={parseBullet}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                ) : (
+                  <ApexCompareTable
+                    content={content}
+                    competitors={slide.visualData?.competitors}
+                    parseBullet={parseBullet}
+                    glass={glass}
+                    forExport={forExport}
+                  />
+                )
+              ) : variant === "positioning" ? (
+                <ApexPositioningMap
+                  content={content}
+                  competitors={slide.visualData?.competitors}
+                  parseBullet={parseBullet}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexCompareTable
+                  content={content}
+                  competitors={slide.visualData?.competitors}
+                  parseBullet={parseBullet}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "pricing" &&
+              (apple ? (
+                <AppleBizGrouped
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : cream ? (
+                <CreamBizSplit
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "revenue-ladder" || variant === "unit-economics" ? (
+                <ApexRevenueLadder
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexPricingCards
+                  content={content}
+                  pricing={slide.visualData?.pricing}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "traction" &&
+              (apple ? (
+                <AppleTractionBoard
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : cream ? (
+                <CreamTractionBoard
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "growth-timeline" ? (
+                <ApexRoadmap
+                  content={content}
+                  timeline={slide.visualData?.timeline}
+                  parseBullet={parseBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexStatsGrid
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "launch" &&
+              (apple ? (
+                <AppleTimeline
+                  content={content}
+                  timeline={slide.visualData?.timeline}
+                  parseBullet={parseBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : cream ? (
+                <CreamRoadmapTimeline
+                  content={content}
+                  timeline={slide.visualData?.timeline}
+                  parseBullet={parseBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "gtm-funnel" ? (
+                <ApexGtmFunnel content={content} parseBullet={parseBullet} renderLabel={renderLabel} glass={glass} forExport={forExport} />
+              ) : (
+                <ApexRoadmap
+                  content={content}
+                  timeline={slide.visualData?.timeline}
+                  parseBullet={parseBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "sauce" &&
+              (apple ? (
+                <AppleTeamGrouped
+                  content={content}
+                  teamMembers={slide.visualData?.teamMembers}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : cream ? (
+                <CreamTeamRow
+                  content={content}
+                  teamMembers={slide.visualData?.teamMembers}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexFeatureColumns
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "ask" &&
+              (apple ? (
+                <AppleAskSlide
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexFundingSplit
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "vision" &&
+              (variant === "quote-poster" ? (
+                <ApexQuotePoster
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : (
+                <ApexVisionMap
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ))}
+
+            {type === "risks" && (
               <ApexPainGrid
                 content={content}
                 parseBullet={parseBullet}
                 renderBullet={renderBullet}
                 renderLabel={renderLabel}
-                image={slide.image}
-                cardImages={slide.visualData?.images}
                 glass={glass}
                 forExport={forExport}
               />
             )}
 
-            {/* Рынок */}
-            {type === "market" && (
-              <ApexMarketPanel
-                content={content}
-                metrics={slide.visualData?.metrics}
-                parseBullet={parseBullet}
-                extractNumber={extractNumber}
-                renderLabel={renderLabel}
-                glass={glass}
-                forExport={forExport}
-              />
-            )}
-
-            {/* Конкуренты */}
-            {type === "competition" && (
-              <ApexCompetitionPanel
-                content={content}
-                parseBullet={parseBullet}
-                renderBullet={renderBullet}
-                image={slide.image}
-                glass={glass}
-                forExport={forExport}
-              />
-            )}
-
-            {/* Тракция / Продукт / и т.д. */}
-            {(type === "traction" || type === "solution" || type === "product") && (
-              <ApexStatsGrid
-                content={content}
-                parseBullet={parseBullet}
-                extractNumber={extractNumber}
-                renderBullet={renderBullet}
-                renderLabel={renderLabel}
-                glass={glass}
-                forExport={forExport}
-              />
-            )}
-
-            {/* Фолбэк для остальных типов */}
-            {!["title", "problem", "market", "competition", "traction", "solution", "product"].includes(type) && (
-              <div className={`${glassCardClass} p-6 flex items-center justify-center h-full`} style={glassCardStyle(glass, forExport)}>
-                <p className={`text-lg ${glass.mutedClass}`}>Контент слайда в разработке</p>
-              </div>
-            )}
+            {!["title", "problem", "solution", "product", "market", "pricing", "traction", "launch", "ask", "vision", "competition", "sauce", "risks"].includes(
+              type,
+            ) &&
+              index !== 0 && (
+                <ApexFeatureColumns
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              )}
           </div>
         </div>
       </div>

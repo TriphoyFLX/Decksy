@@ -18,7 +18,7 @@ const SLIDE_VARIANTS: Record<string, string[]> = {
   pricing: ["price-tiers", "unit-economics", "revenue-ladder"],
   traction: ["big-stat", "traction-metrics", "growth-timeline", "proof-board"],
   sauce: ["team-grid", "moat-tech", "ip-stack"],
-  competition: ["matrix-2x2", "compare-table", "positioning"],
+  competition: ["compare-table", "matrix-2x2", "positioning"],
   launch: ["roadmap", "milestone-track", "gtm-funnel"],
   risks: ["risk-cards", "mitigation-grid", "scenario-split"],
   ask: ["funding-split", "big-stat", "cta-center", "contact-row"],
