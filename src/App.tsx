@@ -364,7 +364,7 @@ export default function App() {
   
   // Custom design style and selection state
   const [selectedStyle, setSelectedStyle] = useState<'cobalt' | 'clean-light' | 'cosmic-dark'>('cosmic-dark');
-  const [selectedTemplate, setSelectedTemplate] = useState<DeckTemplateId>('apex');
+  const [selectedTemplate, setSelectedTemplate] = useState<DeckTemplateId>('cream');
   const [deckCustomTheme, setDeckCustomTheme] = useState<DeckThemeCustom>(DEFAULT_CUSTOM_THEMES['cosmic-dark']);
   const [useCustomBranding, setUseCustomBranding] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);

@@ -5,13 +5,13 @@
 
 import type { PitchDeck, Slide } from "../types";
 import type { DeckDesignPlan } from "./designPlan";
-import { type DeckTemplateId, resolveLayoutEngine } from "./deckTheme";
+import { normalizeDeckTemplateId, resolveLayoutEngine, type DeckTemplateId } from "./deckTheme";
 
 export type DeckTemplate = DeckTemplateId;
 
 const SLIDE_VARIANTS: Record<string, string[]> = {
   title: ["hero-centered", "hero-bold", "hero-minimal"],
-  problem: ["big-stat", "quote-poster", "stats-grid", "pain-stack", "split-quote"],
+  problem: ["problem-solve", "pain-stack", "split-quote"],
   solution: ["product-split", "feature-columns", "demo-hero", "quote-poster"],
   product: ["product-split", "feature-columns", "demo-hero"],
   market: ["big-stat", "metric-row", "chart-focus", "tam-bento"],
@@ -36,6 +36,55 @@ function pick<T>(arr: T[], seed: number, salt = 0): T {
   return arr[(seed + salt) % arr.length];
 }
 
+function pairProblemSolutions(deck: PitchDeck) {
+  const problem = deck.slides.find((s) => s.type === "problem");
+  const solution = deck.slides.find((s) => s.type === "solution");
+  if (!problem) return;
+
+  if (problem.visualData?.problemSolutions?.length) {
+    problem.visualData = {
+      ...problem.visualData,
+      variant: "problem-solve",
+    };
+    return;
+  }
+
+  const pains = (problem.content || []).slice(0, 4);
+  const fixes = (solution?.content || []).slice(0, 4);
+
+  const pairs = pains.map((pain, i) => {
+    const arrowSplit = pain.split(/\s*(?:→|->|—\s*решение|\/\s*решение)\s*/i);
+    if (arrowSplit.length >= 2 && arrowSplit[1]?.trim()) {
+      return {
+        problem: arrowSplit[0].trim(),
+        solution: arrowSplit[1].trim(),
+      };
+    }
+    const fix = fixes[i] || fixes[0] || "";
+    return {
+      problem: pain,
+      solution: fix || "Закрываем эту боль продуктом и процессом",
+    };
+  });
+
+  if (!pairs.length && fixes.length) {
+    pairs.push(
+      ...fixes.slice(0, 3).map((fix) => ({
+        problem: "Ключевая боль рынка",
+        solution: fix,
+      })),
+    );
+  }
+
+  if (pairs.length) {
+    problem.visualData = {
+      ...(problem.visualData || {}),
+      problemSolutions: pairs,
+      variant: "problem-solve",
+    };
+  }
+}
+
 export function assignDeckVariants(
   deck: PitchDeck,
   idea: string,
@@ -44,13 +93,15 @@ export function assignDeckVariants(
   designPlan?: DeckDesignPlan | null
 ): DeckTemplateId {
   const seed = hashSeed(idea, userId ?? 0, deck.title ?? "");
-  const templates: DeckTemplateId[] = ["apple", "studio", "cream", "apex", "titanium", "ember", "midnight", "swiss"];
-  const templateId = forceTemplate ?? designPlan?.recommendedTemplate ?? pick(templates, seed, 3);
+  const templates: DeckTemplateId[] = ["cream", "titanium"];
+  const templateId = normalizeDeckTemplateId(
+    forceTemplate ?? designPlan?.recommendedTemplate ?? pick(templates, seed, 3),
+  );
   const layoutEngine = resolveLayoutEngine(templateId);
 
   const CREAM_VARIANT_BY_TYPE: Partial<Record<string, string>> = {
     title: "hero-centered",
-    problem: "cream-statement",
+    problem: "problem-solve",
     solution: "cream-features",
     product: "cream-steps",
     market: "tam-bento",
@@ -62,20 +113,6 @@ export function assignDeckVariants(
     ask: "funding-split",
   };
 
-  const APPLE_VARIANT_BY_TYPE: Partial<Record<string, string>> = {
-    title: "hero-centered",
-    problem: "apple-grouped",
-    solution: "apple-features",
-    product: "apple-product",
-    market: "apple-metrics",
-    competition: "battle",
-    pricing: "apple-biz",
-    traction: "apple-traction",
-    sauce: "apple-team",
-    launch: "apple-timeline",
-    ask: "apple-cta",
-  };
-
   deck.slides.forEach((slide, index) => {
     const type = slide.type || "title";
     const variants = SLIDE_VARIANTS[type] || SLIDE_VARIANTS.title;
@@ -83,11 +120,9 @@ export function assignDeckVariants(
     const plannedVariant =
       planned?.layoutIntent && variants.includes(planned.layoutIntent) ? planned.layoutIntent : null;
     let variant = plannedVariant || pick(variants, seed, index * 7 + 1);
+    if (type === "problem") variant = "problem-solve";
     if (templateId === "cream" && CREAM_VARIANT_BY_TYPE[type]) {
       variant = CREAM_VARIANT_BY_TYPE[type]!;
-    }
-    if (templateId === "apple" && APPLE_VARIANT_BY_TYPE[type]) {
-      variant = APPLE_VARIANT_BY_TYPE[type]!;
     }
     slide.visualData = {
       ...(slide.visualData || {}),
@@ -96,6 +131,8 @@ export function assignDeckVariants(
       variant,
     };
   });
+
+  pairProblemSolutions(deck);
 
   if (designPlan) {
     deck.designPlan = designPlan;
@@ -109,5 +146,5 @@ export function getSlideVariant(slide: Slide): string {
 }
 
 export function getDeckTemplate(slide: Slide): DeckTemplate {
-  return (slide.visualData?.deckTemplate as DeckTemplate) || "apex";
+  return normalizeDeckTemplateId(slide.visualData?.deckTemplate as string);
 }

@@ -122,44 +122,93 @@ export const CreamProblemStatement: React.FC<{
   title: React.ReactNode;
   content: string[];
   image?: string;
+  problemSolutions?: SlideVisualData["problemSolutions"];
   parseBullet: (s: string) => { label: string; detail: string };
   renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
   renderLabel?: InlineRenderer;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ title, content, image, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
-  const lead = parseItems(content, parseBullet)[0];
+}> = ({ content, problemSolutions, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const pairs = (() => {
+    if (problemSolutions?.length) {
+      return problemSolutions.slice(0, 4).map((p, i) => {
+        const left = parseBullet(p.problem);
+        const right = parseBullet(p.solution);
+        return {
+          problemLabel: p.problemLabel || left.label || `Боль ${i + 1}`,
+          problem: left.detail || p.problem,
+          solutionLabel: p.solutionLabel || right.label || "Решение",
+          solution: right.detail || p.solution,
+        };
+      });
+    }
+    return content.slice(0, 4).map((raw, i) => {
+      const parts = raw.split(/\s*(?:→|->|—\s*решение|\/\s*решение)\s*/i);
+      if (parts.length >= 2 && parts[1]?.trim()) {
+        const left = parseBullet(parts[0]);
+        const right = parseBullet(parts[1]);
+        return {
+          problemLabel: left.label || `Боль ${i + 1}`,
+          problem: left.detail || parts[0],
+          solutionLabel: right.label || "Решение",
+          solution: right.detail || parts[1],
+        };
+      }
+      const parsed = parseBullet(raw);
+      return {
+        problemLabel: parsed.label || `Боль ${i + 1}`,
+        problem: parsed.detail || raw,
+        solutionLabel: "Решение",
+        solution: "Закрываем эту боль продуктом и процессом",
+      };
+    });
+  })();
+
+  const rows = Math.min(Math.max(pairs.length, 1), 4);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 my-auto items-center min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
-      <div className="md:col-span-3 min-w-0">
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-0.5 shrink-0">
         <CreamChip glass={glass}>Проблема</CreamChip>
-        <h2
-          className={`font-extrabold leading-[1.02] tracking-tight mt-3 ${glass.titleClass}`}
-          style={{ fontSize: forExport ? "1.5rem" : "clamp(1rem, 2.8vw, 1.35rem)" }}
+        <span className={`text-[8px] self-center ${glass.mutedClass}`}>→</span>
+        <span
+          className="inline-flex items-center px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wide w-fit"
+          style={{ background: alpha(glass.success, "28"), color: glass.success }}
         >
-          {title}
-        </h2>
-        <p className={`mt-3 text-[9px] sm:text-[10px] leading-relaxed max-w-lg ${glass.mutedClass}`}>
-          {lead?.detail ? renderBullet(lead.detail, 0, "") : renderBullet(content[0] || "", 0, "")}
-        </p>
-        {content.slice(1, 3).map((item, i) => (
-          <p key={i} className={`mt-2 text-[8.5px] leading-relaxed ${glass.bodyClass}`}>
-            {renderLabel ? renderLabel(parseBullet(item).label, i + 1, "") : renderBullet(item, i + 1, "")}
-          </p>
+          Как решаем
+        </span>
+      </div>
+
+      <div className="grid flex-1 min-h-0 gap-2" style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}>
+        {pairs.map((pair, i) => (
+          <div key={i} className="grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch min-h-0">
+            <div className={`${creamCardClass} p-3 flex flex-col justify-center gap-1`} style={creamCardStyle(forExport)}>
+              <p className={`text-[9px] font-bold line-clamp-1 ${glass.titleClass}`}>
+                {renderLabel ? renderLabel(pair.problemLabel, i, "") : pair.problemLabel}
+              </p>
+              <p className={`text-[8.5px] leading-snug line-clamp-3 ${glass.mutedClass}`}>
+                {renderBullet(pair.problem, i, "")}
+              </p>
+            </div>
+            <div className="flex items-center justify-center">
+              <span
+                className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{ background: alpha(glass.accent, "33"), color: glass.accent }}
+              >
+                →
+              </span>
+            </div>
+            <div className={`${creamCardClass} p-3 flex flex-col justify-center gap-1`} style={creamStrongStyle(forExport)}>
+              <p className="text-[9px] font-bold line-clamp-1" style={{ color: glass.success }}>
+                {renderLabel ? renderLabel(pair.solutionLabel, i + 10, "") : pair.solutionLabel}
+              </p>
+              <p className={`text-[8.5px] leading-snug line-clamp-3 ${glass.bodyClass}`}>
+                {renderBullet(pair.solution, i + 10, "")}
+              </p>
+            </div>
+          </div>
         ))}
       </div>
-      {image ? (
-        <div className={`md:col-span-2 ${creamCardClass} p-1.5 aspect-[4/5] max-h-full`} style={creamCardStyle(forExport)}>
-          <PremiumImage src={image} variant="hero" className="!rounded-xl !min-h-full" />
-        </div>
-      ) : (
-        <div
-          className={`md:col-span-2 ${creamCardClass} aspect-[4/5] flex items-center justify-center`}
-          style={creamCardStyle(forExport)}
-        >
-          <span className="text-[8px] font-mono uppercase tracking-widest text-white/30">Иллюстрация</span>
-        </div>
-      )}
     </div>
   );
 };

@@ -39,28 +39,6 @@ function TemplatePreview({ id }: { id: DeckTemplateId }) {
     );
   }
 
-  if (id === "apple") {
-    return (
-      <div
-        className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2"
-        style={{ background: "#000000", fontFamily: "-apple-system, system-ui, sans-serif" }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md" style={{ background: "#007AFF" }} />
-          <div className="h-1.5 flex-1 rounded bg-white/15" />
-        </div>
-        <div className="rounded-lg overflow-hidden flex-1" style={{ background: "#1C1C1E" }}>
-          <div className="h-2 w-16 bg-white/20 rounded m-2" />
-          <div className="mx-2 space-y-1">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-4 rounded bg-white/[0.06]" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (id === "cream") {
     return (
       <div className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2" style={{ background: t.frameGradient }}>
@@ -68,28 +46,31 @@ function TemplatePreview({ id }: { id: DeckTemplateId }) {
           <div className="w-6 h-6 rounded-full" style={{ background: "linear-gradient(135deg,#eae6db,#b9b2a1)" }} />
           <div className="h-1.5 w-12 rounded bg-[#f5f3ee]/70" />
         </div>
-        <div className="grid grid-cols-3 gap-1 flex-1">
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-1 flex-1">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-lg border border-white/10 bg-white/[0.05] p-1">
-              <div className="h-1 w-5 rounded mb-1" style={{ background: "rgba(201,121,60,0.5)" }} />
-              <div className="h-0.5 w-full bg-white/15 rounded" />
-            </div>
+            <React.Fragment key={i}>
+              <div className="rounded-lg border border-white/10 bg-white/[0.05] p-1">
+                <div className="h-1 w-5 rounded mb-1" style={{ background: "rgba(244,63,94,0.45)" }} />
+                <div className="h-0.5 w-full bg-white/15 rounded" />
+              </div>
+              {i < 3 ? null : (
+                <div className="rounded-lg border border-white/10 bg-white/[0.08] p-1">
+                  <div className="h-1 w-5 rounded mb-1" style={{ background: "rgba(52,211,153,0.5)" }} />
+                  <div className="h-0.5 w-full bg-white/15 rounded" />
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  if (id === "apex") {
-    return (
-      <div className="h-full w-full rounded-lg overflow-hidden flex flex-col items-center justify-center p-3" style={{ background: t.frameGradient }}>
-        <div className="w-8 h-8 rounded-xl bg-[#0071e3] text-white text-xs font-bold flex items-center justify-center mb-2">A</div>
-        <div className="h-1.5 w-16 bg-white/80 rounded mb-1" />
-        <div className="h-1 w-12 bg-white/30 rounded" />
-        <div className="grid grid-cols-3 gap-1 mt-3 w-full px-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-6 rounded bg-white/[0.06] border border-white/10" />
-          ))}
+        <div className="grid grid-cols-2 gap-1 flex-1">
+          <div className="rounded-lg border border-white/10 bg-black/30 p-1.5">
+            <div className="h-1 w-8 rounded mb-1 bg-rose-400/50" />
+            <div className="h-0.5 w-full bg-white/15 rounded" />
+          </div>
+          <div className="rounded-lg border border-white/10 bg-white/[0.08] p-1.5">
+            <div className="h-1 w-8 rounded mb-1" style={{ background: "rgba(52,211,153,0.55)" }} />
+            <div className="h-0.5 w-full bg-white/15 rounded" />
+          </div>
         </div>
       </div>
     );
@@ -98,10 +79,10 @@ function TemplatePreview({ id }: { id: DeckTemplateId }) {
   return (
     <div className="h-full w-full rounded-lg overflow-hidden p-3 flex flex-col gap-2" style={{ background: t.frameGradient }}>
       <div className="h-2 w-14 bg-white/70 rounded" />
-      <div className="grid grid-cols-3 gap-1 flex-1">
-        {[1, 2, 3].map((i) => (
+      <div className="grid grid-cols-2 gap-1 flex-1">
+        {[1, 2].map((i) => (
           <div key={i} className="rounded-lg bg-white/[0.04] border border-white/[0.07] p-1">
-            <div className="h-1 w-4 bg-red-400/40 rounded mb-1" />
+            <div className="h-1 w-4 bg-amber-400/40 rounded mb-1" />
             <div className="h-0.5 w-full bg-white/20 rounded" />
           </div>
         ))}

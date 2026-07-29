@@ -53,13 +53,20 @@ export interface SlideConstructorLayout {
 
 export interface SlideVisualData {
   template?: 'apex' | 'swiss' | 'cream' | 'apple';
-  deckTemplate?: 'apex' | 'swiss' | 'cream' | 'apple' | 'titanium' | 'ember' | 'midnight' | 'studio';
+  deckTemplate?: 'cream' | 'titanium' | string;
   variant?: string;
   layout?: 'default' | 'hero' | 'split' | 'team' | 'gallery' | 'metrics' | 'timeline' | 'pricing' | 'matrix';
   teamMembers?: { name: string; role: string; image: string }[];
   metrics?: { label: string; value: string; highlight?: boolean }[];
   timeline?: { label: string; title: string; detail?: string }[];
   pricing?: { label: string; price: string; detail?: string; featured?: boolean }[];
+  /** Problem slide: each pain paired with how we solve it */
+  problemSolutions?: {
+    problem: string;
+    solution: string;
+    problemLabel?: string;
+    solutionLabel?: string;
+  }[];
   competitors?: {
     label: string;
     detail: string;

@@ -49,11 +49,11 @@ interface DesignLabPageProps {
 }
 
 export const DesignLabPage: React.FC<DesignLabPageProps> = ({ onBack }) => {
-  const [templateId, setTemplateId] = useState<DeckTemplateId>("apex");
+  const [templateId, setTemplateId] = useState<DeckTemplateId>("cream");
   const [slideIndex, setSlideIndex] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
-  const [slides, setSlides] = useState<Slide[]>(() => buildDesignLabDeck("apex").slides);
-  const [deckTitle, setDeckTitle] = useState(() => buildDesignLabDeck("apex").title);
+  const [slides, setSlides] = useState<Slide[]>(() => buildDesignLabDeck("cream").slides);
+  const [deckTitle, setDeckTitle] = useState(() => buildDesignLabDeck("cream").title);
 
   const meta = getDesignLabMeta(templateId);
   const style = meta.selectedStyle;

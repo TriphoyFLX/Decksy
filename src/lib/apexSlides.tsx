@@ -88,8 +88,10 @@ export type GlassSurface = {
 
 // --- Расширенная функция определения поверхности ---
 export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-dark", forExport = false): GlassSurface {
-  const deckTemplate = slide.visualData?.deckTemplate as DeckTemplateId | undefined;
-  const templateEntry = deckTemplate ? TEMPLATE_CATALOG[deckTemplate] : undefined;
+  const deckTemplate = (slide.visualData?.deckTemplate || "") as string;
+  const templateEntry = (deckTemplate in TEMPLATE_CATALOG
+    ? TEMPLATE_CATALOG[deckTemplate as DeckTemplateId]
+    : undefined);
 
   if (deckTemplate === "apple") {
     const isLight = selectedStyle === "clean-light";
@@ -289,12 +291,18 @@ export const BentoPill: React.FC<{
   );
 };
 
-export const BentoOrb: React.FC<{ glass: GlassSurface; ink?: boolean }> = ({ glass, ink }) => (
+export const BentoOrb: React.FC<{ glass: GlassSurface; ink?: boolean; onAccent?: boolean }> = ({ glass, ink, onAccent }) => (
   <span
-    className="absolute top-3 right-3 h-7 w-7 rounded-full flex items-center justify-center text-[14px] font-light leading-none"
+    className="absolute top-3 right-3 h-7 w-7 rounded-full flex items-center justify-center text-[14px] font-light leading-none z-[1]"
     style={{
-      background: ink ? "rgba(255,255,255,0.14)" : glass.isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.1)",
-      color: ink || !glass.isLight ? "#fff" : "#0a0a0a",
+      background: onAccent
+        ? "rgba(0,0,0,0.12)"
+        : ink
+          ? "rgba(255,255,255,0.14)"
+          : glass.isLight
+            ? "rgba(15,23,42,0.08)"
+            : "rgba(255,255,255,0.1)",
+      color: onAccent ? "#0a0a0a" : ink || !glass.isLight ? "#fff" : "#0a0a0a",
     }}
   >
     +
@@ -486,6 +494,130 @@ export const ApexHero: React.FC<{
   );
 };
 
+
+function parseProblemSolutionPairs(
+  content: string[],
+  problemSolutions: SlideVisualData["problemSolutions"] | undefined,
+  parseBullet: (s: string) => { label: string; detail: string },
+): { problemLabel: string; problem: string; solutionLabel: string; solution: string }[] {
+  if (problemSolutions?.length) {
+    return problemSolutions.slice(0, 4).map((p, i) => {
+      const probParsed = parseBullet(p.problem);
+      const solParsed = parseBullet(p.solution);
+      return {
+        problemLabel: p.problemLabel || probParsed.label || `Боль ${i + 1}`,
+        problem: probParsed.detail || p.problem,
+        solutionLabel: p.solutionLabel || solParsed.label || "Решение",
+        solution: solParsed.detail || p.solution,
+      };
+    });
+  }
+
+  return content.slice(0, 4).map((raw, i) => {
+    const parts = raw.split(/\s*(?:→|->|—\s*решение|\/\s*решение)\s*/i);
+    if (parts.length >= 2 && parts[1]?.trim()) {
+      const left = parseBullet(parts[0]);
+      const right = parseBullet(parts[1]);
+      return {
+        problemLabel: left.label || `Боль ${i + 1}`,
+        problem: left.detail || parts[0],
+        solutionLabel: right.label || "Решение",
+        solution: right.detail || parts[1],
+      };
+    }
+    const parsed = parseBullet(raw);
+    return {
+      problemLabel: parsed.label || `Боль ${i + 1}`,
+      problem: parsed.detail || raw,
+      solutionLabel: "Решение",
+      solution: "Закрываем эту боль продуктом и понятным процессом",
+    };
+  });
+}
+
+/** Problem + how we solve it — paired bento rows */
+export const ApexProblemSolution: React.FC<{
+  content: string[];
+  problemSolutions?: SlideVisualData["problemSolutions"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ content, problemSolutions, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const pairs = parseProblemSolutionPairs(content, problemSolutions, parseBullet);
+  const rows = Math.min(Math.max(pairs.length, 1), 4);
+
+  return (
+    <div className={`flex flex-col gap-2.5 h-full min-h-0 ${slideBodyClass}`}>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 shrink-0 px-1">
+        <span className="text-[8px] uppercase tracking-[0.18em] font-bold" style={{ color: glass.danger }}>
+          Проблема
+        </span>
+        <span className={`text-[8px] uppercase tracking-widest ${glass.mutedClass}`}>→</span>
+        <span className="text-[8px] uppercase tracking-[0.18em] font-bold" style={{ color: glass.success }}>
+          Как решаем
+        </span>
+      </div>
+
+      <div
+        className="grid flex-1 min-h-0 gap-2.5"
+        style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+      >
+        {pairs.map((pair, i) => (
+          <div key={i} className="grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch min-h-0">
+            <div className={`${bentoCardClass} p-3 flex flex-col justify-center gap-1`} style={bentoCardStyle(glass, "ink", forExport)}>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="text-[9px] font-bold text-white/90 line-clamp-1">
+                  {renderLabel ? renderLabel(pair.problemLabel, i, "") : pair.problemLabel}
+                </span>
+              </div>
+              <p className="text-[9px] leading-snug text-white/70 line-clamp-3">
+                {renderBullet(pair.problem, i, "")}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <span
+                className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                style={{ background: alpha(glass.accent, "33"), color: glass.accent }}
+              >
+                →
+              </span>
+            </div>
+
+            <div className={`${bentoCardClass} p-3 flex flex-col justify-center gap-1`} style={bentoCardStyle(glass, i === 0 ? "accent" : "surface", forExport)}>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: i === 0 ? "rgba(0,0,0,0.14)" : alpha(glass.success, "22"),
+                    color: i === 0 ? "#0a0a0a" : glass.success,
+                  }}
+                >
+                  Fix
+                </span>
+                <span className={`text-[9px] font-bold line-clamp-1 ${i === 0 ? "text-black" : glass.titleClass}`}>
+                  {renderLabel ? renderLabel(pair.solutionLabel, i + 10, "") : pair.solutionLabel}
+                </span>
+              </div>
+              <p className={`text-[9px] leading-snug line-clamp-3 ${i === 0 ? "text-black/70" : glass.bodyClass}`}>
+                {renderBullet(pair.solution, i + 10, "")}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Сетка проблем с карточками-виджетами
 export const ApexPainGrid: React.FC<{
   content: string[];
@@ -523,7 +655,7 @@ export const ApexPainGrid: React.FC<{
             className={`${glassCardClass} p-4 flex flex-col gap-3 text-left h-full justify-between`}
             style={bentoCardStyle(glass, tone, forExport)}
           >
-            <BentoOrb glass={glass} ink={onInk} onAccent={onAccent} />
+            <BentoOrb glass={glass} ink={onInk} />
             {/* Верхняя часть: иконка или фото */}
             {cardImg ? (
               <div className="h-16 rounded-[1.25rem] overflow-hidden shrink-0">
@@ -1004,7 +1136,7 @@ export const ApexFeatureColumns: React.FC<{
                 {String(i + 1).padStart(2, "0")}
               </BentoPill>
             </div>
-            <BentoOrb glass={glass} ink={onInk} onAccent={onAccent} />
+            <BentoOrb glass={glass} ink={onInk} />
             <h3 className={`text-[12px] font-bold leading-tight line-clamp-2 ${titleCls}`}>
               {renderLabel ? renderLabel(item.label, i, "") : item.label}
             </h3>
@@ -1855,7 +1987,7 @@ export const ApexCTA: React.FC<{
               className={`${glassCardClass} p-3.5 flex flex-col justify-between h-full`}
               style={bentoCardStyle(glass, tone, forExport)}
             >
-              <BentoOrb glass={glass} ink={onInk} onAccent={onAccent} />
+              <BentoOrb glass={glass} ink={onInk} />
               <p className={`text-[10px] font-semibold leading-snug line-clamp-6 mt-6 ${onAccent ? "text-black" : onInk ? "text-white" : glass.titleClass}`}>
                 {renderBullet(item, i, "")}
               </p>
@@ -2082,105 +2214,25 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "problem" &&
-              (apple ? (
-                variant === "big-stat" || variant === "stats-grid" ? (
-                  <AppleMetricTiles
-                    content={content}
-                    parseBullet={parseBullet}
-                    extractNumber={extractNumber}
-                    renderLabel={renderLabel}
-                    glass={glass}
-                    forExport={forExport}
-                  />
-                ) : (
-                  <AppleGroupedList
-                    title={title}
-                    content={content}
-                    parseBullet={parseBullet}
-                    renderBullet={renderBullet}
-                    renderLabel={renderLabel}
-                    glass={glass}
-                    forExport={forExport}
-                  />
-                )
-              ) : cream ? (
-                variant === "big-stat" || variant === "stats-grid" ? (
-                  <CreamStatTriplet
-                    content={content}
-                    parseBullet={parseBullet}
-                    extractNumber={extractNumber}
-                    renderLabel={renderLabel}
-                    glass={glass}
-                    forExport={forExport}
-                  />
-                ) : (
-                  <CreamProblemStatement
-                    title={title}
-                    content={content}
-                    image={slide.image}
-                    parseBullet={parseBullet}
-                    renderBullet={renderBullet}
-                    renderLabel={renderLabel}
-                    glass={glass}
-                    forExport={forExport}
-                  />
-                )
-              ) : variant === "big-stat" ? (
-                <ApexBigStat
+              (cream ? (
+                <CreamProblemStatement
+                  title={title}
                   content={content}
-                  parseBullet={parseBullet}
-                  extractNumber={extractNumber}
-                  renderBullet={renderBullet}
-                  renderLabel={renderLabel}
-                  glass={glass}
-                  forExport={forExport}
-                />
-              ) : variant === "quote-poster" ? (
-                <ApexQuotePoster
-                  content={content}
-                  parseBullet={parseBullet}
-                  renderBullet={renderBullet}
-                  renderLabel={renderLabel}
-                  glass={glass}
-                  forExport={forExport}
-                />
-              ) : variant === "pain-stack" ? (
-                <ApexPainStack
-                  content={content}
-                  parseBullet={parseBullet}
-                  renderBullet={renderBullet}
-                  renderLabel={renderLabel}
-                  glass={glass}
-                  forExport={forExport}
-                />
-              ) : variant === "split-quote" ? (
-                <ApexSplitQuote
-                  content={content}
-                  parseBullet={parseBullet}
-                  renderBullet={renderBullet}
-                  renderLabel={renderLabel}
-                  glass={glass}
-                  forExport={forExport}
-                />
-              ) : swiss ? (
-                <SwissProblemGrid
-                  content={content}
-                  parseBullet={parseBullet}
-                  renderBullet={renderBullet}
-                  renderLabel={renderLabel}
                   image={slide.image}
-                  cardImages={slide.visualData?.images}
+                  problemSolutions={slide.visualData?.problemSolutions}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
                 />
               ) : (
-                <ApexPainGrid
+                <ApexProblemSolution
                   content={content}
+                  problemSolutions={slide.visualData?.problemSolutions}
                   parseBullet={parseBullet}
                   renderBullet={renderBullet}
                   renderLabel={renderLabel}
-                  image={slide.image}
-                  cardImages={slide.visualData?.images}
                   glass={glass}
                   forExport={forExport}
                 />

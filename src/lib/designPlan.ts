@@ -70,7 +70,7 @@ export function getDefaultDesignPlan(idea: string): DeckDesignPlan {
       whitespace: 0.7,
       accentColor: accent,
     },
-    recommendedTemplate: "studio",
+    recommendedTemplate: "cream",
     recommendedStyle: "cosmic-dark",
     slidePlans: SLIDE_TYPES.map((type, slideIndex) => {
       const formats = FORMAT_BY_TYPE[type] || ["cards"];
@@ -89,7 +89,7 @@ export function getDefaultDesignPlan(idea: string): DeckDesignPlan {
 
 export function normalizeDesignPlan(raw: any, idea: string): DeckDesignPlan {
   const fallback = getDefaultDesignPlan(idea);
-  const allowedTemplates: DeckTemplateId[] = ["apex", "swiss", "cream", "apple", "titanium", "ember", "midnight", "studio"];
+  const allowedTemplates: DeckTemplateId[] = ["cream", "titanium"];
   const allowedStyles: StyleKey[] = ["cosmic-dark", "clean-light", "cobalt"];
 
   const recommendedTemplate = allowedTemplates.includes(raw?.recommendedTemplate)
