@@ -78,8 +78,8 @@ function buildDemoSlides(): Slide[] {
     },
     {
       type: "product",
-      title: "Продукт",
-      subtitle: "Как это работает",
+      title: "Как это работает",
+      subtitle: "От выбора техники до закрытия заказа — 4 шага",
       sectionLabel: "03 · Продукт",
       content: [
         "Выбор: Каталог техники рядом с объектом — фильтр по типу и цене",

@@ -2317,6 +2317,8 @@ export const ApexSlideContent: React.FC<{
               ) : cream ? (
                 type === "product" || variant === "cream-steps" ? (
                   <CreamProductSteps
+                    title={title}
+                    subtitle={subtitle}
                     content={content}
                     cardImages={slide.visualData?.images}
                     parseBullet={parseBullet}

@@ -10,6 +10,11 @@ import {
   Smartphone,
   Gift,
   Check,
+  Search,
+  CalendarCheck,
+  QrCode,
+  Camera,
+  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 import type { SlideVisualData } from "../types";
@@ -253,6 +258,8 @@ export const CreamStatTriplet: React.FC<{
 };
 
 export const CreamProductSteps: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   content: string[];
   cardImages?: string[];
   parseBullet: (s: string) => { label: string; detail: string };
@@ -260,35 +267,136 @@ export const CreamProductSteps: React.FC<{
   renderLabel?: InlineRenderer;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, cardImages, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
-  const items = parseItems(content, parseBullet).slice(0, 3);
+}> = ({ title, subtitle, content, cardImages, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const stepIcons: LucideIcon[] = [Search, CalendarCheck, QrCode, Camera];
+  const stepHints = [
+    ["Геофильтр", "Тип техники", "Цена/час"],
+    ["Слот онлайн", "Мгновенно", "Предоплата"],
+    ["QR на объекте", "Страховка", "Договор"],
+    ["Фото-отчёт", "Авто-закрытие", "Рейтинг"],
+  ];
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  while (items.length < 4) {
+    const n = items.length + 1;
+    items.push({
+      raw: "",
+      label: `Шаг ${n}`,
+      detail: "Ключевой этап пользовательского пути",
+      number: "",
+    });
+  }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
-      {items.map((item, i) => (
-        <div key={i} className="min-w-0">
-          {cardImages?.[i] ? (
-            <div className={`${creamCardClass} mb-2 overflow-hidden aspect-[4/5] max-h-28`} style={creamCardStyle(forExport)}>
-              <PremiumImage src={cardImages[i]} variant="thumb" className="!min-h-full !rounded-xl" />
-            </div>
-          ) : (
-            <div
-              className={`${creamCardClass} mb-2 aspect-[4/5] max-h-28 flex items-center justify-center`}
-              style={creamCardStyle(forExport)}
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Продукт · Journey</CreamChip>
+          {title && (
+            <h2
+              className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}
             >
-              <span className="text-[7px] font-mono uppercase tracking-widest text-white/30">Шаг {i + 1}</span>
-            </div>
+              {title}
+            </h2>
           )}
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[8px] text-white/35">{String(i + 1).padStart(2, "0")}</span>
-            <h3 className={`text-[10px] font-semibold ${glass.titleClass}`}>
-              {renderLabel ? renderLabel(item.label, i, "") : item.label}
-            </h3>
-          </div>
-          <p className={`text-[8.5px] mt-1 leading-relaxed line-clamp-3 ${glass.mutedClass}`}>
-            {renderBullet(item.detail, i, "")}
-          </p>
+          {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
-      ))}
+        <div className="flex items-center gap-1.5">
+          {items.map((_, i) => (
+            <React.Fragment key={i}>
+              <span
+                className="h-6 min-w-6 px-1.5 rounded-full text-[8px] font-bold flex items-center justify-center"
+                style={{
+                  background: i === 0 ? glass.accent : alpha(glass.accent, "22"),
+                  color: i === 0 ? "#1a120c" : glass.accent,
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {i < items.length - 1 && (
+                <ArrowRight className="h-3 w-3 text-white/25" strokeWidth={2} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className="grid flex-1 min-h-0 gap-2.5"
+        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      >
+        {items.map((item, i) => {
+          const Icon = stepIcons[i] || Zap;
+          const hints = stepHints[i] || ["Готово", "Быстро", "Надёжно"];
+          const hasImg = Boolean(cardImages?.[i]);
+          return (
+            <div
+              key={i}
+              className={`${creamCardClass} p-3 flex flex-col min-h-0 h-full`}
+              style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+            >
+              {hasImg ? (
+                <div className="rounded-xl overflow-hidden h-16 shrink-0 mb-2.5">
+                  <PremiumImage src={cardImages![i]} variant="thumb" className="!min-h-16 !h-16 !rounded-xl" />
+                </div>
+              ) : (
+                <div
+                  className="relative rounded-xl h-16 shrink-0 mb-2.5 overflow-hidden flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(145deg, ${alpha(glass.accent, "33")}, rgba(255,255,255,0.04) 55%, ${alpha(glass.secondary || glass.accent, "22")})`,
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-30"
+                    style={{
+                      backgroundImage:
+                        "radial-gradient(circle at 30% 40%, rgba(255,255,255,0.18), transparent 50%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08), transparent 45%)",
+                    }}
+                  />
+                  <div
+                    className="relative w-11 h-11 rounded-2xl flex items-center justify-center"
+                    style={{
+                      background: "rgba(0,0,0,0.35)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: glass.accent,
+                    }}
+                  >
+                    <Icon className="h-5 w-5" strokeWidth={1.6} />
+                  </div>
+                  <span
+                    className="absolute top-1.5 left-1.5 text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-md"
+                    style={{ background: "rgba(0,0,0,0.45)", color: "rgba(245,243,238,0.75)" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[8px] font-mono font-bold" style={{ color: glass.accent }}>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className={`text-[11px] font-bold leading-tight line-clamp-1 ${glass.titleClass}`}>
+                  {renderLabel ? renderLabel(item.label, i, "") : item.label}
+                </h3>
+              </div>
+
+              <p className={`text-[8.5px] mt-1.5 leading-snug line-clamp-3 flex-1 ${glass.mutedClass}`}>
+                {renderBullet(item.detail, i, "")}
+              </p>
+
+              <div className="mt-2 pt-2 border-t border-white/10 space-y-1 shrink-0">
+                {hints.map((hint) => (
+                  <div key={hint} className="flex items-center gap-1.5 text-[8px] text-white/70">
+                    <Check className="h-2.5 w-2.5 shrink-0" style={{ color: glass.success }} strokeWidth={3} />
+                    <span className="line-clamp-1">{hint}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
