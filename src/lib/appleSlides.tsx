@@ -60,7 +60,7 @@ export const AppleChip: React.FC<{ children: React.ReactNode; glass: GlassSurfac
   accent,
 }) => (
   <span
-    className="inline-flex items-center text-[7px] sm:text-[8px] uppercase tracking-[0.1em] px-2 py-0.5 rounded-full font-medium"
+    className="inline-flex items-center text-[10px] sm:text-[11px] uppercase tracking-[0.08em] px-2.5 py-1 rounded-full font-semibold"
     style={{
       background: accent ? `${APPLE_SYSTEM.blue}22` : glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark,
       color: accent ? APPLE_SYSTEM.blue : glass.isLight ? APPLE_SYSTEM.secondaryLabelLight : APPLE_SYSTEM.secondaryLabelDark,
@@ -75,7 +75,7 @@ export const AppleSectionLabel: React.FC<{ children: React.ReactNode; glass: Gla
   glass,
 }) => (
   <p
-    className="text-[8px] sm:text-[9px] font-normal uppercase tracking-wide mb-2 px-1"
+    className="text-[11px] sm:text-[12px] font-normal uppercase tracking-wide mb-2 px-1"
     style={{ ...fontStyle, color: glass.isLight ? APPLE_SYSTEM.secondaryLabelLight : APPLE_SYSTEM.secondaryLabelDark }}
   >
     {children}
@@ -146,7 +146,7 @@ export const AppleHero: React.FC<{
                 <div className="text-base sm:text-lg font-bold tracking-tight" style={{ color: APPLE_SYSTEM.blue }}>
                   {m.number}
                 </div>
-                <div className={`text-[7px] mt-0.5 uppercase tracking-wide ${glass.mutedClass}`}>{m.label}</div>
+                <div className={`text-[10px] mt-0.5 uppercase tracking-wide ${glass.mutedClass}`}>{m.label}</div>
               </div>
             ))}
           </div>
@@ -160,7 +160,7 @@ export const AppleHero: React.FC<{
             </div>
             <div>
               <div className={`text-[10px] font-medium ${glass.titleClass}`}>{founderText}</div>
-              <div className={`text-[8px] ${glass.mutedClass}`}>{roleText}</div>
+              <div className={`text-[11px] ${glass.mutedClass}`}>{roleText}</div>
             </div>
           </div>
         </div>
@@ -169,7 +169,7 @@ export const AppleHero: React.FC<{
           <div className="rounded-2xl overflow-hidden p-1.5 min-h-0 flex flex-col" style={appleGroupedStyle(glass.isLight, forExport)}>
             <PremiumImage src={image} variant="hero" className="!rounded-xl flex-1 !min-h-[100px]" />
             <div className="mt-2 px-2 py-1.5 rounded-lg" style={{ background: glass.isLight ? "#F2F2F7" : APPLE_SYSTEM.secondaryGroupedDark }}>
-              <p className={`text-[8px] leading-snug line-clamp-2 ${glass.mutedClass}`}>
+              <p className={`text-[11px] leading-snug line-clamp-2 ${glass.mutedClass}`}>
                 {content[0] || "Ключевое ценностное предложение продукта"}
               </p>
             </div>
@@ -188,7 +188,7 @@ export const AppleHero: React.FC<{
               </div>
             </div>
             <div className="px-3 py-2.5 border-t" style={{ borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark }}>
-              <p className={`text-[8.5px] italic leading-snug ${glass.mutedClass}`}>
+              <p className={`text-[12px] italic leading-snug ${glass.mutedClass}`}>
                 «{content[0] || subtitle || "Миссия — решить ключевую проблему рынка"}»
               </p>
             </div>
@@ -263,10 +263,10 @@ export const AppleProblemSolve: React.FC<{
           </AppleChip>
           {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 px-0.5 ${glass.titleClass}`}>{title}</h2>}
         </div>
-        <div className="flex items-center gap-1.5 text-[8px]">
+        <div className="flex items-center gap-1.5 text-[11px]">
           <AppleChip glass={glass}>Проблема</AppleChip>
           <span className={glass.mutedClass}>→</span>
-          <span className="px-2 py-0.5 rounded-full text-[8px] font-semibold" style={{ background: `${APPLE_SYSTEM.green}22`, color: APPLE_SYSTEM.green }}>
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: `${APPLE_SYSTEM.green}22`, color: APPLE_SYSTEM.green }}>
             Как решаем
           </span>
         </div>
@@ -275,10 +275,10 @@ export const AppleProblemSolve: React.FC<{
         {pairs.map((pair, i) => (
           <div key={i} className="grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch min-h-0">
             <div className="p-3 flex flex-col justify-center gap-1 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
-              <p className={`text-[9px] font-semibold line-clamp-1 ${glass.titleClass}`}>
+              <p className={`text-[12px] font-semibold line-clamp-1 ${glass.titleClass}`}>
                 {renderLabel ? renderLabel(pair.problemLabel, i, "") : pair.problemLabel}
               </p>
-              <p className={`text-[8.5px] leading-snug line-clamp-2 ${glass.mutedClass}`}>{renderBullet(pair.problem, i, "")}</p>
+              <p className={`text-[12px] leading-snug line-clamp-2 ${glass.mutedClass}`}>{renderBullet(pair.problem, i, "")}</p>
             </div>
             <div className="flex items-center justify-center">
               <span className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${APPLE_SYSTEM.blue}22`, color: APPLE_SYSTEM.blue }}>
@@ -286,10 +286,10 @@ export const AppleProblemSolve: React.FC<{
               </span>
             </div>
             <div className="p-3 flex flex-col justify-center gap-1 min-h-0" style={{ ...appleGroupedStyle(glass.isLight, forExport), borderLeft: `3px solid ${APPLE_SYSTEM.green}` }}>
-              <p className="text-[9px] font-semibold line-clamp-1" style={{ color: APPLE_SYSTEM.green }}>
+              <p className="text-[12px] font-semibold line-clamp-1" style={{ color: APPLE_SYSTEM.green }}>
                 {renderLabel ? renderLabel(pair.solutionLabel, i + 10, "") : pair.solutionLabel}
               </p>
-              <p className={`text-[8.5px] leading-snug line-clamp-2 ${glass.bodyClass}`}>{renderBullet(pair.solution, i + 10, "")}</p>
+              <p className={`text-[12px] leading-snug line-clamp-2 ${glass.bodyClass}`}>{renderBullet(pair.solution, i + 10, "")}</p>
             </div>
           </div>
         ))}
@@ -322,7 +322,7 @@ export const AppleFeatureBento: React.FC<{
         <div>
           <AppleChip glass={glass} accent>Решение</AppleChip>
           {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+          {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
         <div className="flex flex-wrap gap-1">
           {["Без покупки", "Онлайн", "SLA"].map((t) => (
@@ -342,10 +342,10 @@ export const AppleFeatureBento: React.FC<{
             <h3 className={`text-[12px] font-bold leading-tight ${glass.titleClass}`}>
               {renderLabel ? renderLabel(hero.label, 0, "") : hero.label}
             </h3>
-            <p className={`text-[8.5px] mt-1 leading-relaxed line-clamp-3 ${glass.mutedClass}`}>{renderBullet(hero.detail, 0, "")}</p>
+            <p className={`text-[12px] mt-1 leading-relaxed line-clamp-3 ${glass.mutedClass}`}>{renderBullet(hero.detail, 0, "")}</p>
             <ul className="mt-2 space-y-1">
               {pointsFor(hero.detail).map((pt, pi) => (
-                <li key={pi} className={`flex gap-1.5 text-[8px] ${glass.bodyClass}`}>
+                <li key={pi} className={`flex gap-1.5 text-[11px] ${glass.bodyClass}`}>
                   <Check className="h-3 w-3 shrink-0" style={{ color: APPLE_SYSTEM.green }} strokeWidth={2.5} />
                   <span className="line-clamp-1">{pt}</span>
                 </li>
@@ -373,13 +373,13 @@ export const AppleFeatureBento: React.FC<{
                 {item.number ? (
                   <span className="text-base font-bold" style={{ color: APPLE_SYSTEM.blue }}>{item.number}</span>
                 ) : (
-                  <span className={`text-[8px] ${glass.mutedClass}`}>{String(idx + 1).padStart(2, "0")}</span>
+                  <span className={`text-[11px] ${glass.mutedClass}`}>{String(idx + 1).padStart(2, "0")}</span>
                 )}
               </div>
               <h3 className={`text-[10px] font-semibold line-clamp-1 ${glass.titleClass}`}>
                 {renderLabel ? renderLabel(item.label, idx, "") : item.label}
               </h3>
-              <p className={`text-[8px] leading-snug line-clamp-2 flex-1 ${glass.mutedClass}`}>{renderBullet(item.detail, idx, "")}</p>
+              <p className={`text-[11px] leading-snug line-clamp-2 flex-1 ${glass.mutedClass}`}>{renderBullet(item.detail, idx, "")}</p>
             </div>
           );
         })}
@@ -415,12 +415,12 @@ export const AppleProductSteps: React.FC<{
         <div>
           <AppleChip glass={glass} accent>Продукт · Journey</AppleChip>
           {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+          {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
         <div className="flex items-center gap-1">
           {items.map((_, i) => (
             <React.Fragment key={i}>
-              <span className="h-5 min-w-5 px-1 rounded-full text-[7px] font-bold flex items-center justify-center" style={{ background: i === 0 ? APPLE_SYSTEM.blue : `${APPLE_SYSTEM.blue}22`, color: i === 0 ? "#fff" : APPLE_SYSTEM.blue }}>
+              <span className="h-5 min-w-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center" style={{ background: i === 0 ? APPLE_SYSTEM.blue : `${APPLE_SYSTEM.blue}22`, color: i === 0 ? "#fff" : APPLE_SYSTEM.blue }}>
                 {String(i + 1).padStart(2, "0")}
               </span>
               {i < items.length - 1 && <ArrowRight className="h-2.5 w-2.5 opacity-30" />}
@@ -437,7 +437,7 @@ export const AppleProductSteps: React.FC<{
               <Layers className="h-8 w-8" style={{ color: APPLE_SYSTEM.blue }} />
             </div>
           )}
-          <p className={`text-[8px] mt-2 px-1 line-clamp-2 ${glass.mutedClass}`}>Product showcase</p>
+          <p className={`text-[11px] mt-2 px-1 line-clamp-2 ${glass.mutedClass}`}>Product showcase</p>
         </div>
         {items.map((item, i) => {
           const Icon = stepIcons[i] || Zap;
@@ -454,14 +454,14 @@ export const AppleProductSteps: React.FC<{
                   <Icon className="h-4 w-4" style={{ color: APPLE_SYSTEM.blue }} strokeWidth={1.6} />
                 </div>
               )}
-              <span className="text-[7px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{String(i + 1).padStart(2, "0")}</span>
-              <h3 className={`text-[9px] font-semibold line-clamp-1 mt-0.5 ${glass.titleClass}`}>
+              <span className="text-[10px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{String(i + 1).padStart(2, "0")}</span>
+              <h3 className={`text-[12px] font-semibold line-clamp-1 mt-0.5 ${glass.titleClass}`}>
                 {renderLabel ? renderLabel(item.label, i, "") : item.label}
               </h3>
               <p className={`text-[7.5px] mt-0.5 leading-snug line-clamp-2 flex-1 ${glass.mutedClass}`}>{renderBullet(item.detail, i, "")}</p>
               <div className="mt-1 space-y-0.5 shrink-0">
                 {hints.map((hint) => (
-                  <div key={hint} className="flex items-center gap-1 text-[7px]">
+                  <div key={hint} className="flex items-center gap-1 text-[10px]">
                     <Check className="h-2 w-2 shrink-0" style={{ color: APPLE_SYSTEM.green }} strokeWidth={3} />
                     <span className={`line-clamp-1 ${glass.mutedClass}`}>{hint}</span>
                   </div>
@@ -507,57 +507,97 @@ export const AppleMarketStack: React.FC<{
   ];
 
   return (
-    <div className="flex flex-col gap-2 my-auto min-h-0 flex-1 overflow-hidden" style={fontStyle}>
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden" style={fontStyle}>
       <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <AppleChip glass={glass} accent>Рынок · TAM / SAM / SOM</AppleChip>
-          {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+          {title && (
+            <h2
+              className={`font-bold tracking-tight mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.4rem" : "clamp(1.1rem, 2.6vw, 1.45rem)" }}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[12px] sm:text-[13px] mt-1 line-clamp-2 leading-snug ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
-        <div className="px-2.5 py-1.5 flex items-center gap-2 rounded-xl" style={appleGroupedStyle(glass.isLight, forExport)}>
-          <TrendingUp className="h-3.5 w-3.5" style={{ color: APPLE_SYSTEM.blue }} />
+        <div className="px-3.5 py-2.5 flex items-center gap-2.5 rounded-2xl shrink-0" style={appleGroupedStyle(glass.isLight, forExport)}>
+          <TrendingUp className="h-5 w-5" style={{ color: APPLE_SYSTEM.blue }} />
           <div>
-            <p className={`text-[7px] uppercase ${glass.mutedClass}`}>Рост</p>
-            <p className="text-[11px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{growthValue}</p>
+            <p className={`text-[10px] uppercase tracking-wide ${glass.mutedClass}`}>Рост рынка</p>
+            <p className="text-base font-bold leading-none mt-0.5" style={{ color: APPLE_SYSTEM.blue }}>{growthValue}</p>
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-[1.05fr_1.2fr] gap-2 flex-1 min-h-0">
-        <div className="flex flex-col gap-1.5 min-h-0">
+      <div className="grid grid-cols-[1.05fr_1.2fr] gap-2.5 flex-1 min-h-0">
+        <div className="flex flex-col gap-2 min-h-0">
           {metricItems.map((m, i) => (
-            <div key={m.label} className="p-2.5 flex flex-col justify-between flex-1 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
-              <div className="flex items-center justify-between">
+            <div key={m.label} className="p-3.5 flex flex-col justify-between flex-1 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
+              <div className="flex items-center justify-between gap-2">
                 <AppleChip glass={glass} accent>{m.label}</AppleChip>
-                <span className={`text-[7px] ${glass.mutedClass}`}>{m.scope}</span>
+                <span className={`text-[11px] font-medium ${glass.mutedClass}`}>{m.scope}</span>
               </div>
-              <div className="text-lg font-bold mt-1" style={{ color: APPLE_SYSTEM.blue }}>{m.value}</div>
-              <p className={`text-[8px] line-clamp-1 ${glass.mutedClass}`}>{renderBullet ? renderBullet(m.detail, i, "") : m.detail}</p>
-              <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>
+              <div className="mt-1.5">
+                <div
+                  className="font-bold tracking-tight leading-none"
+                  style={{ color: APPLE_SYSTEM.blue, fontSize: forExport ? "1.55rem" : "clamp(1.25rem, 2.8vw, 1.7rem)" }}
+                >
+                  {m.value}
+                </div>
+                <p className={`text-[12px] sm:text-[13px] mt-1.5 leading-snug line-clamp-2 ${glass.mutedClass}`}>
+                  {renderBullet ? renderBullet(m.detail, i, "") : m.detail}
+                </p>
+              </div>
+              <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>
                 <div className="h-full rounded-full" style={{ width: m.width, background: APPLE_SYSTEM.blue }} />
               </div>
             </div>
           ))}
         </div>
-        <div className="flex flex-col gap-1.5 min-h-0">
-          <div className="p-3 flex-1 min-h-0 flex flex-col" style={appleGroupedStyle(glass.isLight, forExport)}>
-            <h3 className={`text-[11px] font-bold ${glass.titleClass}`}>Большой и растущий рынок</h3>
-            <div className="mt-2 space-y-2 flex-1">
+        <div className="flex flex-col gap-2 min-h-0">
+          <div className="p-4 flex-1 min-h-0 flex flex-col" style={appleGroupedStyle(glass.isLight, forExport)}>
+            <h3 className={`text-[15px] sm:text-base font-bold tracking-tight ${glass.titleClass}`}>Большой и растущий рынок</h3>
+            <p className={`text-[12px] sm:text-[13px] mt-1.5 leading-relaxed ${glass.mutedClass}`}>
+              Воронка от всего рынка аренды к реалистичному wedge за 24 месяца — без раздутого TAM.
+            </p>
+            <div className="mt-3 flex-1 min-h-0 flex flex-col justify-between gap-1">
               {drivers.map((d, i) => (
-                <div key={d.tag} className="flex items-start gap-2">
-                  <span className="text-[7px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: `${APPLE_SYSTEM.blue}18`, color: APPLE_SYSTEM.blue }}>{d.tag}</span>
-                  <div>
-                    <p className={`text-[9px] font-semibold ${glass.titleClass}`}>{renderLabel ? renderLabel(d.title, i + 10, "") : d.title}</p>
-                    <p className={`text-[8px] line-clamp-2 ${glass.mutedClass}`}>{renderBullet ? renderBullet(d.text, i + 10, "") : d.text}</p>
+                <div key={d.tag} className="min-h-0">
+                  {i > 0 && (
+                    <div
+                      className="h-px mb-2.5"
+                      style={{ background: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark }}
+                    />
+                  )}
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="text-[10px] font-bold px-2 py-1 rounded-md shrink-0 mt-0.5"
+                      style={{ background: `${APPLE_SYSTEM.blue}18`, color: APPLE_SYSTEM.blue }}
+                    >
+                      {d.tag}
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-[13px] sm:text-[14px] font-semibold leading-tight ${glass.titleClass}`}>
+                        {renderLabel ? renderLabel(d.title, i + 10, "") : d.title}
+                      </p>
+                      <p className={`text-[12px] sm:text-[13px] mt-1 leading-snug line-clamp-3 ${glass.mutedClass}`}>
+                        {renderBullet ? renderBullet(d.text, i + 10, "") : d.text}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-1.5 shrink-0">
-            {[{ k: "Доля SAM", v: "~12%" }, { k: "Wedge", v: "~7%" }, { k: "Горизонт", v: "24 мес" }].map((s) => (
-              <div key={s.k} className="px-2 py-1.5 text-center rounded-xl" style={appleGroupedStyle(glass.isLight, forExport)}>
-                <p className={`text-[7px] uppercase ${glass.mutedClass}`}>{s.k}</p>
-                <p className="text-[10px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{s.v}</p>
+          <div className="grid grid-cols-3 gap-2 shrink-0">
+            {[
+              { k: "Доля SAM", v: "~12%" },
+              { k: "Wedge", v: "~7%" },
+              { k: "Горизонт", v: "24 мес" },
+            ].map((s) => (
+              <div key={s.k} className="px-2.5 py-2.5 text-center rounded-2xl" style={appleGroupedStyle(glass.isLight, forExport)}>
+                <p className={`text-[10px] uppercase tracking-wide ${glass.mutedClass}`}>{s.k}</p>
+                <p className="text-[15px] sm:text-base font-bold mt-0.5" style={{ color: APPLE_SYSTEM.blue }}>{s.v}</p>
               </div>
             ))}
           </div>
@@ -620,9 +660,9 @@ export const AppleCompareMatrix: React.FC<{
         <div>
           <AppleChip glass={glass} accent>Конкуренция</AppleChip>
           {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+          {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
-        <div className="flex gap-2 text-[7px] items-center">
+        <div className="flex gap-2 text-[10px] items-center">
           <span className="flex items-center gap-1"><span style={{ color: APPLE_SYSTEM.green }}>✓</span> есть</span>
           <span className="flex items-center gap-1"><span style={{ color: APPLE_SYSTEM.orange }}>~</span> частично</span>
         </div>
@@ -635,7 +675,7 @@ export const AppleCompareMatrix: React.FC<{
                 {(p.label || "?").charAt(0)}
               </div>
               <div className="min-w-0">
-                <p className={`text-[9px] font-semibold truncate ${glass.titleClass}`}>{p.label}</p>
+                <p className={`text-[12px] font-semibold truncate ${glass.titleClass}`}>{p.label}</p>
                 {p.ours && <span className="text-[6px] uppercase font-bold px-1 py-0.5 rounded" style={{ background: APPLE_SYSTEM.blue, color: "#fff" }}>мы</span>}
               </div>
             </div>
@@ -643,7 +683,7 @@ export const AppleCompareMatrix: React.FC<{
               <div className="h-full rounded-full" style={{ width: `${(p.rating ?? 5) * 10}%`, background: p.ours ? APPLE_SYSTEM.blue : APPLE_SYSTEM.gray }} />
             </div>
             {(p.advantages || []).slice(0, 2).map((adv, ai) => (
-              <p key={ai} className={`text-[7px] line-clamp-1 ${glass.mutedClass}`}>
+              <p key={ai} className={`text-[10px] line-clamp-1 ${glass.mutedClass}`}>
                 <span style={{ color: p.ours ? APPLE_SYSTEM.green : APPLE_SYSTEM.gray }}>{p.ours ? "✓" : "·"}</span> {adv}
               </p>
             ))}
@@ -652,15 +692,15 @@ export const AppleCompareMatrix: React.FC<{
       </div>
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col rounded-xl" style={appleGroupedStyle(glass.isLight, forExport)}>
         <div className="grid px-2.5 py-2 shrink-0 items-center border-b" style={{ gridTemplateColumns: `minmax(90px, 1.2fr) repeat(${cols}, minmax(0, 1fr))`, borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark }}>
-          <span className="text-[8px] uppercase font-semibold" style={{ color: APPLE_SYSTEM.blue }}>Критерий</span>
+          <span className="text-[11px] uppercase font-semibold" style={{ color: APPLE_SYSTEM.blue }}>Критерий</span>
           {players.map((p, i) => (
-            <span key={i} className={`text-[8px] font-semibold text-center truncate ${p.ours ? "" : glass.mutedClass}`} style={p.ours ? { color: APPLE_SYSTEM.blue } : undefined}>{p.label}</span>
+            <span key={i} className={`text-[11px] font-semibold text-center truncate ${p.ours ? "" : glass.mutedClass}`} style={p.ours ? { color: APPLE_SYSTEM.blue } : undefined}>{p.label}</span>
           ))}
         </div>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {features.map((feat, fi) => (
             <div key={fi} className="grid px-2.5 py-1 flex-1 items-center min-h-0 border-b last:border-b-0" style={{ gridTemplateColumns: `minmax(90px, 1.2fr) repeat(${cols}, minmax(0, 1fr))`, borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark, background: fi % 2 ? (glass.isLight ? "#FAFAFA" : "#1C1C1E") : undefined }}>
-              <span className={`text-[8px] font-medium line-clamp-2 pr-1 ${glass.bodyClass}`}>{feat.label}</span>
+              <span className={`text-[11px] font-medium line-clamp-2 pr-1 ${glass.bodyClass}`}>{feat.label}</span>
               {players.map((_, pi) => (
                 <div key={pi} className="flex justify-center">{scoreNode(feat.scores[pi] ?? false)}</div>
               ))}
@@ -705,7 +745,7 @@ export const AppleBizSplit: React.FC<{
         <div>
           <AppleChip glass={glass} accent>Бизнес-модель</AppleChip>
           {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+          {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 shrink-0">
@@ -713,7 +753,7 @@ export const AppleBizSplit: React.FC<{
           <div key={i} className="p-2.5 flex flex-col gap-1" style={{ ...appleGroupedStyle(glass.isLight, forExport), border: t.featured ? `2px solid ${APPLE_SYSTEM.blue}` : undefined }}>
             <AppleChip glass={glass} accent={t.featured}>{t.label}</AppleChip>
             <div className="text-lg font-bold" style={{ color: APPLE_SYSTEM.blue }}>{t.price}</div>
-            <p className={`text-[8px] line-clamp-2 ${glass.mutedClass}`}>{t.detail}</p>
+            <p className={`text-[11px] line-clamp-2 ${glass.mutedClass}`}>{t.detail}</p>
           </div>
         ))}
       </div>
@@ -724,7 +764,7 @@ export const AppleBizSplit: React.FC<{
             <React.Fragment key={i}>
               {i > 0 && <div style={{ ...appleSeparatorStyle(glass.isLight), marginLeft: 0 }} />}
               <div className="flex items-center justify-between py-2">
-                <span className={`text-[9px] font-medium ${glass.titleClass}`}>{renderLabel ? renderLabel(item.label, i, "") : item.label}</span>
+                <span className={`text-[12px] font-medium ${glass.titleClass}`}>{renderLabel ? renderLabel(item.label, i, "") : item.label}</span>
                 <span className="text-sm font-bold" style={{ color: APPLE_SYSTEM.blue }}>{extractNumber(item.raw) || item.number || ["60%", "30%", "10%"][i]}</span>
               </div>
             </React.Fragment>
@@ -733,9 +773,9 @@ export const AppleBizSplit: React.FC<{
         <div className="grid grid-cols-2 gap-1.5 min-h-0">
           {unitCards.map((u, i) => (
             <div key={u.label} className="p-2 flex flex-col justify-between min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
-              <span className={`text-[7px] uppercase ${glass.mutedClass}`}>{u.label}</span>
+              <span className={`text-[10px] uppercase ${glass.mutedClass}`}>{u.label}</span>
               <div className="text-base font-bold" style={{ color: APPLE_SYSTEM.blue }}>{renderLabel ? renderLabel(u.value, i, "") : u.value}</div>
-              <p className={`text-[7px] line-clamp-2 ${glass.mutedClass}`}>{renderBullet ? renderBullet(u.detail, i, "") : u.detail}</p>
+              <p className={`text-[10px] line-clamp-2 ${glass.mutedClass}`}>{renderBullet ? renderBullet(u.detail, i, "") : u.detail}</p>
             </div>
           ))}
         </div>
@@ -766,19 +806,19 @@ export const AppleTractionBoard: React.FC<{
       <div className="shrink-0">
         <AppleChip glass={glass} accent>Traction</AppleChip>
         {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-        {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
       </div>
       <div className="grid grid-cols-[1.2fr_1fr] gap-2 flex-1 min-h-0">
         <div className="p-3 flex flex-col justify-between min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
           <div className="flex items-start justify-between">
             <div>
-              <p className={`text-[8px] uppercase ${glass.mutedClass}`}>Hero metric</p>
+              <p className={`text-[11px] uppercase ${glass.mutedClass}`}>Hero metric</p>
               <p className={`text-[11px] font-bold mt-0.5 ${glass.titleClass}`}>{renderLabel ? renderLabel(hero.label, 0, "") : hero.label}</p>
             </div>
             <TrendingUp className="h-4 w-4" style={{ color: APPLE_SYSTEM.blue }} />
           </div>
           <div className="text-3xl font-bold" style={{ color: APPLE_SYSTEM.blue }}>{extractNumber(hero.raw) || hero.number || "12"}</div>
-          <p className={`text-[9px] line-clamp-2 ${glass.mutedClass}`}>{renderBullet ? renderBullet(hero.detail, 0, "") : hero.detail}</p>
+          <p className={`text-[12px] line-clamp-2 ${glass.mutedClass}`}>{renderBullet ? renderBullet(hero.detail, 0, "") : hero.detail}</p>
           <div className="mt-2 flex items-end gap-1 h-12">
             {bars.map((h, i) => (
               <div key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%`, background: i === bars.length - 1 ? APPLE_SYSTEM.blue : appleAlpha(APPLE_SYSTEM.blue, "66") }} />
@@ -790,7 +830,7 @@ export const AppleTractionBoard: React.FC<{
             {rest.map((item, i) => (
               <div key={i} className="p-2 flex flex-col justify-center min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
                 <div className="text-base font-bold" style={{ color: APPLE_SYSTEM.blue }}>{extractNumber(item.raw) || item.number || ["28%", "62", "50"][i]}</div>
-                <p className={`text-[7px] uppercase mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{renderLabel ? renderLabel(item.label, i + 1, "") : item.label}</p>
+                <p className={`text-[10px] uppercase mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{renderLabel ? renderLabel(item.label, i + 1, "") : item.label}</p>
               </div>
             ))}
           </div>
@@ -798,7 +838,7 @@ export const AppleTractionBoard: React.FC<{
             {proofBullets.map((bullet, i) => (
               <div key={i} className="flex items-center gap-1.5 py-0.5">
                 <Check className="h-3 w-3 shrink-0" style={{ color: APPLE_SYSTEM.green }} strokeWidth={2.5} />
-                <span className={`text-[8px] line-clamp-1 ${glass.bodyClass}`}>{bullet}</span>
+                <span className={`text-[11px] line-clamp-1 ${glass.bodyClass}`}>{bullet}</span>
               </div>
             ))}
           </div>
@@ -829,7 +869,7 @@ export const AppleTeamRow: React.FC<{
       <div className="shrink-0">
         <AppleChip glass={glass} accent>Команда · Secret sauce</AppleChip>
         {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-        {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
       </div>
       <div className="grid grid-cols-[1.4fr_0.8fr] gap-2 flex-1 min-h-0">
         <div className="flex flex-col gap-1.5 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
@@ -848,7 +888,7 @@ export const AppleTeamRow: React.FC<{
                 )}
                 <div className="flex-1 min-w-0">
                   <div className={`text-[10px] font-semibold ${glass.titleClass}`}>{m.name}</div>
-                  <div className={`text-[8px] ${glass.mutedClass}`}>{m.role}</div>
+                  <div className={`text-[11px] ${glass.mutedClass}`}>{m.role}</div>
                   <p className={`text-[7.5px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{renderBullet(parsed[i]?.detail || content[i] || m.role, i, "")}</p>
                 </div>
                 <ChevronRight className="h-3 w-3 opacity-25 shrink-0" />
@@ -860,8 +900,8 @@ export const AppleTeamRow: React.FC<{
           <AppleSectionLabel glass={glass}>Moat & Skills</AppleSectionLabel>
           {moatBullets.map((item, i) => (
             <div key={i} className="p-2 rounded-lg" style={{ background: glass.isLight ? "#F2F2F7" : APPLE_SYSTEM.secondaryGroupedDark }}>
-              <p className={`text-[9px] font-semibold ${glass.titleClass}`}>{item.label}</p>
-              <p className={`text-[8px] mt-0.5 line-clamp-2 ${glass.mutedClass}`}>{renderBullet(item.detail, i + 10, "")}</p>
+              <p className={`text-[12px] font-semibold ${glass.titleClass}`}>{item.label}</p>
+              <p className={`text-[11px] mt-0.5 line-clamp-2 ${glass.mutedClass}`}>{renderBullet(item.detail, i + 10, "")}</p>
             </div>
           ))}
           <div className="mt-auto flex flex-wrap gap-1">
@@ -903,12 +943,12 @@ export const AppleRoadmapTimeline: React.FC<{
         <div>
           <AppleChip glass={glass} accent>Go-to-market · 12 мес</AppleChip>
           {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+          {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
         <div className="flex items-center gap-1">
           {items.map((it, i) => (
             <React.Fragment key={i}>
-              <span className="h-5 px-1.5 rounded-full text-[7px] font-bold flex items-center" style={{ background: i === 0 ? APPLE_SYSTEM.blue : `${APPLE_SYSTEM.blue}22`, color: i === 0 ? "#fff" : APPLE_SYSTEM.blue }}>{it.label}</span>
+              <span className="h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center" style={{ background: i === 0 ? APPLE_SYSTEM.blue : `${APPLE_SYSTEM.blue}22`, color: i === 0 ? "#fff" : APPLE_SYSTEM.blue }}>{it.label}</span>
               {i < items.length - 1 && <ArrowRight className="h-2.5 w-2.5 opacity-25" />}
             </React.Fragment>
           ))}
@@ -918,13 +958,13 @@ export const AppleRoadmapTimeline: React.FC<{
         {items.map((item, i) => (
           <div key={i} className="p-2.5 flex flex-col min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
             <div className="flex items-center justify-between shrink-0">
-              <span className="text-[9px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{item.label}</span>
-              <span className="h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>{i + 1}</span>
+              <span className="text-[12px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{item.label}</span>
+              <span className="h-5 w-5 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>{i + 1}</span>
             </div>
             <h3 className={`text-[10px] font-semibold mt-1.5 line-clamp-2 ${glass.titleClass}`}>
               {renderLabel ? renderLabel(item.title || item.label, i, "") : item.title || item.label}
             </h3>
-            <p className={`text-[8px] mt-1 leading-snug line-clamp-4 flex-1 ${glass.mutedClass}`}>
+            <p className={`text-[11px] mt-1 leading-snug line-clamp-4 flex-1 ${glass.mutedClass}`}>
               {renderBullet ? renderBullet(item.detail || "", i, "") : item.detail}
             </p>
             <div className="mt-auto pt-1.5">
@@ -966,12 +1006,12 @@ export const AppleAskSlide: React.FC<{
       <div className="shrink-0">
         <AppleChip glass={glass} accent>Seed ask</AppleChip>
         {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-        {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
       </div>
       <div className="grid grid-cols-[1.15fr_1fr] gap-2 flex-1 min-h-0">
         <div className="p-4 flex flex-col justify-between min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
           <div>
-            <p className={`text-[8px] uppercase ${glass.mutedClass}`}>Раунд</p>
+            <p className={`text-[11px] uppercase ${glass.mutedClass}`}>Раунд</p>
             <div className="text-3xl sm:text-4xl font-bold tracking-tight mt-1" style={{ color: APPLE_SYSTEM.blue }}>{askValue}</div>
             <p className={`text-[10px] mt-2 leading-relaxed ${glass.mutedClass}`}>
               {renderBullet ? renderBullet(ask?.detail || "Seed round на масштабирование", 0, "") : ask?.detail || "Seed round на масштабирование"}
@@ -979,7 +1019,7 @@ export const AppleAskSlide: React.FC<{
           </div>
           <div className="pt-3 border-t" style={{ borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark }}>
             <p className={`text-[10px] font-semibold ${glass.titleClass}`}>{renderLabel ? renderLabel(goal?.label || "Цель", 2, "") : goal?.label || "Цель"}</p>
-            <p className={`text-[9px] mt-0.5 line-clamp-2 ${glass.mutedClass}`}>
+            <p className={`text-[12px] mt-0.5 line-clamp-2 ${glass.mutedClass}`}>
               {renderBullet ? renderBullet(goal?.detail || "3 города, unit-экономика в плюс", 2, "") : goal?.detail}
             </p>
           </div>
@@ -990,24 +1030,24 @@ export const AppleAskSlide: React.FC<{
             <div className="space-y-2 flex-1 flex flex-col justify-center">
               {splits.map((s) => (
                 <div key={s.label}>
-                  <div className="flex items-center justify-between text-[9px] mb-0.5">
+                  <div className="flex items-center justify-between text-[12px] mb-0.5">
                     <span className={glass.titleClass}>{s.label}</span>
                     <span className="font-bold" style={{ color: APPLE_SYSTEM.blue }}>{s.pct}</span>
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>
                     <div className="h-full rounded-full" style={{ width: s.width, background: APPLE_SYSTEM.blue }} />
                   </div>
-                  <p className={`text-[7px] mt-0.5 ${glass.mutedClass}`}>{s.detail}</p>
+                  <p className={`text-[10px] mt-0.5 ${glass.mutedClass}`}>{s.detail}</p>
                 </div>
               ))}
             </div>
           </div>
           <div className="px-3 py-2.5 flex items-center justify-between gap-2" style={appleGroupedStyle(glass.isLight, forExport)}>
             <div className="min-w-0">
-              <p className={`text-[7px] uppercase ${glass.mutedClass}`}>Контакт</p>
+              <p className={`text-[10px] uppercase ${glass.mutedClass}`}>Контакт</p>
               <p className={`text-[10px] font-semibold truncate ${glass.titleClass}`}>{contact?.detail || contact?.raw || "hello@company.com"}</p>
             </div>
-            <span className="text-[8px] font-semibold px-3 py-1.5 rounded-full text-white shrink-0" style={{ background: APPLE_SYSTEM.blue }}>
+            <span className="text-[11px] font-semibold px-3 py-1.5 rounded-full text-white shrink-0" style={{ background: APPLE_SYSTEM.blue }}>
               Связаться →
             </span>
           </div>
@@ -1036,7 +1076,7 @@ export const AppleVisionMap: React.FC<{
       <div className="shrink-0">
         <AppleChip glass={glass} accent>Vision · 5 лет</AppleChip>
         {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-        {subtitle && <p className={`text-[9px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
       </div>
       <div className="p-3 shrink-0 rounded-xl italic text-center" style={{ ...appleGroupedStyle(glass.isLight, forExport), borderLeft: `4px solid ${APPLE_SYSTEM.blue}` }}>
         <p className={`text-[10px] leading-relaxed ${glass.bodyClass}`}>«{northStar}»</p>
@@ -1045,14 +1085,14 @@ export const AppleVisionMap: React.FC<{
         {items.map((item, i) => (
           <div key={i} className="p-2.5 flex flex-col justify-between min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
             <div className="flex items-center justify-between">
-              <span className="text-[8px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{String(i + 1).padStart(2, "0")}</span>
+              <span className="text-[11px] font-bold" style={{ color: APPLE_SYSTEM.blue }}>{String(i + 1).padStart(2, "0")}</span>
               <Zap className="h-3 w-3 opacity-30" />
             </div>
             <div className="mt-1 flex-1 min-h-0">
               <h3 className={`text-[11px] font-semibold leading-tight ${glass.titleClass}`}>
                 {renderLabel ? renderLabel(item.label, i, "") : item.label}
               </h3>
-              <p className={`text-[8.5px] mt-1 leading-snug line-clamp-3 ${glass.mutedClass}`}>{renderBullet(item.detail, i, "")}</p>
+              <p className={`text-[12px] mt-1 leading-snug line-clamp-3 ${glass.mutedClass}`}>{renderBullet(item.detail, i, "")}</p>
             </div>
             {i === 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1">
