@@ -779,35 +779,264 @@ export const CreamMarketStack: React.FC<{
 };
 
 export const CreamCompareMatrix: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   content: string[];
   competitors?: SlideVisualData["competitors"];
+  compareFeatures?: SlideVisualData["compareFeatures"];
   parseBullet: (s: string) => { label: string; detail: string };
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, competitors, parseBullet, glass, forExport }) => {
-  const rows = competitors?.length
-    ? competitors.slice(0, 3).map((c) => ({ label: c.label, us: c.ours ? "✓" : "–", a: "–", b: c.ours ? "–" : "✓" }))
-    : parseItems(content, parseBullet)
-        .slice(0, 3)
-        .map((item, i) => ({ label: item.label, us: "✓", a: i === 0 ? "–" : "✓", b: i === 2 ? "✓" : "–" }));
+  editable?: boolean;
+  onCompetitorsChange?: (competitors: NonNullable<SlideVisualData["competitors"]>) => void;
+}> = ({
+  title,
+  subtitle,
+  content,
+  competitors,
+  compareFeatures,
+  parseBullet,
+  glass,
+  forExport,
+  editable,
+  onCompetitorsChange,
+}) => {
+  const players: NonNullable<SlideVisualData["competitors"]> = (() => {
+    if (competitors?.length) {
+      return competitors.slice(0, 4).map((c, i) => ({
+        ...c,
+        label: c.label || `Игрок ${i + 1}`,
+        detail: c.detail || "",
+        advantages: (c.advantages || []).slice(0, 4),
+        rating: typeof c.rating === "number" ? c.rating : c.ours ? 9 : 4 + i,
+      }));
+    }
+    return parseItems(content, parseBullet)
+      .slice(0, 4)
+      .map((item, i, arr) => {
+        const ours = /наш|мы|nordflow|отлич/i.test(`${item.label} ${item.detail}`) || i === arr.length - 1;
+        return {
+          label: item.label,
+          detail: item.detail,
+          ours,
+          rating: ours ? 9 : 4 + i,
+          advantages: item.detail
+            .split(/[,;•]/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, 3),
+        };
+      });
+  })();
+
+  const cols = Math.min(Math.max(players.length, 2), 4);
+
+  const featurePool = [
+    "Почасовая аренда",
+    "Онлайн-бронь",
+    "Страховка / SLA",
+    "Рейтинг",
+    "Ассортимент",
+    "Аналитика",
+    "B2B контракты",
+  ];
+
+  const features =
+    compareFeatures?.length
+      ? compareFeatures.slice(0, 7).map((f) => ({
+          label: f.label,
+          scores: players.map((_, i) => f.scores[i] ?? false),
+        }))
+      : featurePool.slice(0, 6).map((label, fi) => ({
+          label,
+          scores: players.map((p) => {
+            if (p.ours) return true;
+            if (fi === 0) return "partial" as const;
+            return fi % (players.indexOf(p) + 2) === 0 ? ("partial" as const) : false;
+          }),
+        }));
+
+  const scoreNode = (value: boolean | "partial") => {
+    if (value === true) {
+      return (
+        <span
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-black"
+          style={{ background: alpha(glass.success, "28"), color: glass.success }}
+        >
+          ✓
+        </span>
+      );
+    }
+    if (value === "partial") {
+      return (
+        <span
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
+          style={{ background: alpha(glass.warning, "28"), color: glass.warning }}
+        >
+          ~
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[12px] text-white/25 bg-white/[0.04]">
+        ✕
+      </span>
+    );
+  };
 
   return (
-    <div className={`${creamCardClass} overflow-hidden my-auto font-[Manrope,sans-serif]`} style={creamCardStyle(forExport)}>
-      <div className="grid grid-cols-4 text-[8px]">
-        <div className="p-3 font-mono uppercase tracking-wider text-white/35">Критерий</div>
-        <div className="p-3 font-semibold text-center border-l border-white/10 bg-white/[0.05]">Мы</div>
-        <div className="p-3 text-center border-l border-white/10 text-white/45">Конк. A</div>
-        <div className="p-3 text-center border-l border-white/10 text-white/45">Конк. B</div>
-        {rows.map((row, i) => (
-          <React.Fragment key={i}>
-            <div className="p-3 border-t border-white/10 text-white/55">{row.label}</div>
-            <div className="p-3 text-center border-t border-l border-white/10 bg-white/[0.05]" style={{ color: glass.accent }}>
-              {row.us}
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Конкуренция · почему мы</CreamChip>
+          {title && (
+            <h2
+              className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        </div>
+        <div className="flex gap-1.5 text-[8px] items-center">
+          <span className="flex items-center gap-1 text-white/55">
+            <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px]" style={{ background: alpha(glass.success, "28"), color: glass.success }}>✓</span>
+            есть
+          </span>
+          <span className="flex items-center gap-1 text-white/55">
+            <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px]" style={{ background: alpha(glass.warning, "28"), color: glass.warning }}>~</span>
+            частично
+          </span>
+          <span className="flex items-center gap-1 text-white/45">
+            <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] bg-white/[0.06]">✕</span>
+            нет
+          </span>
+        </div>
+      </div>
+
+      {/* Player cards */}
+      <div className="grid gap-2 shrink-0" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {players.map((p, i) => {
+          const rating = p.rating ?? (p.ours ? 9 : 5);
+          return (
+            <div
+              key={i}
+              className={`${creamCardClass} p-2.5 flex flex-col gap-1.5 min-h-0`}
+              style={p.ours ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+            >
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!editable || forExport}
+                  onClick={() => {
+                    if (!editable || forExport) return;
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = () => {
+                      const file = input.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result !== "string") return;
+                        const next = players.map((row, idx) => (idx === i ? { ...row, logo: reader.result as string } : row));
+                        onCompetitorsChange?.(next);
+                      };
+                      reader.readAsDataURL(file);
+                    };
+                    input.click();
+                  }}
+                  className={`h-10 w-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border ${
+                    editable && !forExport ? "cursor-pointer" : "cursor-default"
+                  }`}
+                  style={{
+                    borderColor: p.ours ? alpha(glass.accent, "55") : "rgba(255,255,255,0.12)",
+                    background: p.ours ? alpha(glass.accent, "22") : "rgba(255,255,255,0.05)",
+                  }}
+                  title={editable ? "Загрузить лого" : p.label}
+                >
+                  {p.logo ? (
+                    <img src={p.logo} alt={p.label} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className={`text-sm font-black ${glass.titleClass}`}>{(p.label || "?").charAt(0)}</span>
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <p className={`text-[11px] font-bold truncate ${glass.titleClass}`}>{p.label}</p>
+                    {p.ours && (
+                      <span
+                        className="text-[7px] uppercase font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: glass.accent, color: "#1a120c" }}
+                      >
+                        мы
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[8px] line-clamp-1 ${glass.mutedClass}`}>{p.tagline || p.detail}</p>
+                </div>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden bg-white/8">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${rating * 10}%`, background: p.ours ? glass.accent : "rgba(255,255,255,0.25)" }}
+                />
+              </div>
+              {(p.advantages || []).slice(0, 2).map((adv, ai) => (
+                <p key={ai} className="text-[8px] text-white/65 line-clamp-1 flex gap-1">
+                  <span style={{ color: p.ours ? glass.success : "rgba(255,255,255,0.3)" }}>{p.ours ? "✓" : "·"}</span>
+                  {adv}
+                </p>
+              ))}
             </div>
-            <div className="p-3 text-center border-t border-l border-white/10 text-white/30">{row.a}</div>
-            <div className="p-3 text-center border-t border-l border-white/10 text-white/30">{row.b}</div>
-          </React.Fragment>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* Feature matrix */}
+      <div className={`${creamCardClass} flex-1 min-h-0 overflow-hidden flex flex-col`} style={creamCardStyle(forExport)}>
+        <div
+          className="grid gap-0 px-3 py-2.5 border-b border-white/10 shrink-0 items-center"
+          style={{
+            gridTemplateColumns: `minmax(120px, 1.4fr) repeat(${cols}, minmax(0, 1fr))`,
+            background: "rgba(255,255,255,0.04)",
+          }}
+        >
+          <span className="text-[9px] uppercase tracking-[0.14em] font-bold" style={{ color: glass.accent }}>
+            Преимущество
+          </span>
+          {players.map((p, i) => (
+            <span
+              key={i}
+              className={`text-[10px] font-bold text-center truncate px-1 ${p.ours ? "" : "text-white/50"}`}
+              style={p.ours ? { color: glass.accent } : undefined}
+            >
+              {p.label}
+            </span>
+          ))}
+        </div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {features.map((feat, fi) => (
+            <div
+              key={fi}
+              className="grid gap-0 px-3 py-1.5 flex-1 items-center min-h-0 border-b border-white/[0.06] last:border-b-0"
+              style={{
+                gridTemplateColumns: `minmax(120px, 1.4fr) repeat(${cols}, minmax(0, 1fr))`,
+                background: fi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)",
+              }}
+            >
+              <span className={`text-[11px] font-medium leading-snug line-clamp-2 pr-2 ${glass.bodyClass}`}>
+                {feat.label}
+              </span>
+              {players.map((_, pi) => (
+                <div key={pi} className="flex justify-center">
+                  {scoreNode(feat.scores[pi] ?? false)}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

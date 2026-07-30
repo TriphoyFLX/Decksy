@@ -2387,7 +2387,20 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "competition" &&
-              (variant === "positioning" ? (
+              (cream ? (
+                <CreamCompareMatrix
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  competitors={slide.visualData?.competitors}
+                  compareFeatures={slide.visualData?.compareFeatures}
+                  parseBullet={parseBullet}
+                  glass={glass}
+                  forExport={forExport}
+                  editable={editable}
+                  onCompetitorsChange={updateCompetitors}
+                />
+              ) : variant === "positioning" ? (
                 <ApexPositioningMap
                   content={content}
                   competitors={slide.visualData?.competitors}

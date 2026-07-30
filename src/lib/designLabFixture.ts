@@ -111,8 +111,8 @@ function buildDemoSlides(): Slide[] {
     },
     {
       type: "competition",
-      title: "Конкуренты",
-      subtitle: "Почему мы",
+      title: "Почему побеждаем",
+      subtitle: "Сравнение с объявлениями, парками и офлайн-сетями",
       sectionLabel: "05 · Конкуренция",
       content: [
         "Авито / объявления: Нет гарантий, цены хаотичны, нет страховки",
