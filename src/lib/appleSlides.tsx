@@ -495,15 +495,31 @@ export const AppleMarketStack: React.FC<{
     const fromMetrics = metrics?.[i];
     const fromContent = parsed.find((p) => p.label.toUpperCase() === label) || parsed[i];
     const value = fromMetrics?.value || (fromContent ? extractNumber(fromContent.raw) || fromContent.number : "") || ["10 млрд ₽", "1.2 млрд ₽", "80 млн ₽"][i];
-    const detail = fromContent?.detail?.replace(value, "").replace(/^[\s—\-–:]+/, "").trim() || ["Рынок аренды", "B2B подрядчики", "Цель выручки"][i];
+    const detail = fromContent?.detail?.replace(value, "").replace(/^[\s—\-–:]+/, "").trim() || [
+      "весь рынок аренды спецтехники в РФ",
+      "города-миллионники, B2B подрядчики",
+      "пилот в 3 городах за 24 месяца",
+    ][i];
     return { label: fromMetrics?.label || label, value, detail, width: widths[i], scope: scopes[i], highlight: i === 2 };
   });
   const growthItem = parsed.find((p) => /рост|cagr|yoy|\+/i.test(`${p.label} ${p.detail}`)) || parsed[3];
   const growthValue = (growthItem && (extractNumber(growthItem.raw) || growthItem.number)) || "+12% YoY";
   const drivers = [
-    { tag: "CAGR", title: growthValue, text: growthItem?.detail || "Рынок растёт на фоне спроса" },
-    { tag: "ФОКУС", title: "B2B сегмент", text: metricItems[1]?.detail || "Целевой сегмент" },
-    { tag: "WEDGE", title: metricItems[2]?.value, text: metricItems[2]?.detail || "Пилот за 24 месяца" },
+    {
+      tag: "CAGR",
+      title: growthValue,
+      text: growthItem?.detail || "удорожание техники и нехватка парка",
+    },
+    {
+      tag: "ФОКУС",
+      title: "B2B подрядчики",
+      text: metricItems[1]?.detail || "города-миллионники, сезонные и разовые работы",
+    },
+    {
+      tag: "WEDGE",
+      title: metricItems[2]?.value || "80 млн ₽",
+      text: metricItems[2]?.detail || "пилот в 3 городах за 24 месяца",
+    },
   ];
 
   return (
@@ -617,92 +633,240 @@ export const AppleCompareMatrix: React.FC<{
   glass: GlassSurface;
   forExport?: boolean;
 }> = ({ title, subtitle, content, competitors, compareFeatures, parseBullet, glass, forExport }) => {
+  const fallbackAdvantages = [
+    ["Большой трафик", "Низкий порог входа"],
+    ["Локальный парк", "Знание района"],
+    ["Офлайн-сеть", "Склад и логистика"],
+    ["Почасовая бронь", "Страховка и SLA"],
+  ];
   const players: NonNullable<SlideVisualData["competitors"]> = (() => {
     if (competitors?.length) {
-      return competitors.slice(0, 4).map((c, i) => ({
-        ...c,
-        label: c.label || `Игрок ${i + 1}`,
-        detail: c.detail || "",
-        advantages: (c.advantages || []).slice(0, 3),
-        rating: typeof c.rating === "number" ? c.rating : c.ours ? 9 : 4 + i,
-      }));
+      return competitors.slice(0, 4).map((c, i) => {
+        const adv = (c.advantages || []).filter(Boolean).slice(0, 3);
+        return {
+          ...c,
+          label: c.label || `Игрок ${i + 1}`,
+          detail: c.detail || "",
+          advantages: adv.length ? adv : fallbackAdvantages[i] || fallbackAdvantages[0],
+          rating: typeof c.rating === "number" ? c.rating : c.ours ? 9 : 4 + i,
+        };
+      });
     }
     return parseItems(content, parseBullet).slice(0, 4).map((item, i, arr) => {
-      const ours = /наш|мы|отлич/i.test(`${item.label} ${item.detail}`) || i === arr.length - 1;
+      const ours = /наш|мы|отлич|nordflow/i.test(`${item.label} ${item.detail}`) || i === arr.length - 1;
+      const fromDetail = item.detail
+        .split(/[,;•]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 2);
       return {
         label: item.label,
         detail: item.detail,
         ours,
         rating: ours ? 9 : 4 + i,
-        advantages: item.detail.split(/[,;•]/).map((s) => s.trim()).filter(Boolean).slice(0, 2),
+        advantages: fromDetail.length ? fromDetail : fallbackAdvantages[i] || fallbackAdvantages[0],
       };
     });
   })();
+  while (players.length < 4) {
+    const i = players.length;
+    players.push({
+      label: ["Авито", "Локальный парк", "СтройПрокат+", "NordFlow"][i],
+      detail: "",
+      ours: i === 3,
+      rating: i === 3 ? 9 : 4 + i,
+      advantages: fallbackAdvantages[i],
+    });
+  }
   const cols = Math.min(Math.max(players.length, 2), 4);
-  const featurePool = ["Почасовая аренда", "Онлайн-бронь", "Страховка / SLA", "Рейтинг", "Ассортимент", "B2B контракты"];
+  const featurePool = [
+    "Почасовая аренда",
+    "Онлайн-бронь и оплата",
+    "Страховка / SLA",
+    "Рейтинг и отзывы",
+    "Широкий ассортимент",
+    "Данные / аналитика",
+  ];
   const features =
     compareFeatures?.length
       ? compareFeatures.slice(0, 6).map((f) => ({ label: f.label, scores: players.map((_, i) => f.scores[i] ?? false) }))
-      : featurePool.slice(0, 5).map((label, fi) => ({
+      : featurePool.map((label, fi) => ({
           label,
-          scores: players.map((p) => (p.ours ? true : fi % (players.indexOf(p) + 2) === 0 ? ("partial" as const) : false)),
+          scores: players.map((p, pi) => {
+            if (p.ours) return true;
+            if (fi === 0) return false;
+            if (fi === 1 && pi === 0) return "partial" as const;
+            if (fi === 2 && pi === 2) return "partial" as const;
+            if (fi === 3 && pi <= 1) return true;
+            if (fi === 4 && pi >= 1) return true;
+            return false;
+          }),
         }));
 
   const scoreNode = (value: boolean | "partial") => {
-    if (value === true) return <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: `${APPLE_SYSTEM.green}22`, color: APPLE_SYSTEM.green }}>✓</span>;
-    if (value === "partial") return <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: `${APPLE_SYSTEM.orange}22`, color: APPLE_SYSTEM.orange }}>~</span>;
-    return <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] opacity-40" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>✕</span>;
+    if (value === true)
+      return (
+        <span
+          className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-[14px] sm:text-[15px] font-bold"
+          style={{ background: `${APPLE_SYSTEM.green}22`, color: APPLE_SYSTEM.green }}
+        >
+          ✓
+        </span>
+      );
+    if (value === "partial")
+      return (
+        <span
+          className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-[14px] sm:text-[15px] font-bold"
+          style={{ background: `${APPLE_SYSTEM.orange}22`, color: APPLE_SYSTEM.orange }}
+        >
+          ~
+        </span>
+      );
+    return (
+      <span
+        className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-[13px] font-bold"
+        style={{
+          background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark,
+          color: glass.isLight ? "rgba(60,60,67,0.45)" : "rgba(235,235,245,0.35)",
+        }}
+      >
+        ✕
+      </span>
+    );
   };
 
   return (
-    <div className="flex flex-col gap-2 my-auto min-h-0 flex-1 overflow-hidden" style={fontStyle}>
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden" style={fontStyle}>
       <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <AppleChip glass={glass} accent>Конкуренция</AppleChip>
-          {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-          {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        <div className="min-w-0">
+          <AppleChip glass={glass} accent>
+            Конкуренция
+          </AppleChip>
+          {title && (
+            <h2
+              className={`font-bold tracking-tight mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.4rem" : "clamp(1.1rem, 2.6vw, 1.45rem)" }}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && (
+            <p className={`text-[13px] sm:text-[14px] mt-1 line-clamp-2 leading-snug ${glass.mutedClass}`}>{subtitle}</p>
+          )}
         </div>
-        <div className="flex gap-2 text-[10px] items-center">
-          <span className="flex items-center gap-1"><span style={{ color: APPLE_SYSTEM.green }}>✓</span> есть</span>
-          <span className="flex items-center gap-1"><span style={{ color: APPLE_SYSTEM.orange }}>~</span> частично</span>
+        <div className={`flex gap-3 text-[12px] sm:text-[13px] items-center font-medium ${glass.bodyClass}`}>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px]" style={{ background: `${APPLE_SYSTEM.green}22`, color: APPLE_SYSTEM.green }}>
+              ✓
+            </span>
+            есть
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px]" style={{ background: `${APPLE_SYSTEM.orange}22`, color: APPLE_SYSTEM.orange }}>
+              ~
+            </span>
+            частично
+          </span>
         </div>
       </div>
-      <div className="grid gap-1.5 shrink-0" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+
+      <div className="grid gap-2 shrink-0" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {players.map((p, i) => (
-          <div key={i} className="p-2 flex flex-col gap-1 min-h-0" style={{ ...appleGroupedStyle(glass.isLight, forExport), border: p.ours ? `2px solid ${APPLE_SYSTEM.blue}` : undefined }}>
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm" style={{ background: p.ours ? `${APPLE_SYSTEM.blue}22` : glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark, color: p.ours ? APPLE_SYSTEM.blue : undefined }}>
+          <div
+            key={i}
+            className="p-3 flex flex-col gap-2 min-h-[108px]"
+            style={{
+              ...appleGroupedStyle(glass.isLight, forExport),
+              border: p.ours ? `2px solid ${APPLE_SYSTEM.blue}` : undefined,
+              boxShadow: p.ours ? "0 8px 24px rgba(0,122,255,0.12)" : appleGroupedStyle(glass.isLight, forExport).boxShadow,
+            }}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-base"
+                style={{
+                  background: p.ours ? APPLE_SYSTEM.blue : glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark,
+                  color: p.ours ? "#fff" : glass.isLight ? "#000" : "#fff",
+                }}
+              >
                 {(p.label || "?").charAt(0)}
               </div>
-              <div className="min-w-0">
-                <p className={`text-[12px] font-semibold truncate ${glass.titleClass}`}>{p.label}</p>
-                {p.ours && <span className="text-[6px] uppercase font-bold px-1 py-0.5 rounded" style={{ background: APPLE_SYSTEM.blue, color: "#fff" }}>мы</span>}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p className={`text-[13px] sm:text-[14px] font-bold truncate ${glass.titleClass}`}>{p.label}</p>
+                  {p.ours && (
+                    <span
+                      className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0"
+                      style={{ background: APPLE_SYSTEM.blue, color: "#fff" }}
+                    >
+                      мы
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="mt-1.5 h-1.5 rounded-full overflow-hidden"
+                  style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${(p.rating ?? 5) * 10}%`, background: p.ours ? APPLE_SYSTEM.blue : APPLE_SYSTEM.gray }}
+                  />
+                </div>
               </div>
             </div>
-            <div className="h-1 rounded-full overflow-hidden" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark }}>
-              <div className="h-full rounded-full" style={{ width: `${(p.rating ?? 5) * 10}%`, background: p.ours ? APPLE_SYSTEM.blue : APPLE_SYSTEM.gray }} />
+            <div className="space-y-1 mt-auto">
+              {(p.advantages || []).slice(0, 2).map((adv, ai) => (
+                <p key={ai} className={`text-[12px] sm:text-[13px] leading-snug line-clamp-1 ${glass.bodyClass}`}>
+                  <span className="font-bold mr-1" style={{ color: p.ours ? APPLE_SYSTEM.green : APPLE_SYSTEM.blue }}>
+                    {p.ours ? "✓" : "·"}
+                  </span>
+                  {adv}
+                </p>
+              ))}
             </div>
-            {(p.advantages || []).slice(0, 2).map((adv, ai) => (
-              <p key={ai} className={`text-[10px] line-clamp-1 ${glass.mutedClass}`}>
-                <span style={{ color: p.ours ? APPLE_SYSTEM.green : APPLE_SYSTEM.gray }}>{p.ours ? "✓" : "·"}</span> {adv}
-              </p>
-            ))}
           </div>
         ))}
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col rounded-xl" style={appleGroupedStyle(glass.isLight, forExport)}>
-        <div className="grid px-2.5 py-2 shrink-0 items-center border-b" style={{ gridTemplateColumns: `minmax(90px, 1.2fr) repeat(${cols}, minmax(0, 1fr))`, borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark }}>
-          <span className="text-[11px] uppercase font-semibold" style={{ color: APPLE_SYSTEM.blue }}>Критерий</span>
+
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col rounded-2xl" style={appleGroupedStyle(glass.isLight, forExport)}>
+        <div
+          className="grid px-3.5 py-2.5 shrink-0 items-center border-b"
+          style={{
+            gridTemplateColumns: `minmax(140px, 1.35fr) repeat(${cols}, minmax(0, 1fr))`,
+            borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark,
+          }}
+        >
+          <span className="text-[12px] sm:text-[13px] uppercase tracking-wide font-bold" style={{ color: APPLE_SYSTEM.blue }}>
+            Критерий
+          </span>
           {players.map((p, i) => (
-            <span key={i} className={`text-[11px] font-semibold text-center truncate ${p.ours ? "" : glass.mutedClass}`} style={p.ours ? { color: APPLE_SYSTEM.blue } : undefined}>{p.label}</span>
+            <span
+              key={i}
+              className={`text-[12px] sm:text-[13px] font-bold text-center truncate px-1 ${p.ours ? "" : glass.bodyClass}`}
+              style={p.ours ? { color: APPLE_SYSTEM.blue } : undefined}
+            >
+              {p.label}
+            </span>
           ))}
         </div>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {features.map((feat, fi) => (
-            <div key={fi} className="grid px-2.5 py-1 flex-1 items-center min-h-0 border-b last:border-b-0" style={{ gridTemplateColumns: `minmax(90px, 1.2fr) repeat(${cols}, minmax(0, 1fr))`, borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark, background: fi % 2 ? (glass.isLight ? "#FAFAFA" : "#1C1C1E") : undefined }}>
-              <span className={`text-[11px] font-medium line-clamp-2 pr-1 ${glass.bodyClass}`}>{feat.label}</span>
+            <div
+              key={fi}
+              className="grid px-3.5 flex-1 items-center min-h-0 border-b last:border-b-0"
+              style={{
+                gridTemplateColumns: `minmax(140px, 1.35fr) repeat(${cols}, minmax(0, 1fr))`,
+                borderColor: glass.isLight ? APPLE_SYSTEM.separatorLight : APPLE_SYSTEM.separatorDark,
+                background: fi % 2 ? (glass.isLight ? "#F8F8FA" : "#1C1C1E") : undefined,
+              }}
+            >
+              <span className={`text-[13px] sm:text-[14px] font-semibold leading-snug line-clamp-2 pr-2 ${glass.titleClass}`}>
+                {feat.label}
+              </span>
               {players.map((_, pi) => (
-                <div key={pi} className="flex justify-center">{scoreNode(feat.scores[pi] ?? false)}</div>
+                <div key={pi} className="flex justify-center py-1">
+                  {scoreNode(feat.scores[pi] ?? false)}
+                </div>
               ))}
             </div>
           ))}
