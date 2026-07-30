@@ -1023,54 +1023,123 @@ export const AppleTeamRow: React.FC<{
   forExport?: boolean;
 }> = ({ title, subtitle, content, teamMembers, parseBullet, renderBullet, glass, forExport }) => {
   const parsed = parseItems(content, parseBullet);
-  const members = (teamMembers?.length ? teamMembers : parsed.map((item) => ({ name: item.label, role: "Role", image: "" }))).slice(0, 3);
-  while (members.length < 3) members.push({ name: `Участник ${members.length + 1}`, role: "Role", image: "" });
-  const moatItems = parsed.slice(members.length, members.length + 3);
-  const moatBullets = moatItems.length ? moatItems : [{ label: "Moat", detail: "Сеть поставщиков и data flywheel" }, { label: "Skills", detail: "Ops + Product + GTM" }, { label: "Edge", detail: "Скорость выхода на рынок" }];
+  const fallbackBios = [
+    "8 лет в аренде и логистике B2B — знает unit-экономику парков изнутри",
+    "Ex-marketplace, 2 выхода в продукт — строит платформу и data-слой",
+    "Сеть из 12 парков уже в пилоте — операционка и onboarding supply",
+  ];
+  const fallbackNames = ["Алексей Петров", "Мария Ковалёва", "Игорь Семёнов"];
+  const fallbackRoles = ["CEO", "CTO", "Ops"];
+  const skillSets = [
+    ["Аренда", "Логистика", "B2B"],
+    ["Marketplace", "Product", "Exits"],
+    ["Парки", "Ops", "SLA"],
+  ];
+
+  const members = (
+    teamMembers?.length
+      ? teamMembers
+      : parsed.map((item, i) => ({
+          name: item.label || fallbackNames[i],
+          role: fallbackRoles[i] || "Role",
+          image: "",
+        }))
+  ).slice(0, 3);
+  while (members.length < 3) {
+    const i = members.length;
+    members.push({ name: fallbackNames[i], role: fallbackRoles[i], image: "" });
+  }
+
+  const resolveBio = (i: number) => {
+    const byRole = parsed.find((p) => new RegExp(members[i].role || "", "i").test(`${p.label} ${p.raw}`));
+    return byRole?.detail || parsed[i]?.detail || fallbackBios[i];
+  };
+
+  const moatBullets = [
+    { label: "Moat", detail: parsed[3]?.detail || "Сеть поставщиков и data flywheel" },
+    { label: "Skills", detail: "Ops + Product + GTM в одной команде" },
+    { label: "Edge", detail: "Скорость выхода на рынок и SLA" },
+  ];
 
   return (
-    <div className="flex flex-col gap-2 my-auto min-h-0 flex-1 overflow-hidden" style={fontStyle}>
-      <div className="shrink-0">
-        <AppleChip glass={glass} accent>Команда · Secret sauce</AppleChip>
-        {title && <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-2 ${glass.titleClass}`}>{title}</h2>}
-        {subtitle && <p className={`text-[12px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
-      </div>
-      <div className="grid grid-cols-[1.4fr_0.8fr] gap-2 flex-1 min-h-0">
-        <div className="flex flex-col gap-1.5 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
-          {members.map((m, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <div style={{ ...appleSeparatorStyle(glass.isLight), marginLeft: 16 }} />}
-              <div className="flex items-center gap-2.5 px-3 py-2 min-h-[48px]">
-                {m.image ? (
-                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
-                    <PremiumImage src={m.image} variant="thumb" className="!w-full !h-full !rounded-full" />
-                  </div>
-                ) : (
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-sm" style={{ background: glass.isLight ? "#E5E5EA" : APPLE_SYSTEM.secondaryGroupedDark, color: APPLE_SYSTEM.blue }}>
-                    {(m.name || "?").charAt(0)}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[10px] font-semibold ${glass.titleClass}`}>{m.name}</div>
-                  <div className={`text-[11px] ${glass.mutedClass}`}>{m.role}</div>
-                  <p className={`text-[7.5px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{renderBullet(parsed[i]?.detail || content[i] || m.role, i, "")}</p>
-                </div>
-                <ChevronRight className="h-3 w-3 opacity-25 shrink-0" />
-              </div>
-            </React.Fragment>
-          ))}
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden" style={fontStyle}>
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <AppleChip glass={glass} accent>
+            Команда · Secret sauce
+          </AppleChip>
+          {title && (
+            <h2
+              className={`font-bold tracking-tight mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.4rem" : "clamp(1.1rem, 2.6vw, 1.45rem)" }}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[13px] mt-1 line-clamp-2 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
-        <div className="p-2.5 flex flex-col gap-2 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
-          <AppleSectionLabel glass={glass}>Moat & Skills</AppleSectionLabel>
-          {moatBullets.map((item, i) => (
-            <div key={i} className="p-2 rounded-lg" style={{ background: glass.isLight ? "#F2F2F7" : APPLE_SYSTEM.secondaryGroupedDark }}>
-              <p className={`text-[12px] font-semibold ${glass.titleClass}`}>{item.label}</p>
-              <p className={`text-[11px] mt-0.5 line-clamp-2 ${glass.mutedClass}`}>{renderBullet(item.detail, i + 10, "")}</p>
+      </div>
+
+      <div className="grid grid-cols-[1.35fr_0.85fr] gap-2.5 flex-1 min-h-0">
+        <div className="grid grid-cols-3 gap-2 min-h-0">
+          {members.map((m, i) => (
+            <div key={i} className="p-3 flex flex-col min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
+              <div
+                className="h-[38%] min-h-[72px] rounded-xl flex items-center justify-center shrink-0 mb-2.5 relative overflow-hidden"
+                style={{
+                  background: glass.isLight
+                    ? `linear-gradient(160deg, ${APPLE_SYSTEM.blue}22, #F2F2F7)`
+                    : `linear-gradient(160deg, ${APPLE_SYSTEM.blue}33, #2C2C2E)`,
+                }}
+              >
+                {m.image ? (
+                  <PremiumImage src={m.image} variant="thumb" className="!absolute !inset-0 !min-h-full object-cover" />
+                ) : (
+                  <span className="text-4xl font-bold" style={{ color: APPLE_SYSTEM.blue }}>
+                    {(m.name || "?").charAt(0)}
+                  </span>
+                )}
+                <span
+                  className="absolute bottom-1.5 left-1.5 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                  style={{ background: APPLE_SYSTEM.blue, color: "#fff" }}
+                >
+                  {m.role}
+                </span>
+              </div>
+              <p className={`text-[14px] font-bold leading-tight ${glass.titleClass}`}>{m.name}</p>
+              <p className="text-[12px] mt-1 font-semibold" style={{ color: APPLE_SYSTEM.blue }}>
+                {m.role}
+              </p>
+              <p className={`text-[12px] sm:text-[13px] mt-2 leading-snug line-clamp-4 flex-1 ${glass.bodyClass}`}>
+                {renderBullet(resolveBio(i), i, "")}
+              </p>
+              <div className="mt-auto pt-2 flex flex-wrap gap-1">
+                {(skillSets[i] || skillSets[0]).map((tag) => (
+                  <AppleChip key={tag} glass={glass}>
+                    {tag}
+                  </AppleChip>
+                ))}
+              </div>
             </div>
           ))}
-          <div className="mt-auto flex flex-wrap gap-1">
-            {["Ops", "Product", "Network", "Data"].map((tag) => (
-              <AppleChip key={tag} glass={glass} accent>{tag}</AppleChip>
+        </div>
+
+        <div className="p-3.5 flex flex-col gap-2.5 min-h-0" style={appleGroupedStyle(glass.isLight, forExport)}>
+          <p className={`text-[13px] font-bold ${glass.titleClass}`}>Moat & Skills</p>
+          <div className="flex-1 min-h-0 flex flex-col justify-between gap-2">
+            {moatBullets.map((item, i) => (
+              <div
+                key={i}
+                className="p-2.5 rounded-xl flex-1 min-h-0"
+                style={{ background: glass.isLight ? "#F2F2F7" : APPLE_SYSTEM.secondaryGroupedDark }}
+              >
+                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: APPLE_SYSTEM.blue }}>
+                  {item.label}
+                </p>
+                <p className={`text-[13px] mt-1 leading-snug line-clamp-3 ${glass.bodyClass}`}>
+                  {renderBullet(item.detail, i + 10, "")}
+                </p>
+              </div>
             ))}
           </div>
         </div>

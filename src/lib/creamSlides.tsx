@@ -1263,52 +1263,127 @@ export const CreamTeamRow: React.FC<{
   forExport?: boolean;
 }> = ({ title, subtitle, content, teamMembers, parseBullet, renderBullet, glass, forExport }) => {
   const parsed = parseItems(content, parseBullet);
-  const members = (teamMembers?.length ? teamMembers : parsed.map((item) => ({ name: item.label, role: "Role", image: "" }))).slice(0, 4);
+  const skillSets = [
+    ["Аренда", "Логистика", "B2B"],
+    ["Marketplace", "Product", "Exits"],
+    ["Парки", "Ops", "SLA"],
+    ["Сеть", "Capital", "Advisor"],
+  ];
+  const fallbackBios = [
+    "8 лет в аренде и логистике B2B — знает unit-экономику парков изнутри",
+    "Ex-marketplace, 2 выхода в продукт — строит платформу и data-слой",
+    "Сеть из 12 парков уже в пилоте — операционка и onboarding supply",
+    "Партнёр строительного холдинга — доступ к корпоративным контрактам",
+  ];
+  const fallbackNames = ["Алексей Петров", "Мария Ковалёва", "Игорь Семёнов", "Advisor"];
+  const fallbackRoles = ["CEO", "CTO", "Ops", "Advisor"];
+
+  const members = (
+    teamMembers?.length
+      ? teamMembers
+      : parsed.map((item, i) => ({
+          name: item.label || fallbackNames[i] || `Участник ${i + 1}`,
+          role: item.number || fallbackRoles[i] || "Role",
+          image: "",
+        }))
+  ).slice(0, 3);
+
+  while (members.length < 3) {
+    const i = members.length;
+    members.push({ name: fallbackNames[i], role: fallbackRoles[i], image: "" });
+  }
+
+  const resolveBio = (i: number) => {
+    const byRole = parsed.find((p) =>
+      new RegExp(members[i].role || "", "i").test(`${p.label} ${p.raw}`),
+    );
+    const byIndex = parsed[i];
+    return (
+      byRole?.detail ||
+      byIndex?.detail ||
+      (content[i] && !/^ceo|cto|ops|advisor$/i.test(content[i]) ? content[i] : "") ||
+      fallbackBios[i]
+    );
+  };
+
+  const advisor = parsed.find((p) => /advisor|советник|партн/i.test(`${p.label} ${p.detail} ${p.raw}`));
 
   return (
     <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
-      <div className="shrink-0">
-        <CreamChip glass={glass}>Команда</CreamChip>
-        {title && (
-          <h2 className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`} style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}>
-            {title}
-          </h2>
-        )}
-        {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Команда · Secret sauce</CreamChip>
+          {title && (
+            <h2
+              className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`}
+              style={{ fontSize: forExport ? "1.4rem" : "clamp(1.1rem, 2.6vw, 1.45rem)" }}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[12px] sm:text-[13px] mt-1 line-clamp-2 ${glass.mutedClass}`}>{subtitle}</p>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {["Ops", "Product", "Network"].map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full"
+              style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-2.5 flex-1 min-h-0" style={{ gridTemplateColumns: `repeat(${Math.max(members.length, 1)}, minmax(0, 1fr))` }}>
+      <div className="grid grid-cols-3 gap-2.5 flex-1 min-h-0">
         {members.map((m, i) => {
-          const bio = parsed[i]?.detail || content[i] || m.role;
+          const bio = resolveBio(i);
           const initial = (m.name || "?").trim().charAt(0).toUpperCase();
+          const skills = skillSets[i] || skillSets[0];
           return (
-            <div key={i} className={`${tileClass(glass)} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}>
+            <div
+              key={i}
+              className={`${tileClass(glass)} p-3.5 flex flex-col min-h-0 h-full`}
+              style={i === 0 ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}
+            >
               <div
-                className="relative rounded-2xl h-20 shrink-0 mb-3 overflow-hidden flex items-center justify-center"
+                className="relative rounded-2xl h-[42%] min-h-[88px] shrink-0 mb-3 overflow-hidden flex items-center justify-center"
                 style={{
-                  background: `linear-gradient(145deg, ${alpha(glass.accent, "33")}, rgba(255,255,255,0.05) 60%, ${alpha(glass.secondary || glass.accent, "22")})`,
+                  background: `linear-gradient(145deg, ${alpha(glass.accent, "40")}, rgba(255,255,255,0.06) 55%, ${alpha(glass.secondary || glass.accent, "28")})`,
                 }}
               >
                 {m.image ? (
                   <PremiumImage src={m.image} variant="thumb" className="!absolute !inset-0 !min-h-full !rounded-2xl object-cover" />
                 ) : (
-                  <span className="text-3xl font-black text-white/80">{initial}</span>
+                  <span className="text-5xl font-black tracking-tight" style={{ color: "rgba(255,255,255,0.88)" }}>
+                    {initial}
+                  </span>
                 )}
                 <span
-                  className="absolute bottom-2 left-2 text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                  style={{ background: "rgba(0,0,0,0.45)", color: glass.accent }}
+                  className="absolute bottom-2 left-2 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md"
+                  style={{ background: "rgba(0,0,0,0.55)", color: glass.accent }}
                 >
                   {m.role}
                 </span>
               </div>
-              <p className={`text-[12px] font-bold leading-tight ${glass.titleClass}`}>{m.name}</p>
-              <p className="text-[9px] mt-0.5" style={{ color: glass.accent }}>{m.role}</p>
-              <p className={`text-[9px] mt-2 leading-snug line-clamp-4 flex-1 ${glass.mutedClass}`}>
+
+              <p
+                className={`font-bold leading-tight ${glass.titleClass}`}
+                style={{ fontSize: forExport ? "1rem" : "clamp(0.95rem, 1.8vw, 1.15rem)" }}
+              >
+                {m.name}
+              </p>
+              <p className="text-[12px] sm:text-[13px] mt-1 font-semibold" style={{ color: glass.accent }}>
+                {m.role}
+              </p>
+              <p className={`text-[12px] sm:text-[13px] mt-2 leading-snug line-clamp-4 flex-1 ${glass.bodyClass}`}>
                 {renderBullet(bio, i, "")}
               </p>
-              <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1">
-                {["Ops", "Product", "Network"].slice(0, 2 + (i % 2)).map((tag) => (
-                  <span key={tag} className="text-[7px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-white/55">
+
+              <div className="mt-auto pt-2.5 border-t border-white/10 flex flex-wrap gap-1.5">
+                {skills.map((tag) => (
+                  <span key={tag} className="text-[10px] px-2 py-1 rounded-md bg-white/[0.08] text-white/75 font-medium">
                     {tag}
                   </span>
                 ))}
@@ -1317,6 +1392,27 @@ export const CreamTeamRow: React.FC<{
           );
         })}
       </div>
+
+      {(advisor || parsed[3]) && (
+        <div
+          className={`${tileClass(glass)} px-3.5 py-2.5 flex items-center gap-3 shrink-0`}
+          style={tileStyle(glass, forExport, true)}
+        >
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shrink-0"
+            style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
+          >
+            Advisor
+          </span>
+          <p className={`text-[12px] sm:text-[13px] leading-snug line-clamp-2 ${glass.bodyClass}`}>
+            {renderBullet(
+              advisor?.detail || advisor?.raw || parsed[3]?.detail || parsed[3]?.raw || fallbackBios[3],
+              3,
+              "",
+            )}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

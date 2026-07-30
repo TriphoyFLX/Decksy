@@ -144,11 +144,12 @@ export const SlideRenderer: React.FC<RenderSlideContentProps> = ({
 
   const extractNumber = (str: string) => extractMetricValue(str) || "";
 
-  // TEAM SLIDE — founder photos (sauce slide only)
+  // TEAM SLIDE — legacy plate grid only when not on Apex/Cream/Apple engines
   if (
     (slideType === "sauce" || slideType === "tech") &&
     slide.visualData?.layout === "team" &&
-    slide.visualData.teamMembers?.length
+    slide.visualData.teamMembers?.length &&
+    !shouldUseApexLayout(slide)
   ) {
     return (
       <div className="flex flex-col h-full min-h-0 py-0.5 overflow-hidden">
