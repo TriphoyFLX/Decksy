@@ -40,6 +40,8 @@ import {
   CreamTractionBoard,
   CreamTeamRow,
   CreamRoadmapTimeline,
+  CreamAskSlide,
+  CreamVisionMap,
 } from "./creamSlides";
 import {
   AppleHero,
@@ -2444,9 +2446,13 @@ export const ApexSlideContent: React.FC<{
                 />
               ) : cream ? (
                 <CreamBizSplit
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
+                  pricing={slide.visualData?.pricing}
                   parseBullet={parseBullet}
                   extractNumber={extractNumber}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2483,9 +2489,12 @@ export const ApexSlideContent: React.FC<{
                 />
               ) : cream ? (
                 <CreamTractionBoard
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   parseBullet={parseBullet}
                   extractNumber={extractNumber}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2523,9 +2532,12 @@ export const ApexSlideContent: React.FC<{
                 />
               ) : cream ? (
                 <CreamRoadmapTimeline
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   timeline={slide.visualData?.timeline}
                   parseBullet={parseBullet}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2555,6 +2567,8 @@ export const ApexSlideContent: React.FC<{
                 />
               ) : cream ? (
                 <CreamTeamRow
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   teamMembers={slide.visualData?.teamMembers}
                   parseBullet={parseBullet}
@@ -2585,6 +2599,18 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
+              ) : cream ? (
+                <CreamAskSlide
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  parseBullet={parseBullet}
+                  extractNumber={extractNumber}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
               ) : (
                 <ApexFundingSplit
                   content={content}
@@ -2597,7 +2623,18 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "vision" &&
-              (variant === "quote-poster" ? (
+              (cream ? (
+                <CreamVisionMap
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : variant === "quote-poster" ? (
                 <ApexQuotePoster
                   content={content}
                   parseBullet={parseBullet}

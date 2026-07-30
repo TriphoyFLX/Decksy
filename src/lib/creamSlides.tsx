@@ -1043,52 +1043,176 @@ export const CreamCompareMatrix: React.FC<{
 };
 
 export const CreamBizSplit: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   content: string[];
+  pricing?: SlideVisualData["pricing"];
   parseBullet: (s: string) => { label: string; detail: string };
   extractNumber: (s: string) => string;
+  renderBullet?: (t: string, i: number, cls: string) => React.ReactNode;
   renderLabel?: InlineRenderer;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, parseBullet, extractNumber, renderLabel, glass, forExport }) => {
-  const streams = parseItems(content, parseBullet).slice(0, 3);
-  const unitLabels = ["LTV", "CAC", "LTV:CAC", "Retention"];
-  const unitItems = content.slice(3, 7).length
-    ? parseItems(content.slice(3, 7), parseBullet)
-    : [
-        { label: "LTV", number: "$XXX", detail: "" },
-        { label: "CAC", number: "$XX", detail: "" },
-        { label: "LTV:CAC", number: "3.0x", detail: "" },
-        { label: "Retention", number: "XX%", detail: "" },
-      ];
+}> = ({ title, subtitle, content, pricing, parseBullet, extractNumber, renderBullet, renderLabel, glass, forExport }) => {
+  const parsed = parseItems(content, parseBullet);
+  const tiers =
+    pricing?.slice(0, 3) ||
+    [
+      { label: "Старт", price: "100 ₽/ч", detail: "Лёгкий инструмент", featured: false },
+      { label: "Про", price: "250 ₽/ч", detail: "Средний класс", featured: true },
+      { label: "Хэви", price: "450 ₽/ч", detail: "Тяжёлая техника", featured: false },
+    ];
+
+  const commission = parsed.find((p) => /комисс/i.test(p.label + p.raw)) || parsed[2];
+  const ltv = parsed.find((p) => /ltv|cac/i.test(p.label + p.raw)) || parsed[1];
+  const loyalty = parsed.find((p) => /лояль|подписк/i.test(p.label + p.raw)) || parsed[3];
+  const priceLine = parsed.find((p) => /цена/i.test(p.label)) || parsed[0];
+
+  const unitCards = [
+    {
+      label: "Комиссия",
+      value: (commission && (extractNumber(commission.raw) || commission.number)) || "18%",
+      detail: commission?.detail || "с заказа владельцу парка",
+    },
+    {
+      label: "LTV:CAC",
+      value: (ltv && (extractNumber(ltv.raw) || ltv.number)) || "3x",
+      detail: ltv?.detail || "цель после валидации каналов",
+    },
+    {
+      label: "Загрузка",
+      value: "40%",
+      detail: "точка сходимости unit-экономики",
+    },
+    {
+      label: "Подписка",
+      value: (loyalty && (extractNumber(loyalty.raw) || "−10%")) || "−10%",
+      detail: loyalty?.detail || "приоритет слотов для подрядчиков",
+    },
+  ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
-      <div>
-        <h3 className={`text-sm font-extrabold mb-3 ${glass.titleClass}`}>Как мы зарабатываем</h3>
-        <div className="space-y-2">
-          {streams.map((item, i) => (
-            <div key={i} className={`${creamCardClass} p-3 flex items-center justify-between gap-2`} style={creamStrongStyle(forExport)}>
-              <div className="min-w-0">
-                <div className={`text-[10px] font-semibold ${glass.titleClass}`}>
-                  {renderLabel ? renderLabel(item.label, i, "") : item.label}
-                </div>
-                <div className={`text-[7px] mt-0.5 line-clamp-1 ${glass.mutedClass}`}>{item.detail}</div>
-              </div>
-              <div className="font-extrabold text-lg shrink-0" style={{ color: glass.accent }}>
-                {extractNumber(item.raw) || ["60%", "30%", "10%"][i]}
-              </div>
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Бизнес-модель</CreamChip>
+          {title && (
+            <h2 className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`} style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}>
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        </div>
+        <p className={`text-[9px] max-w-[40%] text-right line-clamp-2 ${glass.mutedClass}`}>
+          {priceLine?.detail || "Почасовая аренда + комиссия маркетплейса"}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2.5 shrink-0">
+        {tiers.map((t, i) => (
+          <div key={i} className={`${creamCardClass} p-3.5 flex flex-col gap-1.5`} style={t.featured ? creamStrongStyle(forExport) : creamCardStyle(forExport)}>
+            <div className="flex items-center justify-between">
+              <CreamChip glass={glass}>{t.label}</CreamChip>
+              {t.featured && (
+                <span className="text-[7px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ background: glass.accent, color: "#1a120c" }}>
+                  hit
+                </span>
+              )}
             </div>
-          ))}
+            <div className="text-2xl font-black tracking-tight" style={{ color: glass.accent }}>
+              {t.price}
+            </div>
+            <p className={`text-[9px] leading-snug ${glass.mutedClass}`}>{t.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 flex-1 min-h-0">
+        {unitCards.map((u, i) => (
+          <div key={u.label} className={`${creamCardClass} p-3 flex flex-col justify-between min-h-0`} style={creamCardStyle(forExport)}>
+            <CreamChip glass={glass}>{u.label}</CreamChip>
+            <div className="text-xl font-black mt-2" style={{ color: glass.accent }}>
+              {renderLabel ? renderLabel(u.value, i, "") : u.value}
+            </div>
+            <p className={`text-[8.5px] mt-1 leading-snug line-clamp-3 ${glass.mutedClass}`}>
+              {renderBullet ? renderBullet(u.detail, i, "") : u.detail}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const CreamTractionBoard: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderBullet?: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ title, subtitle, content, parseBullet, extractNumber, renderBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  while (items.length < 4) {
+    items.push({ raw: "", label: `Метрика ${items.length + 1}`, detail: "Сигнал спроса", number: "" });
+  }
+  const bars = [42, 68, 55, 82];
+  const [hero, ...rest] = items;
+
+  return (
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Traction · early signals</CreamChip>
+          {title && (
+            <h2 className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`} style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}>
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
       </div>
-      <div>
-        <h3 className={`text-sm font-extrabold mb-3 ${glass.titleClass}`}>Unit economics</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {unitItems.slice(0, 4).map((item, i) => (
-            <div key={i} className={`${creamCardClass} p-3`} style={creamCardStyle(forExport)}>
-              <CreamChip glass={glass}>{unitLabels[i] || item.label}</CreamChip>
-              <div className="font-extrabold text-xl mt-2" style={{ color: glass.accent }}>
-                {"raw" in item ? extractNumber(item.raw) || item.number : item.number}
+
+      <div className="grid grid-cols-[1.2fr_1fr] gap-2.5 flex-1 min-h-0">
+        <div className={`${creamCardClass} p-4 flex flex-col justify-between min-h-0`} style={creamStrongStyle(forExport)}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[8px] uppercase tracking-wider text-white/40 font-mono">Hero metric</p>
+              <p className={`text-[13px] font-bold mt-1 ${glass.titleClass}`}>
+                {renderLabel ? renderLabel(hero.label, 0, "") : hero.label}
+              </p>
+            </div>
+            <TrendingUp className="h-4 w-4" style={{ color: glass.accent }} />
+          </div>
+          <div className="text-4xl font-black tracking-tight" style={{ color: glass.accent }}>
+            {extractNumber(hero.raw) || hero.number || "12"}
+          </div>
+          <p className={`text-[10px] leading-relaxed line-clamp-3 ${glass.mutedClass}`}>
+            {renderBullet ? renderBullet(hero.detail, 0, "") : hero.detail}
+          </p>
+          <div className="mt-2 flex items-end gap-1.5 h-14">
+            {bars.map((h, i) => (
+              <div key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%`, background: i === bars.length - 1 ? glass.accent : alpha(glass.accent, "44") }} />
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-rows-3 gap-2 min-h-0">
+          {rest.map((item, i) => (
+            <div key={i} className={`${creamCardClass} p-3 flex items-center justify-between gap-2 min-h-0`} style={creamCardStyle(forExport)}>
+              <div className="min-w-0">
+                <p className={`text-[11px] font-bold line-clamp-1 ${glass.titleClass}`}>
+                  {renderLabel ? renderLabel(item.label, i + 1, "") : item.label}
+                </p>
+                <p className={`text-[8.5px] mt-0.5 line-clamp-2 ${glass.mutedClass}`}>
+                  {renderBullet ? renderBullet(item.detail, i + 1, "") : item.detail}
+                </p>
+              </div>
+              <div className="text-xl font-black shrink-0" style={{ color: glass.accent }}>
+                {extractNumber(item.raw) || item.number || ["28%", "62", "50"][i]}
               </div>
             </div>
           ))}
@@ -1098,32 +1222,158 @@ export const CreamBizSplit: React.FC<{
   );
 };
 
-export const CreamTractionBoard: React.FC<{
+export const CreamTeamRow: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   content: string[];
+  teamMembers?: SlideVisualData["teamMembers"];
   parseBullet: (s: string) => { label: string; detail: string };
-  extractNumber: (s: string) => string;
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ title, subtitle, content, teamMembers, parseBullet, renderBullet, glass, forExport }) => {
+  const parsed = parseItems(content, parseBullet);
+  const members = (teamMembers?.length ? teamMembers : parsed.map((item) => ({ name: item.label, role: "Role", image: "" }))).slice(0, 4);
+
+  return (
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0">
+        <CreamChip glass={glass}>Команда</CreamChip>
+        {title && (
+          <h2 className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`} style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}>
+            {title}
+          </h2>
+        )}
+        {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+      </div>
+
+      <div className="grid gap-2.5 flex-1 min-h-0" style={{ gridTemplateColumns: `repeat(${Math.max(members.length, 1)}, minmax(0, 1fr))` }}>
+        {members.map((m, i) => {
+          const bio = parsed[i]?.detail || content[i] || m.role;
+          const initial = (m.name || "?").trim().charAt(0).toUpperCase();
+          return (
+            <div key={i} className={`${creamCardClass} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}>
+              <div
+                className="relative rounded-2xl h-20 shrink-0 mb-3 overflow-hidden flex items-center justify-center"
+                style={{
+                  background: `linear-gradient(145deg, ${alpha(glass.accent, "33")}, rgba(255,255,255,0.05) 60%, ${alpha(glass.secondary || glass.accent, "22")})`,
+                }}
+              >
+                {m.image ? (
+                  <PremiumImage src={m.image} variant="thumb" className="!absolute !inset-0 !min-h-full !rounded-2xl object-cover" />
+                ) : (
+                  <span className="text-3xl font-black text-white/80">{initial}</span>
+                )}
+                <span
+                  className="absolute bottom-2 left-2 text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                  style={{ background: "rgba(0,0,0,0.45)", color: glass.accent }}
+                >
+                  {m.role}
+                </span>
+              </div>
+              <p className={`text-[12px] font-bold leading-tight ${glass.titleClass}`}>{m.name}</p>
+              <p className="text-[9px] mt-0.5" style={{ color: glass.accent }}>{m.role}</p>
+              <p className={`text-[9px] mt-2 leading-snug line-clamp-4 flex-1 ${glass.mutedClass}`}>
+                {renderBullet(bio, i, "")}
+              </p>
+              <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1">
+                {["Ops", "Product", "Network"].slice(0, 2 + (i % 2)).map((tag) => (
+                  <span key={tag} className="text-[7px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-white/55">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export const CreamRoadmapTimeline: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  content: string[];
+  timeline?: SlideVisualData["timeline"];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet?: (t: string, i: number, cls: string) => React.ReactNode;
   renderLabel?: InlineRenderer;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, parseBullet, extractNumber, renderLabel, glass, forExport }) => {
-  const items = parseItems(content, parseBullet).slice(0, 4);
+}> = ({ title, subtitle, content, timeline, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const parsed = parseItems(content, parseBullet);
+  const items = (
+    timeline?.length
+      ? timeline.slice(0, 4).map((t, i) => ({
+          label: t.label,
+          title: t.title,
+          detail: t.detail || parsed[i]?.detail || "",
+        }))
+      : parsed.slice(0, 4).map((p, i) => ({
+          label: p.label || `Q${i + 1}`,
+          title: p.label,
+          detail: p.detail,
+        }))
+  );
+
+  while (items.length < 4) {
+    const n = items.length + 1;
+    items.push({ label: `Q${n}`, title: `Этап ${n}`, detail: "Milestone" });
+  }
+
   return (
-    <div className="flex flex-col justify-center my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
-      <div
-        className={`${creamCardClass} h-24 mb-3 flex items-center justify-center gap-2`}
-        style={creamCardStyle(forExport)}
-      >
-        <BarChart3 className="h-5 w-5" style={{ color: alpha(glass.secondary, "cc") }} />
-        <span className="text-[8px] font-mono uppercase tracking-widest text-white/30">Динамика по кварталам</span>
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0 flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <CreamChip glass={glass}>Go-to-market · 12 месяцев</CreamChip>
+          {title && (
+            <h2 className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`} style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}>
+              {title}
+            </h2>
+          )}
+          {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+        </div>
+        <div className="flex items-center gap-1">
+          {items.map((it, i) => (
+            <React.Fragment key={i}>
+              <span
+                className="h-6 px-2 rounded-full text-[8px] font-bold flex items-center"
+                style={{
+                  background: i === 0 ? glass.accent : alpha(glass.accent, "22"),
+                  color: i === 0 ? "#1a120c" : glass.accent,
+                }}
+              >
+                {it.label}
+              </span>
+              {i < items.length - 1 && <ArrowRight className="h-3 w-3 text-white/25" />}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+      <div className="grid grid-cols-4 gap-2.5 flex-1 min-h-0">
         {items.map((item, i) => (
-          <div key={i}>
-            <div className="font-extrabold text-lg" style={{ color: glass.accent }}>
-              {extractNumber(item.raw) || item.number || ["$XXK", "XX K", "+XX%", "XX"][i]}
+          <div key={i} className={`${creamCardClass} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}>
+            <div className="flex items-center justify-between shrink-0">
+              <span className="text-[10px] font-mono font-bold" style={{ color: glass.accent }}>
+                {item.label}
+              </span>
+              <span className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/[0.06] text-white/50">
+                {i + 1}
+              </span>
             </div>
-            <div className={`text-[7px] mt-1 uppercase tracking-wider ${glass.mutedClass}`}>
-              {renderLabel ? renderLabel(item.label, i, "") : item.label}
+            <h3 className={`text-[12px] font-bold mt-2 leading-tight line-clamp-2 ${glass.titleClass}`}>
+              {renderLabel ? renderLabel(item.title || item.label, i, "") : item.title || item.label}
+            </h3>
+            <p className={`text-[9px] mt-2 leading-snug line-clamp-5 flex-1 ${glass.mutedClass}`}>
+              {renderBullet ? renderBullet(item.detail || "", i, "") : item.detail}
+            </p>
+            <div className="mt-auto pt-2 border-t border-white/10">
+              <div className="h-1.5 rounded-full overflow-hidden bg-white/8">
+                <div className="h-full rounded-full" style={{ width: `${25 + i * 22}%`, background: glass.accent }} />
+              </div>
+              <p className="text-[7px] mt-1 text-white/40 uppercase tracking-wider">прогресс плана</p>
             </div>
           </div>
         ))}
@@ -1132,73 +1382,171 @@ export const CreamTractionBoard: React.FC<{
   );
 };
 
-export const CreamTeamRow: React.FC<{
+export const CreamAskSlide: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   content: string[];
-  teamMembers?: SlideVisualData["teamMembers"];
   parseBullet: (s: string) => { label: string; detail: string };
-  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
-  glass: GlassSurface;
-  forExport?: boolean;
-}> = ({ content, teamMembers, parseBullet, renderBullet, glass, forExport }) => {
-  const members =
-    teamMembers?.slice(0, 4) ||
-    parseItems(content, parseBullet)
-      .slice(0, 4)
-      .map((item) => ({ name: item.label, role: item.number || "Role", image: "" }));
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
-      {members.map((m, i) => (
-        <div key={i} className={`${creamCardClass} p-3 text-center`} style={creamCardStyle(forExport)}>
-          {m.image ? (
-            <div className="w-12 h-12 rounded-full overflow-hidden mx-auto mb-2">
-              <PremiumImage src={m.image} variant="thumb" className="!w-full !h-full !rounded-full" />
-            </div>
-          ) : (
-            <div className={`w-12 h-12 rounded-full mx-auto mb-2 ${creamCardClass}`} style={creamStrongStyle(forExport)} />
-          )}
-          <div className={`text-[10px] font-semibold ${glass.titleClass}`}>{m.name}</div>
-          <div className={`text-[7px] mb-2 ${glass.mutedClass}`}>{m.role}</div>
-          <p className={`text-[7.5px] leading-snug line-clamp-3 ${glass.mutedClass}`}>
-            {renderBullet(parseItems(content, parseBullet)[i]?.detail || content[i] || "", i, "")}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-export const CreamRoadmapTimeline: React.FC<{
-  content: string[];
-  timeline?: SlideVisualData["timeline"];
-  parseBullet: (s: string) => { label: string; detail: string };
+  extractNumber: (s: string) => string;
+  renderBullet?: (t: string, i: number, cls: string) => React.ReactNode;
   renderLabel?: InlineRenderer;
   glass: GlassSurface;
   forExport?: boolean;
-}> = ({ content, timeline, parseBullet, renderLabel, glass, forExport }) => {
-  const items = timeline?.slice(0, 4) || parseItems(content, parseBullet).slice(0, 4);
+}> = ({ title, subtitle, content, parseBullet, extractNumber, renderBullet, renderLabel, glass, forExport }) => {
+  const parsed = parseItems(content, parseBullet);
+  const ask = parsed.find((p) => /раунд|ask|seed|млн/i.test(p.label + p.raw)) || parsed[0];
+  const askValue = (ask && (extractNumber(ask.raw) || ask.number)) || "25 млн ₽";
+  const use = parsed.find((p) => /use|funds|распред|supply|product|growth/i.test(p.label + p.detail + p.raw)) || parsed[1];
+  const goal = parsed.find((p) => /цель|goal|город/i.test(p.label + p.detail)) || parsed[2];
+  const contact = parsed.find((p) => /контакт|@|mail/i.test(p.label + p.detail + p.raw)) || parsed[3];
+
+  const splits = [
+    { label: "Supply", pct: "45%", detail: "Парки и onboarding" },
+    { label: "Product", pct: "30%", detail: "App, payments, SLA" },
+    { label: "Growth", pct: "25%", detail: "Performance + B2B" },
+  ];
+
   return (
-    <div className="relative my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
-      <div className="absolute left-0 right-0 top-5 h-px bg-white/10" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-8">
-        {items.map((item, i) => {
-          const label = "label" in item ? item.label : (item as { label: string }).label;
-          const detail = "detail" in item ? item.detail : (item as { detail: string }).detail;
-          const title = "title" in item ? (item as { title?: string }).title : label;
-          return (
-            <div key={i} className="relative pt-2">
-              <div
-                className="absolute left-0 top-0 w-2.5 h-2.5 rounded-full"
-                style={{ background: glass.warning }}
-              />
-              <CreamChip glass={glass}>{title || `Q${i + 1}`}</CreamChip>
-              <p className={`text-[8.5px] mt-2 leading-relaxed ${glass.mutedClass}`}>
-                {renderLabel ? renderLabel(label, i, "") : detail || label}
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0">
+        <CreamChip glass={glass}>Seed ask</CreamChip>
+        {title && (
+          <h2 className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`} style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}>
+            {title}
+          </h2>
+        )}
+        {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+      </div>
+
+      <div className="grid grid-cols-[1.15fr_1fr] gap-2.5 flex-1 min-h-0">
+        <div className={`${creamCardClass} p-5 flex flex-col justify-between min-h-0`} style={creamStrongStyle(forExport)}>
+          <div>
+            <p className="text-[8px] uppercase tracking-[0.16em] text-white/45 font-mono">Раунд</p>
+            <div className="text-4xl sm:text-5xl font-black tracking-tight mt-2" style={{ color: glass.accent }}>
+              {askValue}
+            </div>
+            <p className={`text-[11px] mt-2 leading-relaxed ${glass.mutedClass}`}>
+              {renderBullet ? renderBullet(ask?.detail || "Seed round на масштабирование", 0, "") : ask?.detail || "Seed round на масштабирование"}
+            </p>
+          </div>
+          <div className="pt-3 border-t border-white/10">
+            <p className={`text-[10px] font-bold ${glass.titleClass}`}>
+              {renderLabel ? renderLabel(goal?.label || "Цель", 2, "") : goal?.label || "Цель"}
+            </p>
+            <p className={`text-[9px] mt-1 line-clamp-2 ${glass.mutedClass}`}>
+              {renderBullet ? renderBullet(goal?.detail || "3 города, 50 парков, unit-экономика в плюс", 2, "") : goal?.detail}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 min-h-0">
+          <div className={`${creamCardClass} p-3.5 flex-1 min-h-0 flex flex-col`} style={creamCardStyle(forExport)}>
+            <p className={`text-[11px] font-bold mb-2 ${glass.titleClass}`}>Use of funds</p>
+            <div className="space-y-2 flex-1 flex flex-col justify-center">
+              {splits.map((s) => (
+                <div key={s.label}>
+                  <div className="flex items-center justify-between text-[9px] mb-1">
+                    <span className={glass.titleClass}>{s.label}</span>
+                    <span className="font-black" style={{ color: glass.accent }}>{s.pct}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden bg-white/8">
+                    <div className="h-full rounded-full" style={{ width: s.pct, background: glass.accent }} />
+                  </div>
+                  <p className="text-[8px] mt-0.5 text-white/45">{s.detail}</p>
+                </div>
+              ))}
+            </div>
+            {use?.detail && (
+              <p className={`text-[8px] mt-2 pt-2 border-t border-white/10 line-clamp-2 ${glass.mutedClass}`}>
+                {renderBullet ? renderBullet(use.detail, 1, "") : use.detail}
+              </p>
+            )}
+          </div>
+          <div className={`${creamCardClass} px-3.5 py-3 flex items-center justify-between gap-2`} style={creamStrongStyle(forExport)}>
+            <div className="min-w-0">
+              <p className="text-[7px] uppercase tracking-wider text-white/40">Контакт</p>
+              <p className={`text-[11px] font-bold truncate ${glass.titleClass}`}>
+                {contact?.detail || contact?.raw || "alexey@nordflow.ru"}
               </p>
             </div>
-          );
-        })}
+            <span className="text-[8px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ background: glass.accent, color: "#1a120c" }}>
+              Write →
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
+
+export const CreamVisionMap: React.FC<{
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  content: string[];
+  parseBullet: (s: string) => { label: string; detail: string };
+  renderBullet: (t: string, i: number, cls: string) => React.ReactNode;
+  renderLabel?: InlineRenderer;
+  glass: GlassSurface;
+  forExport?: boolean;
+}> = ({ title, subtitle, content, parseBullet, renderBullet, renderLabel, glass, forExport }) => {
+  const items = parseItems(content, parseBullet).slice(0, 4);
+  while (items.length < 4) {
+    items.push({ raw: "", label: `Направление ${items.length + 1}`, detail: "Долгосрочный вектор", number: "" });
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5 my-auto min-h-0 flex-1 overflow-hidden font-[Manrope,sans-serif]">
+      <div className="shrink-0">
+        <CreamChip glass={glass}>Vision · 5 лет</CreamChip>
+        {title && (
+          <h2
+            className={`font-extrabold tracking-tight leading-[1.05] mt-2 ${glass.titleClass}`}
+            style={{ fontSize: forExport ? "1.35rem" : "clamp(1rem, 2.4vw, 1.3rem)" }}
+          >
+            {title}
+          </h2>
+        )}
+        {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
+      </div>
+
+      <div className="grid grid-cols-2 grid-rows-2 gap-2.5 flex-1 min-h-0">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className={`${creamCardClass} p-3.5 flex flex-col justify-between min-h-0`}
+            style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-mono font-bold" style={{ color: glass.accent }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <Zap className="h-3.5 w-3.5 text-white/25" />
+            </div>
+            <div className="mt-2 flex-1 min-h-0">
+              <h3 className={`text-[13px] font-bold leading-tight ${glass.titleClass}`}>
+                {renderLabel ? renderLabel(item.label, i, "") : item.label}
+              </h3>
+              <p className={`text-[9.5px] mt-2 leading-relaxed line-clamp-4 ${glass.mutedClass}`}>
+                {renderBullet(item.detail, i, "")}
+              </p>
+            </div>
+            {i === 0 && (
+              <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
+                {["СНГ", "Данные", "B2B"].map((t) => (
+                  <span
+                    key={t}
+                    className="text-[8px] px-2 py-1 rounded-full font-bold"
+                    style={{ background: alpha(glass.accent, "28"), color: glass.accent }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+

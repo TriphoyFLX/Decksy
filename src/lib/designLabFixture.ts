@@ -177,7 +177,7 @@ function buildDemoSlides(): Slide[] {
     {
       type: "pricing",
       title: "Бизнес-модель",
-      subtitle: "Почасовая аренда + комиссия",
+      subtitle: "Тарифы, комиссия и unit-экономика",
       sectionLabel: "06 · Модель",
       content: [
         "Цена: 100–450 ₽/час в зависимости от класса техники",
@@ -196,8 +196,8 @@ function buildDemoSlides(): Slide[] {
     },
     {
       type: "traction",
-      title: "Traction",
-      subtitle: "Ранняя стадия",
+      title: "Ранние сигналы",
+      subtitle: "Пилот уже даёт цифры, не только гипотезы",
       sectionLabel: "07 · Traction",
       content: [
         "Пилот: 12 партнёров-парков в одном городе",
@@ -209,8 +209,8 @@ function buildDemoSlides(): Slide[] {
     },
     {
       type: "launch",
-      title: "Go-To-Market",
-      subtitle: "Как растём",
+      title: "Go-to-Market",
+      subtitle: "Supply → demand → B2B → рефералы",
       sectionLabel: "08 · GTM",
       content: [
         "Q1: Партнёрства с парками — 20 контрактов",
@@ -231,7 +231,7 @@ function buildDemoSlides(): Slide[] {
     {
       type: "sauce",
       title: "Команда",
-      subtitle: "Кто делает",
+      subtitle: "Операционка аренды + marketplace DNA",
       sectionLabel: "09 · Команда",
       content: [
         "CEO: 8 лет в аренде и логистике B2B",
@@ -251,8 +251,8 @@ function buildDemoSlides(): Slide[] {
     },
     {
       type: "ask",
-      title: "Запрос",
-      subtitle: "Seed round",
+      title: "Seed · 25 млн ₽",
+      subtitle: "На парки, продукт и рост",
       sectionLabel: "10 · Ask",
       content: [
         "Раунд: 25 млн ₽ seed",
@@ -264,8 +264,8 @@ function buildDemoSlides(): Slide[] {
     },
     {
       type: "vision",
-      title: "Vision",
-      subtitle: "Куда идём",
+      title: "Куда идём",
+      subtitle: "ОС аренды спецтехники для СНГ",
       sectionLabel: "11 · Vision",
       content: [
         "Сеть: операционная система аренды спецтехники в СНГ",
