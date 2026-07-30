@@ -111,6 +111,22 @@ export function assignDeckVariants(
     sauce: "cream-team",
     launch: "roadmap",
     ask: "funding-split",
+    vision: "vision-map",
+  };
+
+  const TITANIUM_VARIANT_BY_TYPE: Partial<Record<string, string>> = {
+    title: "hero-centered",
+    problem: "problem-solve",
+    solution: "cream-features",
+    product: "cream-steps",
+    market: "tam-bento",
+    competition: "battle",
+    pricing: "cream-biz",
+    traction: "cream-traction",
+    sauce: "cream-team",
+    launch: "roadmap",
+    ask: "funding-split",
+    vision: "vision-map",
   };
 
   deck.slides.forEach((slide, index) => {
@@ -123,6 +139,9 @@ export function assignDeckVariants(
     if (type === "problem") variant = "problem-solve";
     if (templateId === "cream" && CREAM_VARIANT_BY_TYPE[type]) {
       variant = CREAM_VARIANT_BY_TYPE[type]!;
+    }
+    if (templateId === "titanium" && TITANIUM_VARIANT_BY_TYPE[type]) {
+      variant = TITANIUM_VARIANT_BY_TYPE[type]!;
     }
     slide.visualData = {
       ...(slide.visualData || {}),

@@ -24,6 +24,8 @@ import type { GlassSurface } from "./apexSlides";
 type InlineRenderer = (text: string, index: number, className: string, Tag?: React.ElementType) => React.ReactNode;
 
 const creamCardClass = "rounded-2xl border backdrop-blur-[18px]";
+const apexTileClass = "rounded-[1.75rem] border-0 overflow-hidden relative";
+
 const creamCardStyle = (forExport?: boolean): React.CSSProperties => ({
   background: forExport ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.045)",
   borderColor: "rgba(255,255,255,0.14)",
@@ -41,6 +43,34 @@ function alpha(hex: string, opacity: string): string {
   const normalized = hex.replace("#", "");
   if (normalized.length !== 6) return `${hex}${opacity}`;
   return `#${normalized}${opacity}`;
+}
+
+function tileClass(glass: GlassSurface) {
+  return glass.creamGlass ? creamCardClass : apexTileClass;
+}
+
+function tileStyle(glass: GlassSurface, forExport?: boolean, strong = false): React.CSSProperties {
+  if (glass.creamGlass) {
+    return strong ? creamStrongStyle(forExport) : creamCardStyle(forExport);
+  }
+  if (strong) {
+    return {
+      background: glass.hasImageBg
+        ? `linear-gradient(145deg, ${alpha(glass.accent, "40")}, rgba(12,12,18,0.78))`
+        : `linear-gradient(145deg, ${alpha(glass.accent, "33")}, #1a1520)`,
+      borderColor: "transparent",
+      boxShadow: "0 18px 44px rgba(0,0,0,0.4)",
+      backdropFilter: forExport || !glass.hasImageBg ? undefined : "blur(28px)",
+      WebkitBackdropFilter: forExport || !glass.hasImageBg ? undefined : "blur(28px)",
+    };
+  }
+  return {
+    background: glass.hasImageBg ? "rgba(14, 14, 20, 0.74)" : "#141416",
+    borderColor: "transparent",
+    boxShadow: "0 16px 40px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.07)",
+    backdropFilter: forExport || !glass.hasImageBg ? undefined : "blur(28px)",
+    WebkitBackdropFilter: forExport || !glass.hasImageBg ? undefined : "blur(28px)",
+  };
 }
 
 function parseItems(content: string[], parseBullet: (s: string) => { label: string; detail: string }) {
@@ -102,7 +132,7 @@ export const CreamHero: React.FC<{
           <p className={`mt-3 text-[10px] italic ${glass.mutedClass}`}>Слоган в одно предложение</p>
         )}
         <div className="mt-5 flex items-center gap-2.5">
-          <div className={`w-9 h-9 rounded-full ${creamCardClass} flex items-center justify-center`} style={creamStrongStyle(forExport)}>
+          <div className={`w-9 h-9 rounded-full ${tileClass(glass)} flex items-center justify-center`} style={tileStyle(glass, forExport, true)}>
             <User className={`h-4 w-4 ${glass.mutedClass}`} />
           </div>
           <div>
@@ -112,13 +142,13 @@ export const CreamHero: React.FC<{
         </div>
       </div>
       {image ? (
-        <div className={`${creamCardClass} p-1.5 overflow-hidden aspect-square md:aspect-[4/5] max-h-full`} style={creamCardStyle(forExport)}>
+        <div className={`${tileClass(glass)} p-1.5 overflow-hidden aspect-square md:aspect-[4/5] max-h-full`} style={tileStyle(glass, forExport)}>
           <PremiumImage src={image} variant="hero" className="!rounded-xl !min-h-[120px]" />
         </div>
       ) : (
         <div
-          className={`${creamCardClass} aspect-square md:aspect-[4/5] flex items-center justify-center relative overflow-hidden`}
-          style={creamCardStyle(forExport)}
+          className={`${tileClass(glass)} aspect-square md:aspect-[4/5] flex items-center justify-center relative overflow-hidden`}
+          style={tileStyle(glass, forExport)}
         >
           <div
             className="absolute inset-0 opacity-50"
@@ -199,7 +229,7 @@ export const CreamProblemStatement: React.FC<{
       <div className="grid flex-1 min-h-0 gap-2" style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}>
         {pairs.map((pair, i) => (
           <div key={i} className="grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch min-h-0">
-            <div className={`${creamCardClass} p-3 flex flex-col justify-center gap-1`} style={creamCardStyle(forExport)}>
+            <div className={`${tileClass(glass)} p-3 flex flex-col justify-center gap-1`} style={tileStyle(glass, forExport)}>
               <p className={`text-[9px] font-bold line-clamp-1 ${glass.titleClass}`}>
                 {renderLabel ? renderLabel(pair.problemLabel, i, "") : pair.problemLabel}
               </p>
@@ -215,7 +245,7 @@ export const CreamProblemStatement: React.FC<{
                 →
               </span>
             </div>
-            <div className={`${creamCardClass} p-3 flex flex-col justify-center gap-1`} style={creamStrongStyle(forExport)}>
+            <div className={`${tileClass(glass)} p-3 flex flex-col justify-center gap-1`} style={tileStyle(glass, forExport, true)}>
               <p className="text-[9px] font-bold line-clamp-1" style={{ color: glass.success }}>
                 {renderLabel ? renderLabel(pair.solutionLabel, i + 10, "") : pair.solutionLabel}
               </p>
@@ -242,7 +272,7 @@ export const CreamStatTriplet: React.FC<{
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-auto min-h-0 flex-1 font-[Manrope,sans-serif]">
       {items.map((item, i) => (
-        <div key={i} className={`${creamCardClass} p-4 flex flex-col`} style={creamCardStyle(forExport)}>
+        <div key={i} className={`${tileClass(glass)} p-4 flex flex-col`} style={tileStyle(glass, forExport)}>
           <div className="font-extrabold text-2xl sm:text-3xl tracking-tight" style={{ color: glass.accent }}>
             {extractNumber(item.raw) || item.number || ["70%", "$1.2B", "3x"][i]}
           </div>
@@ -332,8 +362,8 @@ export const CreamProductSteps: React.FC<{
           return (
             <div
               key={i}
-              className={`${creamCardClass} p-3 flex flex-col min-h-0 h-full`}
-              style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+              className={`${tileClass(glass)} p-3 flex flex-col min-h-0 h-full`}
+              style={i === 0 ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}
             >
               {hasImg ? (
                 <div className="rounded-xl overflow-hidden h-16 shrink-0 mb-2.5">
@@ -471,8 +501,8 @@ export const CreamFeatureCards: React.FC<{
       >
         {/* Hero feature */}
         <div
-          className={`${creamCardClass} p-3.5 flex flex-col justify-between min-h-0`}
-          style={{ ...creamStrongStyle(forExport), gridColumn: "1", gridRow: "1 / span 2" }}
+          className={`${tileClass(glass)} p-3.5 flex flex-col justify-between min-h-0`}
+          style={{ ...tileStyle(glass, forExport, true), gridColumn: "1", gridRow: "1 / span 2" }}
         >
           <div className="flex items-start justify-between gap-2">
             <div
@@ -535,9 +565,9 @@ export const CreamFeatureCards: React.FC<{
           return (
             <div
               key={idx}
-              className={`${creamCardClass} p-3 flex flex-col min-h-0 gap-1.5`}
+              className={`${tileClass(glass)} p-3 flex flex-col min-h-0 gap-1.5`}
               style={{
-                ...creamCardStyle(forExport),
+                ...tileStyle(glass, forExport),
                 gridColumn: i === 2 ? "2 / span 2" : String(i + 2),
                 gridRow: i < 2 ? "1" : "2",
               }}
@@ -676,8 +706,8 @@ export const CreamMarketStack: React.FC<{
           {subtitle && <p className={`text-[9px] mt-1 line-clamp-1 ${glass.mutedClass}`}>{subtitle}</p>}
         </div>
         <div
-          className={`${creamCardClass} px-3 py-2 flex items-center gap-2 shrink-0`}
-          style={creamStrongStyle(forExport)}
+          className={`${tileClass(glass)} px-3 py-2 flex items-center gap-2 shrink-0`}
+          style={tileStyle(glass, forExport, true)}
         >
           <TrendingUp className="h-3.5 w-3.5" style={{ color: glass.accent }} strokeWidth={2} />
           <div>
@@ -695,8 +725,8 @@ export const CreamMarketStack: React.FC<{
           {metricItems.map((m, i) => (
             <div
               key={m.label}
-              className={`${creamCardClass} p-3 flex flex-col justify-between min-h-0 flex-1`}
-              style={m.highlight ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+              className={`${tileClass(glass)} p-3 flex flex-col justify-between min-h-0 flex-1`}
+              style={m.highlight ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-1.5">
@@ -728,7 +758,7 @@ export const CreamMarketStack: React.FC<{
 
         {/* Drivers + narrative */}
         <div className="flex flex-col gap-2 min-h-0">
-          <div className={`${creamCardClass} p-3.5 flex-1 min-h-0 flex flex-col`} style={creamStrongStyle(forExport)}>
+          <div className={`${tileClass(glass)} p-3.5 flex-1 min-h-0 flex flex-col`} style={tileStyle(glass, forExport, true)}>
             <h3 className={`text-[12px] font-extrabold ${glass.titleClass}`}>Большой и растущий рынок</h3>
             <p className={`text-[8.5px] mt-1.5 leading-relaxed line-clamp-3 ${glass.mutedClass}`}>
               Воронка от всего рынка аренды к реалистичному wedge за 24 месяца — без раздутого TAM.
@@ -764,7 +794,7 @@ export const CreamMarketStack: React.FC<{
               { k: "Wedge SOM", v: "~7%" },
               { k: "Горизонт", v: "24 мес" },
             ].map((s) => (
-              <div key={s.k} className={`${creamCardClass} px-2.5 py-2 text-center`} style={creamCardStyle(forExport)}>
+              <div key={s.k} className={`${tileClass(glass)} px-2.5 py-2 text-center`} style={tileStyle(glass, forExport)}>
                 <p className="text-[7px] uppercase tracking-wider text-white/40">{s.k}</p>
                 <p className="text-[11px] font-black mt-0.5" style={{ color: glass.accent }}>
                   {s.v}
@@ -922,8 +952,8 @@ export const CreamCompareMatrix: React.FC<{
           return (
             <div
               key={i}
-              className={`${creamCardClass} p-2.5 flex flex-col gap-1.5 min-h-0`}
-              style={p.ours ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+              className={`${tileClass(glass)} p-2.5 flex flex-col gap-1.5 min-h-0`}
+              style={p.ours ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}
             >
               <div className="flex items-center gap-2">
                 <button
@@ -995,7 +1025,7 @@ export const CreamCompareMatrix: React.FC<{
       </div>
 
       {/* Feature matrix */}
-      <div className={`${creamCardClass} flex-1 min-h-0 overflow-hidden flex flex-col`} style={creamCardStyle(forExport)}>
+      <div className={`${tileClass(glass)} flex-1 min-h-0 overflow-hidden flex flex-col`} style={tileStyle(glass, forExport)}>
         <div
           className="grid gap-0 px-3 py-2.5 border-b border-white/10 shrink-0 items-center"
           style={{
@@ -1110,7 +1140,7 @@ export const CreamBizSplit: React.FC<{
 
       <div className="grid grid-cols-3 gap-2.5 shrink-0">
         {tiers.map((t, i) => (
-          <div key={i} className={`${creamCardClass} p-3.5 flex flex-col gap-1.5`} style={t.featured ? creamStrongStyle(forExport) : creamCardStyle(forExport)}>
+          <div key={i} className={`${tileClass(glass)} p-3.5 flex flex-col gap-1.5`} style={t.featured ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}>
             <div className="flex items-center justify-between">
               <CreamChip glass={glass}>{t.label}</CreamChip>
               {t.featured && (
@@ -1129,7 +1159,7 @@ export const CreamBizSplit: React.FC<{
 
       <div className="grid grid-cols-4 gap-2 flex-1 min-h-0">
         {unitCards.map((u, i) => (
-          <div key={u.label} className={`${creamCardClass} p-3 flex flex-col justify-between min-h-0`} style={creamCardStyle(forExport)}>
+          <div key={u.label} className={`${tileClass(glass)} p-3 flex flex-col justify-between min-h-0`} style={tileStyle(glass, forExport)}>
             <CreamChip glass={glass}>{u.label}</CreamChip>
             <div className="text-xl font-black mt-2" style={{ color: glass.accent }}>
               {renderLabel ? renderLabel(u.value, i, "") : u.value}
@@ -1177,7 +1207,7 @@ export const CreamTractionBoard: React.FC<{
       </div>
 
       <div className="grid grid-cols-[1.2fr_1fr] gap-2.5 flex-1 min-h-0">
-        <div className={`${creamCardClass} p-4 flex flex-col justify-between min-h-0`} style={creamStrongStyle(forExport)}>
+        <div className={`${tileClass(glass)} p-4 flex flex-col justify-between min-h-0`} style={tileStyle(glass, forExport, true)}>
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-[8px] uppercase tracking-wider text-white/40 font-mono">Hero metric</p>
@@ -1202,7 +1232,7 @@ export const CreamTractionBoard: React.FC<{
 
         <div className="grid grid-rows-3 gap-2 min-h-0">
           {rest.map((item, i) => (
-            <div key={i} className={`${creamCardClass} p-3 flex items-center justify-between gap-2 min-h-0`} style={creamCardStyle(forExport)}>
+            <div key={i} className={`${tileClass(glass)} p-3 flex items-center justify-between gap-2 min-h-0`} style={tileStyle(glass, forExport)}>
               <div className="min-w-0">
                 <p className={`text-[11px] font-bold line-clamp-1 ${glass.titleClass}`}>
                   {renderLabel ? renderLabel(item.label, i + 1, "") : item.label}
@@ -1252,7 +1282,7 @@ export const CreamTeamRow: React.FC<{
           const bio = parsed[i]?.detail || content[i] || m.role;
           const initial = (m.name || "?").trim().charAt(0).toUpperCase();
           return (
-            <div key={i} className={`${creamCardClass} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}>
+            <div key={i} className={`${tileClass(glass)} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}>
               <div
                 className="relative rounded-2xl h-20 shrink-0 mb-3 overflow-hidden flex items-center justify-center"
                 style={{
@@ -1354,7 +1384,7 @@ export const CreamRoadmapTimeline: React.FC<{
 
       <div className="grid grid-cols-4 gap-2.5 flex-1 min-h-0">
         {items.map((item, i) => (
-          <div key={i} className={`${creamCardClass} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}>
+          <div key={i} className={`${tileClass(glass)} p-3.5 flex flex-col min-h-0 h-full`} style={i === 0 ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}>
             <div className="flex items-center justify-between shrink-0">
               <span className="text-[10px] font-mono font-bold" style={{ color: glass.accent }}>
                 {item.label}
@@ -1419,7 +1449,7 @@ export const CreamAskSlide: React.FC<{
       </div>
 
       <div className="grid grid-cols-[1.15fr_1fr] gap-2.5 flex-1 min-h-0">
-        <div className={`${creamCardClass} p-5 flex flex-col justify-between min-h-0`} style={creamStrongStyle(forExport)}>
+        <div className={`${tileClass(glass)} p-5 flex flex-col justify-between min-h-0`} style={tileStyle(glass, forExport, true)}>
           <div>
             <p className="text-[8px] uppercase tracking-[0.16em] text-white/45 font-mono">Раунд</p>
             <div className="text-4xl sm:text-5xl font-black tracking-tight mt-2" style={{ color: glass.accent }}>
@@ -1440,7 +1470,7 @@ export const CreamAskSlide: React.FC<{
         </div>
 
         <div className="flex flex-col gap-2 min-h-0">
-          <div className={`${creamCardClass} p-3.5 flex-1 min-h-0 flex flex-col`} style={creamCardStyle(forExport)}>
+          <div className={`${tileClass(glass)} p-3.5 flex-1 min-h-0 flex flex-col`} style={tileStyle(glass, forExport)}>
             <p className={`text-[11px] font-bold mb-2 ${glass.titleClass}`}>Use of funds</p>
             <div className="space-y-2 flex-1 flex flex-col justify-center">
               {splits.map((s) => (
@@ -1462,7 +1492,7 @@ export const CreamAskSlide: React.FC<{
               </p>
             )}
           </div>
-          <div className={`${creamCardClass} px-3.5 py-3 flex items-center justify-between gap-2`} style={creamStrongStyle(forExport)}>
+          <div className={`${tileClass(glass)} px-3.5 py-3 flex items-center justify-between gap-2`} style={tileStyle(glass, forExport, true)}>
             <div className="min-w-0">
               <p className="text-[7px] uppercase tracking-wider text-white/40">Контакт</p>
               <p className={`text-[11px] font-bold truncate ${glass.titleClass}`}>
@@ -1513,8 +1543,8 @@ export const CreamVisionMap: React.FC<{
         {items.map((item, i) => (
           <div
             key={i}
-            className={`${creamCardClass} p-3.5 flex flex-col justify-between min-h-0`}
-            style={i === 0 ? creamStrongStyle(forExport) : creamCardStyle(forExport)}
+            className={`${tileClass(glass)} p-3.5 flex flex-col justify-between min-h-0`}
+            style={i === 0 ? tileStyle(glass, forExport, true) : tileStyle(glass, forExport)}
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-[9px] font-mono font-bold" style={{ color: glass.accent }}>

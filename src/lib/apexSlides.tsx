@@ -432,8 +432,16 @@ export const ApexHero: React.FC<{
               <PremiumImage src={image} variant="thumb" className="!w-full !h-full !min-h-full !rounded-2xl object-cover" />
             </div>
           ) : (
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center font-bold border border-white/10 shadow-2xl bg-gradient-to-br from-violet-600 to-indigo-800 text-white">
-              <span className="text-3xl">{firstLetter}</span>
+            <div
+              className="w-20 h-20 rounded-2xl flex items-center justify-center font-bold border border-white/10 shadow-2xl text-black"
+              style={{
+                background: glass?.accent
+                  ? `linear-gradient(145deg, ${glass.accent}, ${glass.secondary || glass.accent})`
+                  : "linear-gradient(to bottom right, #7c3aed, #3730a3)",
+                color: glass?.accent ? "#0a0a0a" : "#fff",
+              }}
+            >
+              <span className="text-3xl font-black">{firstLetter}</span>
             </div>
           )}
         </div>
@@ -451,7 +459,14 @@ export const ApexHero: React.FC<{
         )}
 
         {/* Основатель + цитата */}
-        <div className="flex items-center gap-4 mb-6 p-3 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md max-w-fit">
+        <div
+          className="flex items-center gap-4 mb-6 p-3 rounded-2xl border max-w-fit"
+          style={{
+            background: glass?.hasImageBg ? "rgba(14,14,20,0.7)" : "rgba(255,255,255,0.05)",
+            borderColor: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(16px)",
+          }}
+        >
           <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
             <User className="h-6 w-6 text-white/70" />
           </div>
@@ -462,8 +477,8 @@ export const ApexHero: React.FC<{
         </div>
 
         {(quoteText || brandQuote) && (
-          <div className="border-l-2 border-violet-500 pl-4">
-            <p className="text-sm italic text-white/70 leading-relaxed">
+          <div className="border-l-2 pl-4" style={{ borderColor: glass?.accent || "#8b5cf6" }}>
+            <p className={`text-sm italic leading-relaxed ${mutedClass}`}>
               «{quoteText || brandQuote}»
             </p>
           </div>
@@ -472,11 +487,23 @@ export const ApexHero: React.FC<{
 
       {/* Правая часть: визуальная панель */}
       <div className="hidden lg:flex w-full lg:w-[45%] items-center justify-center">
-        <div className="w-full aspect-square max-h-[400px] rounded-[32px] border border-white/5 overflow-hidden relative bg-gradient-to-br from-slate-900 to-black shadow-2xl">
+        <div
+          className="w-full aspect-square max-h-[400px] rounded-[32px] overflow-hidden relative shadow-2xl border border-white/10"
+          style={{
+            background: glass?.hasImageBg
+              ? "rgba(14,14,20,0.55)"
+              : "linear-gradient(to bottom right, #0f172a, #000)",
+            backdropFilter: glass?.hasImageBg ? "blur(20px)" : undefined,
+          }}
+        >
           {!image && highlightBullets.length > 0 && (
             <div className="absolute inset-0 p-6 flex flex-col justify-center gap-3 z-10">
               {highlightBullets.map((item, i) => (
-                <div key={i} className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 backdrop-blur-sm">
+                <div
+                  key={i}
+                  className="rounded-2xl px-4 py-3 border border-white/10"
+                  style={{ background: i === 0 && glass?.accent ? `${glass.accent}22` : "rgba(255,255,255,0.05)" }}
+                >
                   <p className="text-xs leading-snug text-white/80">{renderBullet(item, i, "")}</p>
                 </div>
               ))}
@@ -489,7 +516,12 @@ export const ApexHero: React.FC<{
           )}
           {image && <PremiumImage src={image} variant="hero" className="absolute inset-0 !min-h-full !rounded-[32px] opacity-60" />}
           {/* Декоративный градиент */}
-          <div className="absolute inset-0 bg-gradient-to-t from-violet-900/30 via-transparent to-transparent" />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(to top, ${glass?.accent ? alpha(glass.accent, "33") : "rgba(76,29,149,0.3)"}, transparent 55%)`,
+            }}
+          />
         </div>
       </div>
     </div>
@@ -2148,6 +2180,9 @@ export const ApexSlideContent: React.FC<{
   const swiss = isSwissTemplate(slide);
   const cream = isCreamTemplate(slide);
   const apple = isAppleTemplate(slide);
+  const titanium = (slide.visualData?.deckTemplate || "") === "titanium";
+  /** Cream + Titanium share maxed dense layouts */
+  const dense = cream || titanium;
   const glass = getGlassSurface(slide, (selectedStyle || "cosmic-dark") as StyleKey, forExport);
   const editable = !!onUpdate && !forExport;
 
@@ -2166,7 +2201,7 @@ export const ApexSlideContent: React.FC<{
     <div className="h-full w-full min-h-0 overflow-hidden bg-transparent">
       <div className="h-full flex flex-col py-0.5 relative min-h-0 overflow-hidden">
         <div className="relative z-10 flex flex-col h-full min-h-0">
-          {index !== 0 && type !== "title" && !cream && !apple && (
+          {index !== 0 && type !== "title" && !dense && !apple && (
             <div className="mb-2 text-left shrink-0">
               {sectionLabel && <ApexSectionLabel color={glass.accent}>{sectionLabel}</ApexSectionLabel>}
               <ApexTitle className={glass.titleClass}>{title}</ApexTitle>
@@ -2216,7 +2251,7 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "problem" &&
-              (cream ? (
+              (dense ? (
                 <CreamProblemStatement
                   title={title}
                   content={content}
@@ -2251,7 +2286,7 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : cream ? (
+              ) : dense ? (
                 <CreamMarketStack
                   title={title}
                   subtitle={subtitle}
@@ -2319,7 +2354,7 @@ export const ApexSlideContent: React.FC<{
                     forExport={forExport}
                   />
                 )
-              ) : cream ? (
+              ) : dense ? (
                 type === "product" || variant === "cream-steps" ? (
                   <CreamProductSteps
                     title={title}
@@ -2389,7 +2424,7 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "competition" &&
-              (cream ? (
+              (dense ? (
                 <CreamCompareMatrix
                   title={title}
                   subtitle={subtitle}
@@ -2444,7 +2479,7 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : cream ? (
+              ) : dense ? (
                 <CreamBizSplit
                   title={title}
                   subtitle={subtitle}
@@ -2487,7 +2522,7 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : cream ? (
+              ) : dense ? (
                 <CreamTractionBoard
                   title={title}
                   subtitle={subtitle}
@@ -2530,7 +2565,7 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : cream ? (
+              ) : dense ? (
                 <CreamRoadmapTimeline
                   title={title}
                   subtitle={subtitle}
@@ -2565,7 +2600,7 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : cream ? (
+              ) : dense ? (
                 <CreamTeamRow
                   title={title}
                   subtitle={subtitle}
@@ -2599,7 +2634,7 @@ export const ApexSlideContent: React.FC<{
                   glass={glass}
                   forExport={forExport}
                 />
-              ) : cream ? (
+              ) : dense ? (
                 <CreamAskSlide
                   title={title}
                   subtitle={subtitle}
@@ -2623,7 +2658,7 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "vision" &&
-              (cream ? (
+              (dense ? (
                 <CreamVisionMap
                   title={title}
                   subtitle={subtitle}
