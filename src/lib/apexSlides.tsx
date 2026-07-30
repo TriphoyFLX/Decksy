@@ -45,17 +45,17 @@ import {
 } from "./creamSlides";
 import {
   AppleHero,
-  AppleGroupedList,
-  AppleMetricTiles,
-  AppleFeatureRows,
-  AppleProductShowcase,
-  AppleMarketGrouped,
-  AppleCompareTable,
-  AppleBizGrouped,
+  AppleProblemSolve,
+  AppleFeatureBento,
+  AppleProductSteps,
+  AppleMarketStack,
+  AppleCompareMatrix,
+  AppleBizSplit,
   AppleTractionBoard,
-  AppleTeamGrouped,
-  AppleTimeline,
+  AppleTeamRow,
+  AppleRoadmapTimeline,
   AppleAskSlide,
+  AppleVisionMap,
 } from "./appleSlides";
 
 // --- Константы дизайна ---
@@ -2253,7 +2253,8 @@ export const ApexSlideContent: React.FC<{
 
             {type === "problem" &&
               (apple ? (
-                <ApexProblemSolution
+                <AppleProblemSolve
+                  title={title}
                   content={content}
                   problemSolutions={slide.visualData?.problemSolutions}
                   parseBullet={parseBullet}
@@ -2288,11 +2289,14 @@ export const ApexSlideContent: React.FC<{
 
             {type === "market" &&
               (apple ? (
-                <AppleMarketGrouped
+                <AppleMarketStack
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   metrics={slide.visualData?.metrics}
                   parseBullet={parseBullet}
                   extractNumber={extractNumber}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2345,7 +2349,9 @@ export const ApexSlideContent: React.FC<{
             {(type === "solution" || type === "product") &&
               (apple ? (
                 type === "product" || variant === "apple-product" ? (
-                  <AppleProductShowcase
+                  <AppleProductSteps
+                    title={title}
+                    subtitle={subtitle}
                     content={content}
                     image={slide.image}
                     cardImages={slide.visualData?.images}
@@ -2356,7 +2362,9 @@ export const ApexSlideContent: React.FC<{
                     forExport={forExport}
                   />
                 ) : (
-                  <AppleFeatureRows
+                  <AppleFeatureBento
+                    title={title}
+                    subtitle={subtitle}
                     content={content}
                     parseBullet={parseBullet}
                     renderBullet={renderBullet}
@@ -2436,9 +2444,12 @@ export const ApexSlideContent: React.FC<{
 
             {type === "competition" &&
               (apple ? (
-                <AppleCompareTable
+                <AppleCompareMatrix
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   competitors={slide.visualData?.competitors}
+                  compareFeatures={slide.visualData?.compareFeatures}
                   parseBullet={parseBullet}
                   glass={glass}
                   forExport={forExport}
@@ -2490,10 +2501,14 @@ export const ApexSlideContent: React.FC<{
 
             {type === "pricing" &&
               (apple ? (
-                <AppleBizGrouped
+                <AppleBizSplit
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
+                  pricing={slide.visualData?.pricing}
                   parseBullet={parseBullet}
                   extractNumber={extractNumber}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2534,9 +2549,12 @@ export const ApexSlideContent: React.FC<{
             {type === "traction" &&
               (apple ? (
                 <AppleTractionBoard
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   parseBullet={parseBullet}
                   extractNumber={extractNumber}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2576,10 +2594,13 @@ export const ApexSlideContent: React.FC<{
 
             {type === "launch" &&
               (apple ? (
-                <AppleTimeline
+                <AppleRoadmapTimeline
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   timeline={slide.visualData?.timeline}
                   parseBullet={parseBullet}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
@@ -2611,7 +2632,9 @@ export const ApexSlideContent: React.FC<{
 
             {type === "sauce" &&
               (apple ? (
-                <AppleTeamGrouped
+                <AppleTeamRow
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   teamMembers={slide.visualData?.teamMembers}
                   parseBullet={parseBullet}
@@ -2677,7 +2700,18 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "vision" &&
-              (dense ? (
+              (apple ? (
+                <AppleVisionMap
+                  title={title}
+                  subtitle={subtitle}
+                  content={content}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : dense ? (
                 <CreamVisionMap
                   title={title}
                   subtitle={subtitle}
