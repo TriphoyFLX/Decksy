@@ -2251,10 +2251,13 @@ export const ApexSlideContent: React.FC<{
                 />
               ) : cream ? (
                 <CreamMarketStack
+                  title={title}
+                  subtitle={subtitle}
                   content={content}
                   metrics={slide.visualData?.metrics}
                   parseBullet={parseBullet}
                   extractNumber={extractNumber}
+                  renderBullet={renderBullet}
                   renderLabel={renderLabel}
                   glass={glass}
                   forExport={forExport}
