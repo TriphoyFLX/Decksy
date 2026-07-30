@@ -5,8 +5,8 @@
 
 import type React from "react";
 
-/** Only two live templates */
-export type DeckTemplateId = "cream" | "titanium";
+/** Live templates */
+export type DeckTemplateId = "cream" | "titanium" | "apple";
 
 export type DeckLayoutEngine = "apex" | "swiss" | "cream" | "apple";
 
@@ -56,12 +56,25 @@ export const TEMPLATE_CATALOG: Record<DeckTemplateId, TemplateCatalogEntry> = {
     layoutEngine: "apex",
     overlayOpacity: 0.42,
   },
+  apple: {
+    id: "apple",
+    name: "Apple",
+    source: "Human Interface Guidelines",
+    description: "Белый Keynote / iOS: SF Pro, system blue, чистые grouped-карточки",
+    frameGradient: "#F2F2F7",
+    gridBg: "none",
+    accent: "#007AFF",
+    selectedStyle: "clean-light",
+    isLightBackground: true,
+    layoutEngine: "apple",
+  },
 };
 
 /** Map legacy template ids → live catalog */
 export function normalizeDeckTemplateId(id: string | undefined | null): DeckTemplateId {
   if (id === "cream") return "cream";
   if (id === "titanium") return "titanium";
+  if (id === "apple") return "apple";
   return "cream";
 }
 
@@ -96,6 +109,21 @@ export function getTemplateFrameAppearance(
   const isThemeLight = selectedStyle === "clean-light" || tpl.isLightBackground;
   const isThemeCobalt = selectedStyle === "cobalt";
   const useImageBg = Boolean(tpl.backgroundImage) && !isThemeCobalt;
+
+  if (tpl.id === "apple" && !isThemeCobalt) {
+    return {
+      frameStyle: { background: "#F2F2F7" },
+      headerClass:
+        "flex items-center justify-between text-[8px] sm:text-[9px] pb-2 relative z-10 border-b border-[rgba(60,60,67,0.18)] text-[rgba(60,60,67,0.55)]",
+      footerClass:
+        "pt-2 flex items-center justify-between text-[7px] sm:text-[8px] uppercase tracking-widest relative z-10 border-t border-[rgba(60,60,67,0.18)] text-[rgba(60,60,67,0.4)]",
+      titleHeaderClass: "text-black font-semibold tracking-tight",
+      gridBg: "none",
+      gridBgSize: "0",
+      frameBorderClass: "border-[rgba(60,60,67,0.14)]",
+      showGlowBlobs: false,
+    };
+  }
 
   if (tpl.id === "cream" && !isThemeCobalt && !isThemeLight) {
     return {

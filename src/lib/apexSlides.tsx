@@ -96,7 +96,8 @@ export function getGlassSurface(slide: Slide, selectedStyle: StyleKey = "cosmic-
     : undefined);
 
   if (deckTemplate === "apple") {
-    const isLight = selectedStyle === "clean-light";
+    const isLight =
+      selectedStyle === "clean-light" || Boolean(TEMPLATE_CATALOG.apple?.isLightBackground);
     return {
       isLight,
       hasImageBg: false,
@@ -2251,7 +2252,17 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "problem" &&
-              (dense ? (
+              (apple ? (
+                <ApexProblemSolution
+                  content={content}
+                  problemSolutions={slide.visualData?.problemSolutions}
+                  parseBullet={parseBullet}
+                  renderBullet={renderBullet}
+                  renderLabel={renderLabel}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : dense ? (
                 <CreamProblemStatement
                   title={title}
                   content={content}
@@ -2424,7 +2435,15 @@ export const ApexSlideContent: React.FC<{
               ))}
 
             {type === "competition" &&
-              (dense ? (
+              (apple ? (
+                <AppleCompareTable
+                  content={content}
+                  competitors={slide.visualData?.competitors}
+                  parseBullet={parseBullet}
+                  glass={glass}
+                  forExport={forExport}
+                />
+              ) : dense ? (
                 <CreamCompareMatrix
                   title={title}
                   subtitle={subtitle}

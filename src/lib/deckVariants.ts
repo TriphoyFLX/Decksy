@@ -93,7 +93,7 @@ export function assignDeckVariants(
   designPlan?: DeckDesignPlan | null
 ): DeckTemplateId {
   const seed = hashSeed(idea, userId ?? 0, deck.title ?? "");
-  const templates: DeckTemplateId[] = ["cream", "titanium"];
+  const templates: DeckTemplateId[] = ["cream", "titanium", "apple"];
   const templateId = normalizeDeckTemplateId(
     forceTemplate ?? designPlan?.recommendedTemplate ?? pick(templates, seed, 3),
   );
@@ -129,6 +129,21 @@ export function assignDeckVariants(
     vision: "vision-map",
   };
 
+  const APPLE_VARIANT_BY_TYPE: Partial<Record<string, string>> = {
+    title: "hero-centered",
+    problem: "apple-grouped",
+    solution: "apple-features",
+    product: "apple-product",
+    market: "apple-metrics",
+    competition: "battle",
+    pricing: "apple-biz",
+    traction: "apple-traction",
+    sauce: "apple-team",
+    launch: "apple-timeline",
+    ask: "apple-cta",
+    vision: "vision-map",
+  };
+
   deck.slides.forEach((slide, index) => {
     const type = slide.type || "title";
     const variants = SLIDE_VARIANTS[type] || SLIDE_VARIANTS.title;
@@ -142,6 +157,12 @@ export function assignDeckVariants(
     }
     if (templateId === "titanium" && TITANIUM_VARIANT_BY_TYPE[type]) {
       variant = TITANIUM_VARIANT_BY_TYPE[type]!;
+    }
+    if (templateId === "apple" && APPLE_VARIANT_BY_TYPE[type]) {
+      variant = APPLE_VARIANT_BY_TYPE[type]!;
+    }
+    if (templateId === "apple" && type === "problem") {
+      variant = "apple-grouped";
     }
     slide.visualData = {
       ...(slide.visualData || {}),
